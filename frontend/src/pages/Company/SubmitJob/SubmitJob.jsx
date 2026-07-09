@@ -1,14 +1,39 @@
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
-import { Link } from "react-router-dom";
+import { companyService } from "../../../services/api";
 
 export default function SubmitJob() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 1200));
-    toast.success("Job submitted successfully! Our team will review it shortly.");
-    reset();
+    try {
+      const skillsArray = data.skills ? data.skills.split(",").map(s => s.trim()).filter(Boolean) : [];
+      const payload = {
+        company_name: data.companyName.trim(),
+        hr_name: data.hrName.trim(),
+        hr_email: data.hrEmail.trim(),
+        phone: data.phone.trim(),
+        website: data.website?.trim() || null,
+        industry: "Technology",
+        title: data.jobTitle.trim(),
+        description: data.jobDescription.trim(),
+        eligibility: data.eligibility.trim(),
+        skills: skillsArray,
+        experience: data.experience,
+        salary: data.salary.trim(),
+        location: data.jobLocation.trim(),
+        openings: parseInt(data.openings) || 1,
+        last_date: data.lastDate,
+      };
+
+      await companyService.submitJob(payload);
+      toast.success("Job submitted successfully! Our team will review it shortly.");
+      reset();
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Failed to submit job request. Verify all inputs.";
+      toast.error(errMsg);
+    }
   };
 
   return (

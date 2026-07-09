@@ -1,41 +1,125 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
-import { jobs, applications, currentStudent } from "../../../utils/mockData";
-import { getStudents, calculateCompletion } from "../../../utils/studentStorage";
 import { toast } from "react-toastify";
 import StatCard from "../../../components/StatCard/StatCard";
 import JobCard from "../../../components/JobCard/JobCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
+import { studentService, jobService, applicationService } from "../../../services/api";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
-  
-  // Fetch latest student details from storage
-  const allStudents = getStudents();
-  const student = allStudents.find((s) => s.id === user?.id) || { ...currentStudent, ...user };
+  const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [availableJobs, setAvailableJobs] = useState([]);
+  const [myApplications, setMyApplications] = useState([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [profileRes, jobsRes, appsRes] = await Promise.all([
+          studentService.getProfile(),
+          jobService.getAll(),
+          applicationService.getMyApplications(),
+        ]);
+
+        const profile = profileRes.data.data;
+        setStudent(profile);
+
+        // Fetch and map jobs
+        const rawJobs = jobsRes.data.data || [];
+        const mappedJobs = rawJobs.map((job) => ({
+          id: job.id,
+          title: job.title,
+          company: job.company?.name || "Unknown Company",
+          companyLogo: job.company?.logo_path
+            ? `http://localhost:8000/storage/${job.company.logo_path}`
+            : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+          location: job.location,
+          salary: job.salary,
+          experience: job.experience,
+          skills: job.skills || [],
+          status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
+          lastDate: job.last_date,
+          eligibleInstitutes: job.institutes?.map((i) => i.id) || [],
+          instituteId: job.institutes?.map((i) => i.id) || [],
+        }));
+        setAvailableJobs(mappedJobs);
+
+        // Fetch and map applications
+        const rawApps = appsRes.data.data || [];
+        const mappedApps = rawApps.map((app) => ({
+          id: app.id,
+          jobTitle: app.job?.title || "Unknown Job",
+          company: app.job?.company || "Unknown Company",
+          status: app.status,
+          appliedAt: app.applied_at,
+        }));
+        setMyApplications(mappedApps);
+      } catch (err) {
+        console.error("Error loading dashboard data", err);
+        toast.error("Failed to load dashboard statistics.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  if (loading || !student) {
+    return (
+      <div className="d-flex justify-content-center align-items-center min-vh-50" style={{ height: "400px" }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate dynamic completion checklist
-  const { percentage, sections } = calculateCompletion(student);
-  student.profileCompletion = percentage;
+  const sections = {
+    personal: !!(student.email && student.dob && student.gender && student.address),
+    academic: !!(student.course && student.branch && student.batch),
+    resume: !!(student.resume_url || student.resumeUrl),
+    skills: !!(student.skills && student.skills.length > 0)
+  };
 
-  const availableJobs = jobs.filter(
-    (j) => j.status === "Published" && j.eligibleInstitutes.includes(student.instituteId)
-  );
-  const myApplications = applications.filter((a) => a.studentId === student.id);
+  const completedCount = Object.values(sections).filter(Boolean).length;
+  const profileCompletion = completedCount * 25;
+  student.profileCompletion = profileCompletion;
+
   const recentJobs = availableJobs.slice(0, 3);
 
   const notifications = [
-    { id: 1, type: "success", icon: "bi-check-circle-fill", text: "Your application for Software Developer has been received.", time: "2 hours ago" },
-    { id: 2, type: "info", icon: "bi-info-circle-fill", text: "New placement drive added by Infosys Limited.", time: "Yesterday" },
-    { id: 3, type: "warning", icon: "bi-exclamation-circle-fill", text: `Profile completion is at ${student.profileCompletion}%. Please update your details.`, time: "2 days ago" },
+    { id: 1, type: "success", icon: "bi-check-circle-fill", text: "Welcome to Aadya placement drives dashboard.", time: "Just now" },
+    { id: 2, type: "info", icon: "bi-info-circle-fill", text: "New placement drives are open.", time: "Today" },
+    { id: 3, type: "warning", icon: "bi-exclamation-circle-fill", text: `Profile completion is at ${student.profileCompletion}%. Please update your details.`, time: "Just now" },
   ];
 
-  const handleApply = (job) => {
+  const handleApply = async (job) => {
     if (student.profileCompletion < 100) {
       toast.error("Please complete your profile and upload your resume before applying.");
       return;
     }
-    toast.success(`Applied for ${job.title} at ${job.company}! 🎉`);
+    try {
+      await applicationService.apply({ job_id: job.id });
+      toast.success(`Applied for ${job.title} at ${job.company}! 🎉`);
+      
+      // Refresh applications list
+      const appsRes = await applicationService.getMyApplications();
+      const rawApps = appsRes.data.data || [];
+      const mappedApps = rawApps.map((app) => ({
+        id: app.id,
+        jobTitle: app.job?.title || "Unknown Job",
+        company: app.job?.company || "Unknown Company",
+        status: app.status,
+        appliedAt: app.applied_at,
+      }));
+      setMyApplications(mappedApps);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to submit application.");
+    }
   };
 
   return (

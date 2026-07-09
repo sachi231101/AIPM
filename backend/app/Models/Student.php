@@ -25,6 +25,7 @@ class Student extends Model
         'passing_year',
         'cgpa',
         'skills',
+        'soft_skills',
         'resume_path',
         'linkedin',
         'github',
@@ -33,9 +34,10 @@ class Student extends Model
     ];
 
     protected $casts = [
-        'skills'     => 'array',
-        'dob'        => 'date',
-        'cgpa'       => 'float',
+        'skills'      => 'array',
+        'soft_skills' => 'array',
+        'dob'         => 'date',
+        'cgpa'        => 'float',
     ];
 
     // ---------- Relationships ----------

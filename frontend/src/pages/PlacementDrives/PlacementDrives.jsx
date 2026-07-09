@@ -1,21 +1,63 @@
-import { useState } from "react";
-import { jobs } from "../../utils/mockData";
+import { useState, useEffect } from "react";
 import JobCard from "../../components/JobCard/JobCard";
 import SearchBar from "../../components/SearchBar/SearchBar";
 import EmptyState from "../../components/EmptyState/EmptyState";
 import Pagination from "../../components/Pagination/Pagination";
+import { jobService } from "../../services/api";
+import { toast } from "react-toastify";
 
 const ITEMS_PER_PAGE = 6;
 
+const statusMap = {
+  published: "Published",
+  approved: "Approved",
+  pending: "Pending",
+  rejected: "Rejected",
+  closed: "Closed"
+};
+
 export default function PlacementDrives() {
+  const [jobsList, setJobsList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
 
-  const locations = [...new Set(jobs.map((j) => j.location))];
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        const res = await jobService.getAll();
+        const rawJobs = res.data.data || [];
+        const mapped = rawJobs.map((job) => ({
+          id: job.id,
+          title: job.title,
+          company: job.company?.name || "Unknown Company",
+          companyLogo: job.company?.logo_path
+            ? `http://localhost:8000/storage/${job.company.logo_path}`
+            : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+          location: job.location,
+          salary: job.salary,
+          experience: job.experience,
+          skills: job.skills || [],
+          status: statusMap[job.status] || "Published",
+          lastDate: job.last_date,
+        }));
+        setJobsList(mapped);
+      } catch (err) {
+        console.error("Failed to fetch public drives", err);
+        toast.error("Failed to load public placement drives.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, []);
 
-  const filtered = jobs.filter((j) => {
+  const locations = [...new Set(jobsList.map((j) => j.location))];
+
+  const filtered = jobsList.filter((j) => {
     const matchSearch =
       j.title.toLowerCase().includes(search.toLowerCase()) ||
       j.company.toLowerCase().includes(search.toLowerCase());
@@ -28,6 +70,15 @@ export default function PlacementDrives() {
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const handleSearch = (val) => { setSearch(val); setPage(1); };
+
+  if (loading) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading placement drives...
+      </div>
+    );
+  }
 
   return (
     <>

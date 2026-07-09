@@ -1,15 +1,57 @@
-import { applications, currentStudent } from "../../../utils/mockData";
+import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import EmptyState from "../../../components/EmptyState/EmptyState";
 import { useAuth } from "../../../hooks/useAuth";
 import { Link } from "react-router-dom";
+import { applicationService } from "../../../services/api";
+import { toast } from "react-toastify";
 
 export default function AppliedJobs() {
   const { user } = useAuth();
-  const student = { ...currentStudent, ...user };
-  const myApplications = applications.filter((a) => a.studentId === student.id);
+  const [myApplications, setMyApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const statusColors = { "Shortlisted": "success", "Under Review": "primary", "Pending": "warning", "Rejected": "danger" };
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        setLoading(true);
+        const res = await applicationService.getMyApplications();
+        const rawApps = res.data.data || [];
+        const mappedApps = rawApps.map((app) => ({
+          id: app.id,
+          company: app.job?.company || "Unknown Company",
+          jobTitle: app.job?.title || "Unknown Job",
+          appliedDate: app.applied_at,
+          status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Under Review")),
+          jobId: app.job?.id,
+        }));
+        setMyApplications(mappedApps);
+      } catch (err) {
+        console.error("Failed to load applied jobs", err);
+        toast.error("Failed to load applied jobs history.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApplications();
+  }, []);
+
+  const statusColors = {
+    "Shortlisted": "success",
+    "Under Review": "primary",
+    "Pending": "warning",
+    "Rejected": "danger",
+    "Applied": "info"
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading application history...
+      </div>
+    );
+  }
 
   return (
     <div className="container-lg">

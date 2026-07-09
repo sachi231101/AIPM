@@ -1,25 +1,98 @@
-import { useState } from "react";
-import { applications, jobs } from "../../../utils/mockData";
+import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
+import { jobService, applicationService } from "../../../services/api";
 
 export default function Applications() {
+  const [publishedJobs, setPublishedJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState("");
+  const [applicationsList, setApplicationsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingApps, setLoadingApps] = useState(false);
   const [search, setSearch] = useState("");
 
-  const publishedJobs = jobs.filter(j => j.status === "Published");
+  // Fetch all published/approved jobs to populate the dropdown
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        const res = await jobService.adminGetAll();
+        const rawJobs = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.data || []);
+        // Filter jobs that are Published or Approved
+        const filteredJobs = rawJobs.filter(j => j.status === "published" || j.status === "approved");
+        setPublishedJobs(filteredJobs);
+        
+        // Auto-select the first job if available
+        if (filteredJobs.length > 0) {
+          setSelectedJob(filteredJobs[0].id.toString());
+        }
+      } catch (err) {
+        console.error("Failed to load jobs", err);
+        toast.error("Failed to load placement drives list.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, []);
 
-  const filtered = applications.filter(a => {
-    const matchJob = selectedJob ? a.jobId === parseInt(selectedJob) : true;
-    const matchSearch = a.studentName.toLowerCase().includes(search.toLowerCase()) ||
+  // Fetch applications whenever the selected job changes
+  useEffect(() => {
+    if (!selectedJob) {
+      setApplicationsList([]);
+      return;
+    }
+    const fetchApps = async () => {
+      try {
+        setLoadingApps(true);
+        const res = await applicationService.getByJob(parseInt(selectedJob));
+        const rawApps = res.data.data || [];
+        const mapped = rawApps.map((app) => ({
+          id: app.id,
+          studentName: app.student?.name || "Student",
+          institute: app.student?.institute || "Unknown Institute",
+          course: app.student?.course || "N/A",
+          email: app.student?.email || "",
+          appliedDate: app.applied_at,
+          status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : "Rejected"),
+          resumeUrl: app.resume_url ? `http://localhost:8000${app.resume_url}` : "#"
+        }));
+        setApplicationsList(mapped);
+      } catch (err) {
+        console.error("Failed to load applications", err);
+        toast.error("Failed to load applications for this job.");
+      } finally {
+        setLoadingApps(false);
+      }
+    };
+    fetchApps();
+  }, [selectedJob]);
+
+  const filtered = applicationsList.filter(a => {
+    return a.studentName.toLowerCase().includes(search.toLowerCase()) ||
       a.institute.toLowerCase().includes(search.toLowerCase());
-    return matchJob && matchSearch;
   });
 
-  const handleSendToCompany = () => {
+  const handleSendToCompany = async () => {
     if (!selectedJob) { toast.error("Please select a job first."); return; }
-    toast.success(`Applications sent to company via email! 📧`);
+    try {
+      toast.info("Preparing applications and sending email...");
+      const res = await applicationService.sendToCompany(parseInt(selectedJob));
+      toast.success(res.data.message || "Applications sent to company successfully! 📧");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to send applications email.");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading applications portal...
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -30,14 +103,18 @@ export default function Applications() {
           <div className="row g-3 align-items-center">
             <div className="col-md-5">
               <select className="form-select" value={selectedJob} onChange={e => setSelectedJob(e.target.value)}>
-                <option value="">All Jobs</option>
-                {publishedJobs.map(j => <option key={j.id} value={j.id}>{j.title} – {j.company}</option>)}
+                <option value="">-- Select Placement Drive --</option>
+                {publishedJobs.map(j => (
+                  <option key={j.id} value={j.id}>
+                    {j.title} – {j.company?.name || "Company"}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="col-md-4">
               <div className="input-group">
                 <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
-                <input className="form-control border-start-0" placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} />
+                <input className="form-control border-start-0" placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} disabled={!selectedJob} />
               </div>
             </div>
             <div className="col-md-3 text-end">
@@ -49,56 +126,73 @@ export default function Applications() {
 
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
-                <tr>
-                  <th className="px-4 py-3">#</th>
-                  <th className="py-3">Student</th>
-                  <th className="py-3">Institute</th>
-                  <th className="py-3">Course</th>
-                  <th className="py-3">Email</th>
-                  <th className="py-3">Applied</th>
-                  <th className="py-3">Status</th>
-                  <th className="py-3 text-end px-4">Resume</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((app, i) => (
-                  <tr key={app.id}>
-                    <td className="px-4 text-muted">{i + 1}</td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 32, height: 32, fontSize: 12 }}>
-                          {app.studentName[0]}
-                        </div>
-                        <span className="fw-medium small">{app.studentName}</span>
-                      </div>
-                    </td>
-                    <td className="small text-muted">{app.institute}</td>
-                    <td className="small">{app.course}</td>
-                    <td className="small text-muted">{app.email}</td>
-                    <td className="small text-muted">{new Date(app.appliedDate).toLocaleDateString("en-IN")}</td>
-                    <td>
-                      <span className={`badge bg-${app.status === "Shortlisted" ? "success" : "secondary"} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : "secondary"} small`}>
-                        {app.status}
-                      </span>
-                    </td>
-                    <td className="text-end px-4">
-                      <div className="d-flex gap-1 justify-content-end">
-                        <a href={app.resumeUrl} className="btn btn-xs btn-outline-primary py-1 px-2" style={{ fontSize: "0.75rem" }} target="_blank">
-                          <i className="bi bi-eye"></i>
-                        </a>
-                        <a href={app.resumeUrl} download className="btn btn-xs btn-outline-success py-1 px-2" style={{ fontSize: "0.75rem" }}>
-                          <i className="bi bi-download"></i>
-                        </a>
-                      </div>
-                    </td>
+          {loadingApps ? (
+            <div className="text-center py-5">
+              <span className="spinner-border spinner-border-sm me-2"></span>
+              Loading student applications...
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th className="px-4 py-3">#</th>
+                    <th className="py-3">Student</th>
+                    <th className="py-3">Institute</th>
+                    <th className="py-3">Course</th>
+                    <th className="py-3">Email</th>
+                    <th className="py-3">Applied</th>
+                    <th className="py-3">Status</th>
+                    <th className="py-3 text-end px-4">Resume</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filtered.length > 0 ? (
+                    filtered.map((app, i) => (
+                      <tr key={app.id}>
+                        <td className="px-4 text-muted">{i + 1}</td>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 32, height: 32, fontSize: 12 }}>
+                              {app.studentName[0]}
+                            </div>
+                            <span className="fw-medium small">{app.studentName}</span>
+                          </div>
+                        </td>
+                        <td className="small text-muted">{app.institute}</td>
+                        <td className="small">{app.course}</td>
+                        <td className="small text-muted">{app.email}</td>
+                        <td className="small text-muted">
+                          {app.appliedDate ? new Date(app.appliedDate).toLocaleDateString("en-IN") : "N/A"}
+                        </td>
+                        <td>
+                          <span className={`badge bg-${app.status === "Shortlisted" ? "success" : "secondary"} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : "secondary"} small`}>
+                            {app.status}
+                          </span>
+                        </td>
+                        <td className="text-end px-4">
+                          <div className="d-flex gap-1 justify-content-end">
+                            <a href={app.resumeUrl} className="btn btn-xs btn-outline-primary py-1 px-2" style={{ fontSize: "0.75rem" }} target="_blank" rel="noreferrer">
+                              <i className="bi bi-eye"></i> View
+                            </a>
+                            <a href={app.resumeUrl} download className="btn btn-xs btn-outline-success py-1 px-2" style={{ fontSize: "0.75rem" }}>
+                              <i className="bi bi-download"></i> Download
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="text-center py-4 text-muted small">
+                        {selectedJob ? "No applications submitted for this placement drive yet." : "Please select a placement drive above to load applications."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -114,7 +208,7 @@ export default function Applications() {
                   : "Select a job above to send applications to the recruiting company."}
               </p>
             </div>
-            <button className="btn btn-primary btn-lg px-5 fw-semibold" onClick={handleSendToCompany}>
+            <button className="btn btn-primary btn-lg px-5 fw-semibold" onClick={handleSendToCompany} disabled={!selectedJob || filtered.length === 0}>
               <i className="bi bi-send-fill me-2"></i>Send Applications to Company
             </button>
           </div>

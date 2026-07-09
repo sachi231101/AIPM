@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
+import { authService } from "../../../services/api";
 
 export default function AdminLogin() {
   const { login } = useAuth();
@@ -9,15 +10,21 @@ export default function AdminLogin() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 800));
-    // Mock admin login
-    if (data.email === "admin@apms.com" && data.password === "admin123") {
-      const adminUser = { id: 1, name: "Super Admin", email: data.email };
-      login(adminUser, "admin", "mock-admin-token");
+    try {
+      const response = await authService.adminLogin({
+        email: data.email.trim(),
+        password: data.password
+      });
+      const loggedInAdmin = response.data.user;
+      const token = response.data.token;
+
+      login(loggedInAdmin, "admin", token);
       toast.success("Welcome, Admin! 🛡️");
       navigate("/admin/dashboard");
-    } else {
-      toast.error("Invalid credentials. Try admin@apms.com / admin123");
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Invalid Admin Email or Password.";
+      toast.error(errMsg);
     }
   };
 
@@ -40,7 +47,7 @@ export default function AdminLogin() {
 
                 <div className="alert alert-info border-0 small p-2 mb-4" role="alert">
                   <i className="bi bi-info-circle me-1"></i>
-                  Demo: <strong>admin@apms.com</strong> / <strong>admin123</strong>
+                  Demo: <strong>admin@aadyaplacements.com</strong> / <strong>Admin@1234</strong>
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)}>
@@ -52,7 +59,7 @@ export default function AdminLogin() {
                         type="email"
                         {...register("email", { required: "Email is required" })}
                         className={`form-control border-start-0 ${errors.email ? "is-invalid" : ""}`}
-                        placeholder="admin@apms.com"
+                        placeholder="admin@aadyaplacements.com"
                       />
                       {errors.email && <div className="invalid-feedback">{errors.email.message}</div>}
                     </div>

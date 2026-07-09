@@ -60,7 +60,17 @@ class StudentController extends Controller
             Storage::disk('public')->delete($student->resume_path);
         }
 
-        $path = $request->file('resume')->store('resumes', 'public');
+        // Get original filename
+        $originalName = $request->file('resume')->getClientOriginalName();
+        // Replace special characters to avoid path traversal or exploits
+        $cleanName = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $originalName);
+
+        // Store file with original filename inside student-specific folder
+        $path = $request->file('resume')->storeAs(
+            'resumes/' . $student->id,
+            $cleanName,
+            'public'
+        );
 
         $student->update(['resume_path' => $path]);
         $student->recalculateCompletion();
@@ -94,6 +104,7 @@ class StudentController extends Controller
             'passing_year'        => $student->passing_year,
             'cgpa'                => $student->cgpa,
             'skills'              => $student->skills ?? [],
+            'soft_skills'         => $student->soft_skills ?? [],
             'linkedin'            => $student->linkedin,
             'github'              => $student->github,
             'portfolio'           => $student->portfolio,

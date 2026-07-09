@@ -1,94 +1,104 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { institutes } from "../../../utils/mockData";
 import { useAuth } from "../../../hooks/useAuth";
-import { getStudents, addStudent, calculateCompletion } from "../../../utils/studentStorage";
+import { getStudents, addStudent } from "../../../utils/studentStorage";
+import { authService, instituteService } from "../../../services/api";
 
 export default function Register() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [showOtherInstitute, setShowOtherInstitute] = useState(false);
+  const [instList, setInstList] = useState([]);
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm();
 
   const password = watch("password");
 
+  useEffect(() => {
+    const fetchInstitutes = async () => {
+      try {
+        const response = await instituteService.getAll();
+        const list = Array.isArray(response.data.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+        setInstList(list);
+      } catch (err) {
+        console.error("Failed to fetch institutes, using fallback", err);
+        setInstList([
+          { id: 1, name: "Aadya Institute" },
+          { id: 2, name: "PES University" },
+          { id: 3, name: "Oxford College" },
+          { id: 4, name: "RV College of Engineering" }
+        ]);
+      }
+    };
+    fetchInstitutes();
+  }, []);
+
   const handleInstituteChange = (e) => {
-    setShowOtherInstitute(e.target.value === "Other");
+    setShowOtherInstitute(e.target.value === "other");
   };
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 800));
-
-    const existingStudents = getStudents();
-
-    // 1. Validate Unique Student ID Card Number
-    const idExists = existingStudents.some(
-      (s) => s.studentIdCardNumber?.toLowerCase() === data.studentIdCardNumber.trim().toLowerCase()
-    );
-    if (idExists) {
-      toast.error("Student ID Card Number must be unique. This ID is already registered.");
-      return;
-    }
-
-    // 2. Validate Unique Mobile Number
-    const phoneExists = existingStudents.some(
-      (s) => s.phone === data.phone.trim()
-    );
-    if (phoneExists) {
-      toast.error("Mobile Number must be unique. This number is already registered.");
-      return;
-    }
-
-    // Determine selected institute name and ID
-    const selectedInstName = data.institute === "Other" ? data.otherInstitute : data.institute;
-    const matchedInst = institutes.find((i) => i.name === data.institute);
-    const selectedInstId = data.institute === "Other" ? 6 : (matchedInst ? matchedInst.id : 6);
-
-    // Construct new student record
-    const newStudent = {
-      id: Date.now(),
-      studentIdCardNumber: data.studentIdCardNumber.trim(),
-      name: data.fullName.trim(),
-      phone: data.phone.trim(),
-      institute: selectedInstName,
-      instituteId: selectedInstId,
+    const payload = {
+      student_id_card: data.studentIdCardNumber.trim(),
+      full_name: data.fullName.trim(),
+      mobile: data.phone.trim(),
+      institute_id: data.institute === "other" ? "other" : data.institute,
+      other_institute_name: data.institute === "other" ? data.otherInstitute.trim() : null,
       password: data.password,
-      status: "Active",
-      // Initially empty fields to be completed later
-      email: "",
-      dob: "",
-      gender: "",
-      address: "",
-      course: "",
-      branch: "",
-      batch: "",
-      cgpa: "",
-      skills: [],
-      technicalSkills: "",
-      softSkills: "",
-      resumeUrl: "",
-      resumeName: "",
-      linkedin: "",
-      github: "",
-      portfolio: "",
-      profilePhoto: "",
-      profileCompletion: 0,
+      password_confirmation: data.confirmPassword
     };
 
-    // Calculate initial profile completion percentage (should be 0%)
-    const { percentage } = calculateCompletion(newStudent);
-    newStudent.profileCompletion = percentage;
+    try {
+      // 1. Save to backend database
+      const response = await authService.studentRegister(payload);
+      const registeredUser = response.data.user;
+      const token = response.data.token;
 
-    // Save student to localStorage
-    addStudent(newStudent);
+      // 2. Map institute name for frontend localStorage mockup
+      const selectedInst = instList.find(i => String(i.id) === String(data.institute));
+      const selectedInstName = data.institute === "other" ? data.otherInstitute : (selectedInst ? selectedInst.name : "");
 
-    // Log user in
-    login(newStudent, "student", `mock-token-${newStudent.id}`);
-    
-    toast.success("Account created successfully! 🎉 Welcome to Aadya Placement Portal.");
-    navigate("/student/dashboard");
+      // 3. For compatibility with other pages that read from localStorage, save there too
+      const newStudent = {
+        id: registeredUser.id,
+        studentIdCardNumber: registeredUser.student_id_card,
+        name: registeredUser.name,
+        phone: registeredUser.mobile,
+        institute: selectedInstName,
+        instituteId: registeredUser.institute_id || 6,
+        password: data.password,
+        status: "Active",
+        email: "",
+        dob: "",
+        gender: "",
+        address: "",
+        course: "",
+        branch: "",
+        batch: "",
+        cgpa: "",
+        skills: [],
+        technicalSkills: "",
+        softSkills: "",
+        resumeUrl: "",
+        resumeName: "",
+        linkedin: "",
+        github: "",
+        portfolio: "",
+        profilePhoto: "",
+        profileCompletion: 0,
+      };
+
+      addStudent(newStudent);
+
+      // 4. Do not login automatically, redirect to Login option
+      toast.success("Account created successfully! 🎉 Please sign in to access your portal.");
+      navigate("/student/login");
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err.response?.data?.message || "Registration failed. Please try again.";
+      toast.error(errorMessage);
+    }
   };
 
   return (
@@ -170,7 +180,8 @@ export default function Register() {
                         onChange={handleInstituteChange}
                       >
                         <option value="">-- Select Institute --</option>
-                        {institutes.map((inst) => <option key={inst.id} value={inst.name}>{inst.name}</option>)}
+                        {instList.map((inst) => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
+                        <option value="other">Other</option>
                       </select>
                       {errors.institute && <div className="invalid-feedback">{errors.institute.message}</div>}
                     </div>

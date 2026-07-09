@@ -1,15 +1,58 @@
-import { useState } from "react";
-import { companies } from "../../../utils/mockData";
+import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
+import { companyService } from "../../../services/api";
+import { toast } from "react-toastify";
 
 export default function Companies() {
+  const [companiesList, setCompaniesList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(null);
 
-  const filtered = companies.filter(c =>
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoading(true);
+        const res = await companyService.getAll();
+        const rawList = res.data.data || [];
+        const mapped = rawList.map((c) => ({
+          id: c.id,
+          name: c.name,
+          logo: c.logo_path
+            ? `http://localhost:8000/storage/${c.logo_path}`
+            : "https://placehold.co/100x100?text=" + encodeURIComponent(c.name),
+          website: c.website || "N/A",
+          industry: c.industry || "Technology",
+          hrName: c.hr_name || "N/A",
+          hrEmail: c.hr_email || "N/A",
+          phone: c.phone || "N/A",
+          openings: c.openings || 0,
+          status: "Active", // since registered company is active
+        }));
+        setCompaniesList(mapped);
+      } catch (err) {
+        console.error("Failed to load companies", err);
+        toast.error("Failed to load recruiters list.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCompanies();
+  }, []);
+
+  const filtered = companiesList.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.industry.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading recruiters list...
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -40,32 +83,38 @@ export default function Companies() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((company, i) => (
-                  <tr key={company.id}>
-                    <td className="px-4 text-muted">{i + 1}</td>
-                    <td>
-                      <div className="d-flex align-items-center gap-3">
-                        <img src={company.logo} alt={company.name} width={40} height={40} className="rounded-2" />
-                        <div>
-                          <p className="fw-medium mb-0 small">{company.name}</p>
-                          <small className="text-muted">{company.website}</small>
+                {filtered.length > 0 ? (
+                  filtered.map((company, i) => (
+                    <tr key={company.id}>
+                      <td className="px-4 text-muted">{i + 1}</td>
+                      <td>
+                        <div className="d-flex align-items-center gap-3">
+                          <img src={company.logo} alt={company.name} width={40} height={40} className="rounded-2" style={{ objectFit: "cover" }} />
+                          <div>
+                            <p className="fw-medium mb-0 small">{company.name}</p>
+                            <small className="text-muted">{company.website}</small>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td><span className="badge bg-info bg-opacity-10 text-info">{company.industry}</span></td>
-                    <td>
-                      <p className="small fw-medium mb-0">{company.hrName}</p>
-                      <small className="text-muted">{company.hrEmail}</small>
-                    </td>
-                    <td><span className="fw-bold text-primary">{company.openings}</span></td>
-                    <td><span className="badge bg-success bg-opacity-10 text-success">{company.status}</span></td>
-                    <td className="text-end px-4">
-                      <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedCompany(company)}>
-                        <i className="bi bi-eye me-1"></i>View
-                      </button>
-                    </td>
+                      </td>
+                      <td><span className="badge bg-info bg-opacity-10 text-info">{company.industry}</span></td>
+                      <td>
+                        <p className="small fw-medium mb-0">{company.hrName}</p>
+                        <small className="text-muted">{company.hrEmail}</small>
+                      </td>
+                      <td><span className="fw-bold text-primary">{company.openings}</span></td>
+                      <td><span className="badge bg-success bg-opacity-10 text-success">{company.status}</span></td>
+                      <td className="text-end px-4">
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedCompany(company)}>
+                          <i className="bi bi-eye me-1"></i>View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="text-center py-4 text-muted small">No companies registered yet</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -83,7 +132,7 @@ export default function Companies() {
               </div>
               <div className="modal-body p-4">
                 <div className="text-center mb-4">
-                  <img src={selectedCompany.logo} alt={selectedCompany.name} className="rounded-3 mb-3" width={72} height={72} />
+                  <img src={selectedCompany.logo} alt={selectedCompany.name} className="rounded-3 mb-3" width={72} height={72} style={{ objectFit: "cover" }} />
                   <h5 className="fw-bold mb-1">{selectedCompany.name}</h5>
                   <span className="badge bg-info bg-opacity-10 text-info">{selectedCompany.industry}</span>
                 </div>

@@ -1,13 +1,79 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { jobs, currentStudent } from "../../utils/mockData";
-import { getStudents } from "../../utils/studentStorage";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "react-toastify";
+import { jobService, studentService, applicationService } from "../../services/api";
+
+const statusMap = {
+  published: "Published",
+  approved: "Approved",
+  pending: "Pending",
+  rejected: "Rejected",
+  closed: "Closed"
+};
 
 export default function JobDetails() {
   const { id } = useParams();
   const { user, role } = useAuth();
-  const job = jobs.find((j) => j.id === parseInt(id));
+  const [job, setJob] = useState(null);
+  const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const jobRes = await jobService.getById(id);
+        const backendJob = jobRes.data.data;
+
+        // Map backend job to UI structure
+        const mappedJob = {
+          id: backendJob.id,
+          title: backendJob.title,
+          company: backendJob.company?.name || "Unknown Company",
+          companyLogo: backendJob.company?.logo_path
+            ? `http://localhost:8000/storage/${backendJob.company.logo_path}`
+            : "https://placehold.co/100x100?text=" + encodeURIComponent(backendJob.company?.name || "Job"),
+          location: backendJob.location,
+          salary: backendJob.salary,
+          experience: backendJob.experience,
+          openings: backendJob.openings,
+          postedDate: backendJob.created_at,
+          lastDate: backendJob.last_date,
+          status: statusMap[backendJob.status] || "Published",
+          description: backendJob.description,
+          eligibility: backendJob.eligibility,
+          skills: backendJob.skills || [],
+          eligibleInstitutes: backendJob.institutes?.map(i => i.id) || []
+        };
+        setJob(mappedJob);
+
+        if (role === "student") {
+          try {
+            const profileRes = await studentService.getProfile();
+            setStudent(profileRes.data.data);
+          } catch (profileErr) {
+            console.error("Failed to load student profile for eligibility check", profileErr);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch job details", err);
+        toast.error("Failed to load job details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id, role]);
+
+  if (loading) {
+    return (
+      <div className="container py-5 text-center" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading placement drive details...
+      </div>
+    );
+  }
 
   if (!job) {
     return (
@@ -19,17 +85,36 @@ export default function JobDetails() {
     );
   }
 
-  const studentInstituteId = role === "student" ? (user?.instituteId || currentStudent.instituteId) : null;
-  const isEligible = role === "student" ? job.eligibleInstitutes.includes(studentInstituteId) : false;
+  // Check eligibility dynamically using the student's institute_id
+  const studentInstituteId = student ? student.institute_id : null;
+  const isEligible = role === "student" && studentInstituteId ? job.eligibleInstitutes.includes(studentInstituteId) : false;
 
-  const handleApply = () => {
-    const allStudents = getStudents();
-    const current = allStudents.find((s) => s.id === user?.id) || { ...currentStudent, ...user };
-    if (current.profileCompletion < 100) {
+  const handleApply = async () => {
+    if (!student) {
+      toast.error("Student profile not loaded.");
+      return;
+    }
+    // Calculate dynamic completion checklist locally
+    const sections = {
+      personal: !!(student.email && student.dob && student.gender && student.address),
+      academic: !!(student.course && student.branch && student.batch),
+      resume: !!(student.resume_url || student.resumeUrl),
+      skills: !!(student.skills && student.skills.length > 0)
+    };
+    const completedCount = Object.values(sections).filter(Boolean).length;
+    const profileCompletion = completedCount * 25;
+
+    if (profileCompletion < 100) {
       toast.error("Please complete your profile and upload your resume before applying.");
       return;
     }
-    toast.success(`Successfully applied for ${job.title} at ${job.company}!`);
+    try {
+      await applicationService.apply({ job_id: job.id });
+      toast.success(`Successfully applied for ${job.title} at ${job.company}! 🎉`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to submit application.");
+    }
   };
 
   const statusColors = { Published: "success", Approved: "primary", Pending: "warning", Rejected: "danger" };
@@ -59,6 +144,7 @@ export default function JobDetails() {
                     className="rounded-3 flex-shrink-0"
                     width={80}
                     height={80}
+                    style={{ objectFit: "cover" }}
                   />
                   <div className="flex-grow-1">
                     <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">

@@ -1,13 +1,73 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { dashboardStats, jobs, applications } from "../../../utils/mockData";
 import StatCard from "../../../components/StatCard/StatCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
+import { adminService } from "../../../services/api";
+import { toast } from "react-toastify";
 
-const statusColors = { Published: "success", Approved: "primary", Pending: "warning", Rejected: "danger", Closed: "secondary" };
+const statusColors = { 
+  Published: "success", 
+  Approved: "primary", 
+  Pending: "warning", 
+  Rejected: "danger", 
+  Closed: "secondary" 
+};
+
+const statusMap = {
+  published: "Published",
+  approved: "Approved",
+  pending: "Pending",
+  rejected: "Rejected",
+  closed: "Closed"
+};
 
 export default function AdminDashboard() {
-  const recentJobs = jobs.slice(0, 5);
-  const recentApps = applications.slice(0, 5);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+        const res = await adminService.getDashboardStats();
+        setStats(res.data.data);
+      } catch (err) {
+        console.error("Failed to load dashboard stats", err);
+        toast.error("Failed to load dashboard statistics.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboard();
+  }, []);
+
+  if (loading || !stats) {
+    return (
+      <div className="d-flex justify-content-center align-items-center min-vh-50" style={{ height: "400px" }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Map backend recent jobs for the UI
+  const recentJobsMapped = (stats.recent_jobs || []).map((job) => ({
+    id: job.id,
+    title: job.title,
+    company: job.company?.name || "Unknown Company",
+    location: job.location,
+    status: statusMap[job.status] || "Pending",
+  }));
+
+  // Map backend recent applications for the UI
+  const recentAppsMapped = (stats.recent_applications || []).map((app) => ({
+    id: app.id,
+    studentName: app.student?.user?.name || "Student",
+    institute: app.student?.institute?.name || app.student?.other_institute_name || "Unknown Institute",
+    jobTitle: app.job?.title || "Unknown Job",
+    status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : "Rejected"),
+  }));
 
   return (
     <div>
@@ -20,22 +80,22 @@ export default function AdminDashboard() {
       {/* Stat Cards */}
       <div className="row g-4 mb-4">
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Total Students" value={dashboardStats.totalStudents.toLocaleString()} icon="bi-people-fill" color="primary" trend={8} />
+          <StatCard title="Total Students" value={stats.total_students.toLocaleString()} icon="bi-people-fill" color="primary" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Institutes" value={dashboardStats.totalInstitutes} icon="bi-bank2" color="success" />
+          <StatCard title="Institutes" value={stats.total_institutes} icon="bi-bank2" color="success" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Companies" value={dashboardStats.totalCompanies} icon="bi-buildings-fill" color="warning" trend={5} />
+          <StatCard title="Total Jobs" value={stats.total_jobs} icon="bi-briefcase-fill" color="danger" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Total Jobs" value={dashboardStats.totalJobs} icon="bi-briefcase-fill" color="danger" />
+          <StatCard title="Published Jobs" value={stats.published_jobs} icon="bi-check-circle-fill" color="success" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Applications" value={dashboardStats.totalApplications.toLocaleString()} icon="bi-file-earmark-check-fill" color="primary" trend={15} />
+          <StatCard title="Pending Review" value={stats.pending_jobs} icon="bi-hourglass-split" color="warning" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Placed Students" value={dashboardStats.placedStudents.toLocaleString()} icon="bi-trophy-fill" color="success" />
+          <StatCard title="Applications" value={stats.total_applications.toLocaleString()} icon="bi-file-earmark-check-fill" color="primary" />
         </div>
       </div>
 
@@ -90,20 +150,26 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentJobs.map((job) => (
-                      <tr key={job.id}>
-                        <td className="px-4">
-                          <p className="fw-medium mb-0 small">{job.title}</p>
-                          <small className="text-muted">{job.company}</small>
-                        </td>
-                        <td className="small text-muted">{job.location}</td>
-                        <td>
-                          <span className={`badge bg-${statusColors[job.status]} bg-opacity-10 text-${statusColors[job.status]} border border-${statusColors[job.status]} border-opacity-25 small`}>
-                            {job.status}
-                          </span>
-                        </td>
+                    {recentJobsMapped.length > 0 ? (
+                      recentJobsMapped.map((job) => (
+                        <tr key={job.id}>
+                          <td className="px-4">
+                            <p className="fw-medium mb-0 small">{job.title}</p>
+                            <small className="text-muted">{job.company}</small>
+                          </td>
+                          <td className="small text-muted">{job.location}</td>
+                          <td>
+                            <span className={`badge bg-${statusColors[job.status] || "secondary"} bg-opacity-10 text-${statusColors[job.status] || "secondary"} border border-${statusColors[job.status] || "secondary"} border-opacity-25 small`}>
+                              {job.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="text-center py-4 text-muted small">No jobs registered yet</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -129,20 +195,26 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentApps.map((app) => (
-                      <tr key={app.id}>
-                        <td className="px-4">
-                          <p className="fw-medium mb-0 small">{app.studentName}</p>
-                          <small className="text-muted">{app.institute}</small>
-                        </td>
-                        <td className="small text-muted">{app.jobTitle}</td>
-                        <td>
-                          <span className={`badge bg-${app.status === "Shortlisted" ? "success" : "secondary"} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : "secondary"} small`}>
-                            {app.status}
-                          </span>
-                        </td>
+                    {recentAppsMapped.length > 0 ? (
+                      recentAppsMapped.map((app) => (
+                        <tr key={app.id}>
+                          <td className="px-4">
+                            <p className="fw-medium mb-0 small">{app.studentName}</p>
+                            <small className="text-muted">{app.institute}</small>
+                          </td>
+                          <td className="small text-muted">{app.jobTitle}</td>
+                          <td>
+                            <span className={`badge bg-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "warning")} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "warning")} small`}>
+                              {app.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="text-center py-4 text-muted small">No applications submitted yet</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

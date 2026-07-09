@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
-import { getStudents } from "../../../utils/studentStorage";
+import { authService } from "../../../services/api";
 
 export default function StudentLogin() {
   const { login } = useAuth();
@@ -10,24 +10,21 @@ export default function StudentLogin() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 800));
-    
-    const students = getStudents();
-    const inputVal = data.identifier.trim().toLowerCase();
+    try {
+      const response = await authService.studentLogin({
+        identifier: data.identifier.trim(),
+        password: data.password
+      });
+      const loggedInUser = response.data.user;
+      const token = response.data.token;
 
-    // Look for matching student by Student ID or Email
-    const matched = students.find((s) => {
-      const matchId = s.studentIdCardNumber?.toLowerCase() === inputVal;
-      const matchEmail = s.email?.toLowerCase() === inputVal;
-      return matchId || matchEmail;
-    });
-
-    if (matched && matched.password === data.password) {
-      login(matched, "student", `mock-token-${matched.id}`);
-      toast.success(`Welcome back, ${matched.name}! 🎉`);
+      login(loggedInUser, "student", token);
+      toast.success(`Welcome back, ${loggedInUser.name}! 🎉`);
       navigate("/student/dashboard");
-    } else {
-      toast.error("Invalid Student ID Card Number / Email or Password");
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err.response?.data?.message || "Invalid Student ID Card Number / Email or Password";
+      toast.error(errorMessage);
     }
   };
 
