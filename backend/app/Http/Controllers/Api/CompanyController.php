@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CompanyJobRequest;
 use App\Models\Company;
+use App\Models\Notification;
 use App\Models\PlacementJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +35,7 @@ class CompanyController extends Controller
         }
 
         // 3. Create the job (status = pending by default)
-        PlacementJob::create([
+        $job = PlacementJob::create([
             'company_id'  => $company->id,
             'title'       => $request->title,
             'description' => $request->description,
@@ -45,6 +46,14 @@ class CompanyController extends Controller
             'location'    => $request->location,
             'openings'    => $request->openings ?? 1,
             'last_date'   => $request->last_date,
+        ]);
+
+        // Create admin notification
+        Notification::create([
+            'type'    => 'new_job',
+            'title'   => 'New Job Request',
+            'message' => $company->name . ' submitted a job: ' . $job->title,
+            'link'    => '/admin/jobs',
         ]);
 
         return response()->json([

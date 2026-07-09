@@ -10,6 +10,9 @@ use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\JobController as AdminJobController;
 use App\Http\Controllers\Api\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Api\Admin\InstituteController;
+use App\Http\Controllers\Api\ContactMessageController;
+use App\Http\Controllers\Api\Admin\ContactMessageController as AdminContactMessageController;
+use App\Http\Controllers\Api\Admin\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 // ═══════════════════════════════════════════════════════════════
@@ -32,6 +35,9 @@ Route::post('/company/job-request', [CompanyController::class, 'submitJob']);
 
 // Public Institute Listing (for registration dropdown)
 Route::get('/institutes', [InstituteController::class, 'index']);
+
+// Public Contact Form Submission
+Route::post('/contact', [ContactMessageController::class, 'store']);
 
 // ═══════════════════════════════════════════════════════════════
 // STUDENT PROTECTED ROUTES (Sanctum + role:student)
@@ -89,4 +95,13 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     // Settings
     Route::get('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'show']);
     Route::put('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'update']);
+
+    // Contact Messages Management
+    Route::get('/contact-messages',         [AdminContactMessageController::class, 'index']);
+    Route::delete('/contact-messages/{id}',  [AdminContactMessageController::class, 'destroy']);
+
+    // Notifications
+    Route::get('/notifications',             [NotificationController::class, 'index']);
+    Route::put('/notifications/read-all',    [NotificationController::class, 'markAllAsRead']);
+    Route::put('/notifications/{id}/read',   [NotificationController::class, 'markAsRead']);
 });

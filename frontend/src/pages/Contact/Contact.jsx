@@ -1,13 +1,20 @@
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
+import { contactService } from "../../services/api";
 
 export default function Contact() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 1000));
-    toast.success("Your message has been sent! We'll get back to you within 24 hours.");
-    reset();
+    try {
+      const res = await contactService.submit(data);
+      toast.success(res.data?.message || "Your message has been sent! We'll get back to you within 24 hours.");
+      reset();
+    } catch (err) {
+      console.error("Failed to submit contact query", err);
+      const errMsg = err.response?.data?.message || "Failed to send message. Please try again.";
+      toast.error(errMsg);
+    }
   };
 
   return (

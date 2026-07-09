@@ -1,17 +1,50 @@
 <?php
 
-/**
- * Laravel - A PHP Framework For Web Artisans
- *
- * @package  Laravel
- * @author   Taylor Otwell <taylor@laravel.com>
- *
- * This file is used when deploying on shared hosting (HostGator cPanel) 
- * where the document root cannot be set to /public.
- * Place this file in the root of the project on the server.
- * 
- * It mimics public/index.php by setting the correct paths.
- */
+// Serve resume PDFs directly to bypass Windows PHP built-in server junction/routing bugs
+if (isset($_SERVER['REQUEST_URI'])) {
+    $uriPath = rawurldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+    
+    // Match /storage/resumes/{studentId}/{filename}
+    if (preg_match('|^/storage/resumes/([^/]+)/([^/]+)$|i', $uriPath, $matches)) {
+        $studentId = $matches[1];
+        $filename = $matches[2];
+        $directory = __DIR__ . '/storage/app/public/resumes/' . $studentId;
+        
+        if (is_dir($directory)) {
+            $files = scandir($directory);
+            foreach ($files as $file) {
+                if (strtolower($file) === strtolower($filename)) {
+                    $filePath = $directory . '/' . $file;
+                    header('Content-Type: application/pdf');
+                    header('Content-Disposition: inline; filename="' . $file . '"');
+                    header('Content-Length: ' . filesize($filePath));
+                    readfile($filePath);
+                    exit;
+                }
+            }
+        }
+    }
+    
+    // Match /storage/resumes/{filename}
+    if (preg_match('|^/storage/resumes/([^/]+)$|i', $uriPath, $matches)) {
+        $filename = $matches[1];
+        $directory = __DIR__ . '/storage/app/public/resumes';
+        
+        if (is_dir($directory)) {
+            $files = scandir($directory);
+            foreach ($files as $file) {
+                if (strtolower($file) === strtolower($filename)) {
+                    $filePath = $directory . '/' . $file;
+                    header('Content-Type: application/pdf');
+                    header('Content-Disposition: inline; filename="' . $file . '"');
+                    header('Content-Length: ' . filesize($filePath));
+                    readfile($filePath);
+                    exit;
+                }
+            }
+        }
+    }
+}
 
 define('LARAVEL_START', microtime(true));
 

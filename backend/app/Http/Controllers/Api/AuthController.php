@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StudentRegisterRequest;
 use App\Models\Institute;
+use App\Models\Notification;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +44,18 @@ class AuthController extends Controller
             'student_id_card'     => $request->student_id_card,
             'mobile'              => $request->mobile,
             'profile_completion'  => 0,
+        ]);
+
+        // Create admin notification
+        $instituteName = $instituteId
+            ? (Institute::find($instituteId)?->name ?? 'Unknown Institute')
+            : ($otherInstituteName ?? 'Other Institute');
+
+        Notification::create([
+            'type'    => 'new_student',
+            'title'   => 'New Student Registration',
+            'message' => $request->full_name . ' registered from ' . $instituteName,
+            'link'    => '/admin/students',
         ]);
 
         $token = $user->createToken('student-token')->plainTextToken;

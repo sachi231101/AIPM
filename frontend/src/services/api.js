@@ -94,4 +94,18 @@ export const adminService = {
   getDashboardStats: () => api.get("/admin/dashboard"),
 };
 
+// ─── CONTACT MESSAGES ────────────────────────────────────────────────────────
+export const contactService = {
+  submit: (data) => api.post("/contact", data),
+  getAll: () => api.get("/admin/contact-messages"),
+  delete: (id) => api.delete(`/admin/contact-messages/${id}`),
+};
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+export const notificationService = {
+  getAll: () => api.get("/admin/notifications"),
+  markAsRead: (id) => api.put(`/admin/notifications/${id}/read`),
+  markAllAsRead: () => api.put("/admin/notifications/read-all"),
+};
+
 export default api;

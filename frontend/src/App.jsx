@@ -41,6 +41,7 @@ import Jobs from "./pages/Admin/Jobs/Jobs";
 import AdminJobDetails from "./pages/Admin/JobDetails/JobDetails";
 import Applications from "./pages/Admin/Applications/Applications";
 import EmailLogs from "./pages/Admin/EmailLogs/EmailLogs";
+import AdminMessages from "./pages/Admin/Messages/Messages";
 import AdminSettings from "./pages/Admin/Settings/Settings";
 
 export default function App() {
@@ -81,6 +82,7 @@ export default function App() {
             <Route path="/admin/jobs/:id" element={<AdminJobDetails />} />
             <Route path="/admin/applications" element={<Applications />} />
             <Route path="/admin/email-logs" element={<EmailLogs />} />
+            <Route path="/admin/contact-messages" element={<AdminMessages />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
           </Route>
         </Routes>

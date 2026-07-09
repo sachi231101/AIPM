@@ -51,7 +51,7 @@ class ApplicationController extends Controller
     public function sendToCompany(Request $request): JsonResponse
     {
         $request->validate([
-            'job_id' => 'required|exists:jobs,id',
+            'job_id' => 'required|exists:placement_jobs,id',
         ]);
 
         $result = $this->exportService->sendApplicantsEmail((int) $request->job_id);
