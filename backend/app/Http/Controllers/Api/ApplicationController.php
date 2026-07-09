@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Models\Notification;
 use App\Models\PlacementJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class ApplicationController extends Controller
         $student = $user->student;
 
         $request->validate([
-            'job_id' => 'required|exists:jobs,id',
+            'job_id' => 'required|exists:placement_jobs,id',
         ]);
 
         $job = PlacementJob::with('institutes')->findOrFail($request->job_id);
@@ -60,6 +61,14 @@ class ApplicationController extends Controller
             'job_id'      => $job->id,
             'resume_path' => $student->resume_path,
             'applied_at'  => now(),
+        ]);
+
+        // Create admin notification
+        Notification::create([
+            'type'    => 'new_application',
+            'title'   => 'New Application',
+            'message' => $user->name . ' applied for ' . $job->title,
+            'link'    => '/admin/applications',
         ]);
 
         return response()->json(['message' => 'Application submitted successfully.'], 201);
