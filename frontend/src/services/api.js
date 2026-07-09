@@ -39,58 +39,59 @@ export const authService = {
 export const jobService = {
   getAll: (params) => api.get("/jobs", { params }),
   getById: (id) => api.get(`/jobs/${id}`),
-  create: (data) => api.post("/jobs", data),
-  update: (id, data) => api.put(`/jobs/${id}`, data),
-  approve: (id) => api.patch(`/jobs/${id}/approve`),
-  reject: (id) => api.patch(`/jobs/${id}/reject`),
-  publish: (id) => api.patch(`/jobs/${id}/publish`),
-  close: (id) => api.patch(`/jobs/${id}/close`),
-  setEligibleInstitutes: (id, data) => api.post(`/jobs/${id}/institutes`, data),
+  adminGetAll: (params) => api.get("/admin/jobs", { params }),
+  approve: (id) => api.put(`/admin/jobs/${id}/approve`),
+  reject: (id) => api.put(`/admin/jobs/${id}/reject`),
+  publish: (id, data) => api.put(`/admin/jobs/${id}/publish`, data),
+  close: (id) => api.put(`/admin/jobs/${id}/close`),
 };
 
 // ─── STUDENTS ────────────────────────────────────────────────────────────────
 export const studentService = {
-  getAll: (params) => api.get("/students", { params }),
-  getById: (id) => api.get(`/students/${id}`),
-  updateProfile: (id, data) => api.put(`/students/${id}`, data),
-  uploadResume: (id, formData) =>
-    api.post(`/students/${id}/resume`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+  getAll: (params) => api.get("/admin/students", { params }),
+  getProfile: () => api.get("/student/profile"),
+  updateProfile: (data) => api.put("/student/profile", data),
+  uploadResume: (formData) => api.post("/student/resume", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }),
 };
 
 // ─── APPLICATIONS ────────────────────────────────────────────────────────────
 export const applicationService = {
-  apply: (data) => api.post("/applications", data),
-  getByJob: (jobId) => api.get(`/jobs/${jobId}/applications`),
-  getByStudent: (studentId) => api.get(`/students/${studentId}/applications`),
-  sendToCompany: (jobId) => api.post(`/jobs/${jobId}/send-applications`),
+  apply: (data) => api.post("/apply", data),
+  getMyApplications: () => api.get("/student/applications"),
+  getByJob: (jobId) => api.get(`/admin/jobs/${jobId}/applications`),
+  sendToCompany: (jobId) => api.post("/admin/send-to-company", { job_id: jobId }),
 };
 
 // ─── INSTITUTES ──────────────────────────────────────────────────────────────
 export const instituteService = {
   getAll: () => api.get("/institutes"),
-  create: (data) => api.post("/institutes", data),
-  update: (id, data) => api.put(`/institutes/${id}`, data),
-  delete: (id) => api.delete(`/institutes/${id}`),
+  create: (data) => api.post("/admin/institutes", data),
+  update: (id, data) => api.put(`/admin/institutes/${id}`, data),
+  delete: (id) => api.delete(`/admin/institutes/${id}`),
 };
 
 // ─── COMPANIES ───────────────────────────────────────────────────────────────
 export const companyService = {
-  getAll: (params) => api.get("/companies", { params }),
-  getById: (id) => api.get(`/companies/${id}`),
-  submitJob: (data) => api.post("/company/submit-job", data),
+  getAll: (params) => api.get("/admin/companies", { params }),
+  submitJob: (data) => api.post("/company/job-request", data),
 };
 
 // ─── EMAIL LOGS ──────────────────────────────────────────────────────────────
 export const emailService = {
-  getLogs: () => api.get("/email-logs"),
+  getLogs: () => api.get("/admin/email-logs"),
 };
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
 export const settingsService = {
-  get: () => api.get("/settings"),
-  update: (data) => api.put("/settings", data),
+  get: () => api.get("/admin/settings"),
+  update: (data) => api.put("/admin/settings", data),
+};
+
+// ─── ADMIN ───────────────────────────────────────────────────────────────────
+export const adminService = {
+  getDashboardStats: () => api.get("/admin/dashboard"),
 };
 
 export default api;

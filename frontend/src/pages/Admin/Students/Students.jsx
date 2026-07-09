@@ -1,19 +1,66 @@
-import { useState } from "react";
-import { students } from "../../../utils/mockData";
+import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
+import { studentService } from "../../../services/api";
+import { toast } from "react-toastify";
 
 export default function Students() {
+  const [studentsList, setStudentsList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [instituteFilter, setInstituteFilter] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  const institutes = [...new Set(students.map(s => s.institute))];
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        const res = await studentService.getAll();
+        const rawList = res.data.data || [];
+        const mapped = rawList.map((s) => ({
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          phone: s.mobile || "N/A",
+          gender: s.gender || "N/A",
+          dob: s.dob || "N/A",
+          address: s.address || "N/A",
+          institute: s.institute || "Unknown Institute",
+          course: s.course || "N/A",
+          branch: s.branch || "N/A",
+          batch: s.batch || "N/A",
+          cgpa: s.cgpa || 0,
+          skills: s.skills || [],
+          softSkills: s.softSkills || s.soft_skills || [],
+          profileCompletion: s.profile_completion || 0,
+          resumeUrl: s.resume_url ? `http://localhost:8000${s.resume_url}` : "#"
+        }));
+        setStudentsList(mapped);
+      } catch (err) {
+        console.error("Failed to load students list", err);
+        toast.error("Failed to load registered students.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStudents();
+  }, []);
 
-  const filtered = students.filter(s => {
+  const institutes = [...new Set(studentsList.map(s => s.institute).filter(Boolean))];
+
+  const filtered = studentsList.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase());
     const matchInstitute = instituteFilter ? s.institute === instituteFilter : true;
     return matchSearch && matchInstitute;
   });
+
+  if (loading) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading students records...
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -54,45 +101,48 @@ export default function Students() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((student, i) => (
-                  <tr key={student.id}>
-                    <td className="px-4 text-muted">{i + 1}</td>
-                    <td>
-                      <div className="d-flex align-items-center gap-3">
-                        <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: 36, height: 36, fontSize: 14 }}>
-                          {student.name[0]}
+                {filtered.length > 0 ? (
+                  filtered.map((student, i) => (
+                    <tr key={student.id}>
+                      <td className="px-4 text-muted">{i + 1}</td>
+                      <td>
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 36, height: 36, fontSize: 14 }}>
+                            {student.name[0]}
+                          </div>
+                          <div>
+                            <p className="fw-medium mb-0 small">{student.name}</p>
+                            <small className="text-muted">{student.email}</small>
+                          </div>
                         </div>
-                        <div>
-                          <p className="fw-medium mb-0 small">{student.name}</p>
-                          <small className="text-muted">{student.email}</small>
+                      </td>
+                      <td className="small text-muted">{student.institute}</td>
+                      <td className="small">{student.course}</td>
+                      <td>
+                        <span className={`fw-bold text-${student.cgpa >= 8 ? "success" : student.cgpa >= 7 ? "warning" : "danger"}`}>{student.cgpa || "N/A"}</span>
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1" style={{ height: 6, width: 60 }}>
+                            <div className="progress-bar bg-primary" style={{ width: `${student.profileCompletion}%` }}></div>
+                          </div>
+                          <small className="text-muted">{student.profileCompletion}%</small>
                         </div>
-                      </div>
-                    </td>
-                    <td className="small text-muted">{student.institute}</td>
-                    <td className="small">{student.course}</td>
-                    <td>
-                      <span className={`fw-bold text-${student.cgpa >= 8 ? "success" : student.cgpa >= 7 ? "warning" : "danger"}`}>{student.cgpa}</span>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="progress flex-grow-1" style={{ height: 6, width: 60 }}>
-                          <div className="progress-bar bg-primary" style={{ width: `${student.profileCompletion}%` }}></div>
+                      </td>
+                      <td className="text-end px-4">
+                        <div className="d-flex gap-2 justify-content-end">
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedStudent(student)}>
+                            <i className="bi bi-eye me-1"></i>View Details
+                          </button>
                         </div>
-                        <small className="text-muted">{student.profileCompletion}%</small>
-                      </div>
-                    </td>
-                    <td className="text-end px-4">
-                      <div className="d-flex gap-2 justify-content-end">
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedStudent(student)}>
-                          <i className="bi bi-eye me-1"></i>View
-                        </button>
-                        <button className="btn btn-sm btn-outline-secondary">
-                          <i className="bi bi-pencil"></i>
-                        </button>
-                      </div>
-                    </td>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="text-center py-4 text-muted small">No students registered yet matching filters</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -127,8 +177,10 @@ export default function Students() {
                         { label: "Email", value: selectedStudent.email, icon: "bi-envelope" },
                         { label: "Phone", value: selectedStudent.phone, icon: "bi-telephone" },
                         { label: "Institute", value: selectedStudent.institute, icon: "bi-bank2" },
-                        { label: "Batch", value: selectedStudent.batch, icon: "bi-calendar" },
-                        { label: "CGPA", value: selectedStudent.cgpa, icon: "bi-star" },
+                        { label: "Batch/Passing Year", value: selectedStudent.batch, icon: "bi-calendar" },
+                        { label: "CGPA / Percentage", value: selectedStudent.cgpa || "N/A", icon: "bi-star" },
+                        { label: "Gender", value: selectedStudent.gender, icon: "bi-gender-ambiguous" },
+                        { label: "Date of Birth", value: selectedStudent.dob, icon: "bi-calendar-event" },
                       ].map((item, i) => (
                         <div key={i} className="col-6">
                           <small className="text-muted d-block"><i className={`bi ${item.icon} me-1`}></i>{item.label}</small>
@@ -136,13 +188,33 @@ export default function Students() {
                         </div>
                       ))}
                       <div className="col-12">
-                        <small className="text-muted d-block mb-2"><i className="bi bi-tools me-1"></i>Skills</small>
-                        <div className="d-flex flex-wrap gap-1">
-                          {selectedStudent.skills.map((s, i) => <span key={i} className="badge bg-primary bg-opacity-10 text-primary">{s}</span>)}
+                        <small className="text-muted d-block mb-2"><i className="bi bi-tools me-1"></i>Technical Skills</small>
+                        <div className="d-flex flex-wrap gap-1 mb-2">
+                          {selectedStudent.skills.length > 0 ? (
+                            selectedStudent.skills.map((s, i) => <span key={i} className="badge bg-primary bg-opacity-10 text-primary">{s}</span>)
+                          ) : (
+                            <span className="text-muted small">No technical skills added</span>
+                          )}
                         </div>
                       </div>
                       <div className="col-12">
-                        <a href={selectedStudent.resumeUrl} className="btn btn-sm btn-outline-primary"><i className="bi bi-download me-1"></i>Download Resume</a>
+                        <small className="text-muted d-block mb-2"><i className="bi bi-person-heart me-1"></i>Soft Skills</small>
+                        <div className="d-flex flex-wrap gap-1">
+                          {selectedStudent.softSkills.length > 0 ? (
+                            selectedStudent.softSkills.map((s, i) => <span key={i} className="badge bg-success bg-opacity-10 text-success">{s}</span>)
+                          ) : (
+                            <span className="text-muted small">No soft skills added</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="col-12">
+                        {selectedStudent.resumeUrl && selectedStudent.resumeUrl !== "#" ? (
+                          <a href={selectedStudent.resumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
+                            <i className="bi-file-earmark-pdf me-1"></i>View / Download Resume
+                          </a>
+                        ) : (
+                          <span className="text-muted small">No resume uploaded</span>
+                        )}
                       </div>
                     </div>
                   </div>

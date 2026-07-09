@@ -76,4 +76,17 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::put('/institutes/{id}',          [InstituteController::class, 'update']);
     Route::put('/institutes/{id}/toggle',   [InstituteController::class, 'toggleStatus']);
     Route::delete('/institutes/{id}',       [InstituteController::class, 'destroy']);
+
+    // Student Management
+    Route::get('/students',                 [\App\Http\Controllers\Api\Admin\StudentController::class, 'index']);
+
+    // Company Management
+    Route::get('/companies',                [\App\Http\Controllers\Api\Admin\CompanyController::class, 'index']);
+
+    // Email Logs
+    Route::get('/email-logs',               [\App\Http\Controllers\Api\Admin\EmailLogController::class, 'index']);
+
+    // Settings
+    Route::get('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'show']);
+    Route::put('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'update']);
 });

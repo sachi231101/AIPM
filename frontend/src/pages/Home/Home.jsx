@@ -1,11 +1,44 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import { homeStats, jobs, companies, testimonials, institutes } from "../../utils/mockData";
+import { homeStats, companies, testimonials, institutes } from "../../utils/mockData";
 import JobCard from "../../components/JobCard/JobCard";
 import CompanyCard from "../../components/CompanyCard/CompanyCard";
+import { jobService } from "../../services/api";
 
 export default function Home() {
-  const latestJobs = jobs.filter((j) => j.status === "Published").slice(0, 3);
+  const [latestJobs, setLatestJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        const res = await jobService.getAll();
+        const rawJobs = res.data.data || [];
+        const mapped = rawJobs.map((job) => ({
+          id: job.id,
+          title: job.title,
+          company: job.company?.name || "Unknown Company",
+          companyLogo: job.company?.logo_path
+            ? `http://localhost:8000/storage/${job.company.logo_path}`
+            : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+          location: job.location,
+          salary: job.salary,
+          experience: job.experience,
+          skills: job.skills || [],
+          status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
+          lastDate: job.last_date,
+        }));
+        setLatestJobs(mapped.slice(0, 3));
+      } catch (err) {
+        console.error("Failed to load jobs for home page", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, []);
 
   const handleCourseRegister = (e) => {
     e.preventDefault();

@@ -1,26 +1,47 @@
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import PageHeader from "../../../components/PageHeader/PageHeader";
+import { settingsService } from "../../../services/api";
 
 export default function Settings() {
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm({
-    defaultValues: {
-      instituteName: "Aadya Institute",
-      email: "aadyainstitute2016@gmail.com",
-      phone: "+91 99641 94324",
-      address: "183, 2nd Floor, 1st Main Road, Opp. Old Police Station, Next to Uttam Sagar Hotel, Above Nilgiris, Ramamurthy Nagar, Bengaluru, Karnataka – 560016",
-      website: "https://aadyainstitute.com",
-      maxResumeSize: "5",
-      applicationDeadlineBuffer: "2",
-      emailNotifications: true,
-      autoApproveCompanies: false,
-    },
-  });
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const res = await settingsService.get();
+        reset(res.data.data);
+      } catch (err) {
+        console.error("Failed to load settings", err);
+        toast.error("Failed to load system settings.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, [reset]);
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success("Settings saved successfully!");
+    try {
+      await settingsService.update(data);
+      toast.success("Settings saved successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to save settings.");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading system configuration...
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -75,7 +96,7 @@ export default function Settings() {
                 <div className="d-flex align-items-center gap-4">
                   <img src="/logo.png" alt="Aadya Institute Logo" style={{ width: "120px", height: "72px", objectFit: "contain" }} />
                   <div>
-                    <input type="file" className="form-control" accept="image/*" />
+                    <input type="file" className="form-control" accept="image/*" disabled />
                     <small className="text-muted">PNG, JPG or SVG. Max 2MB. Recommended: 200×200px</small>
                   </div>
                 </div>
@@ -128,7 +149,6 @@ export default function Settings() {
               <button type="submit" className="btn btn-primary px-5 fw-semibold" disabled={isSubmitting}>
                 {isSubmitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-floppy me-2"></i>Save Settings</>}
               </button>
-              <button type="button" className="btn btn-outline-secondary">Reset</button>
             </div>
           </form>
         </div>
@@ -141,7 +161,7 @@ export default function Settings() {
               {[
                 { label: "Version", value: "v1.0.0" },
                 { label: "Environment", value: "Development" },
-                { label: "Backend", value: "Laravel 11 (Pending)" },
+                { label: "Backend", value: "Laravel 11" },
                 { label: "Database", value: "MySQL" },
                 { label: "Last Backup", value: "N/A" },
               ].map((item, i) => (
@@ -150,19 +170,6 @@ export default function Settings() {
                   <span className="fw-medium">{item.value}</span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="card border-0 shadow-sm">
-            <div className="card-body p-4">
-              <h6 className="fw-bold mb-3 text-danger">Danger Zone</h6>
-              <p className="text-muted small mb-3">These actions are irreversible. Proceed with caution.</p>
-              <button className="btn btn-outline-danger btn-sm w-100 mb-2">
-                <i className="bi bi-arrow-counterclockwise me-2"></i>Clear All Applications
-              </button>
-              <button className="btn btn-outline-danger btn-sm w-100">
-                <i className="bi bi-trash me-2"></i>Reset System Data
-              </button>
             </div>
           </div>
         </div>

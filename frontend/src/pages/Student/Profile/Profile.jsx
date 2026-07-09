@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
-import { institutes } from "../../../utils/mockData";
-import { getStudents, updateStudentProfile, calculateCompletion } from "../../../utils/studentStorage";
+import { getStudents, updateStudentProfile } from "../../../utils/studentStorage";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import ResumeUpload from "../../../components/ResumeUpload/ResumeUpload";
+import { studentService } from "../../../services/api";
 
 export default function Profile() {
   const { user, login } = useAuth();
@@ -13,14 +13,31 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [resumeFile, setResumeFile] = useState(null);
   const [photoBase64, setPhotoBase64] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Load latest student data from storage
-  useEffect(() => {
-    if (user) {
+  // Load latest student data from backend API
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await studentService.getProfile();
+      const current = response.data.data;
+      setStudent(current);
+      setPhotoBase64(current.profile_photo || "");
+    } catch (err) {
+      console.error("Failed to load profile from database, using fallback", err);
+      // Fallback
       const allStudents = getStudents();
-      const current = allStudents.find((s) => s.id === user.id) || user;
+      const current = allStudents.find((s) => s.id === user?.id) || user;
       setStudent(current);
       setPhotoBase64(current.profilePhoto || "");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
     }
   }, [user]);
 
@@ -32,7 +49,7 @@ export default function Profile() {
       reset({
         name: student.name || "",
         email: student.email || "",
-        phone: student.phone || "",
+        phone: student.mobile || student.phone || "",
         dob: student.dob || "",
         gender: student.gender || "",
         address: student.address || "",
@@ -42,7 +59,7 @@ export default function Profile() {
         batch: student.batch || "",
         cgpa: student.cgpa || "",
         technicalSkills: student.technicalSkills || student.skills?.join(", ") || "",
-        softSkills: student.softSkills || "",
+        softSkills: student.soft_skills?.join(", ") || (Array.isArray(student.softSkills) ? student.softSkills.join(", ") : student.softSkills) || "",
         linkedin: student.linkedin || "",
         github: student.github || "",
         portfolio: student.portfolio || "",
@@ -50,8 +67,8 @@ export default function Profile() {
     }
   }, [student, reset, editing]);
 
-  if (!student) {
-    return <div className="text-center py-5"><span className="spinner-border spinner-border-sm me-2"></span>Loading profile...</div>;
+  if (loading || !student) {
+    return <div className="text-center py-5" style={{ height: "400px" }}><span className="spinner-border spinner-border-sm me-2"></span>Loading profile...</div>;
   }
 
   const handlePhotoChange = (e) => {
@@ -70,50 +87,80 @@ export default function Profile() {
   };
 
   const onSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 800));
-
-    const resumeName = resumeFile ? resumeFile.name : (student.resumeName || student.resumeUrl?.split("/").pop() || "");
-
-    const updatedFields = {
-      name: data.name.trim(),
-      email: data.email.trim(),
-      phone: data.phone.trim(),
-      dob: data.dob,
-      gender: data.gender,
-      address: data.address.trim(),
-      institute: data.institute,
-      course: data.course,
-      branch: data.branch.trim(),
-      batch: data.batch,
-      cgpa: data.cgpa ? parseFloat(data.cgpa) : "",
-      technicalSkills: data.technicalSkills.trim(),
-      softSkills: data.softSkills.trim(),
-      skills: data.technicalSkills.split(",").map((s) => s.trim()).filter(Boolean),
-      linkedin: data.linkedin.trim(),
-      github: data.github.trim(),
-      portfolio: data.portfolio.trim(),
-      profilePhoto: photoBase64,
-      resumeName: resumeName,
-      resumeUrl: resumeFile ? "/resumes/" + resumeName : student.resumeUrl
-    };
-
-    // Calculate new completion percentage
-    const { percentage } = calculateCompletion({ ...student, ...updatedFields });
-    updatedFields.profileCompletion = percentage;
-
-    // Update in localStorage
-    const updated = updateStudentProfile(student.id, updatedFields);
-    if (updated) {
-      setStudent(updated);
+    try {
+      // 1. Handle resume upload if selected
+      let resumeName = student.resumeName || "";
+      let resumeUrl = student.resumeUrl || "";
       
-      // Update the auth context state to reflect changes elsewhere instantly
+      if (resumeFile) {
+        const formData = new FormData();
+        formData.append("resume", resumeFile);
+        const resumeRes = await studentService.uploadResume(formData);
+        resumeName = resumeFile.name;
+        resumeUrl = resumeRes.data.resume_url;
+      }
+
+      // 2. Prepare payload for profile update
+      const skillsArray = data.technicalSkills.split(",").map((s) => s.trim()).filter(Boolean);
+      const softSkillsArray = data.softSkills.split(",").map((s) => s.trim()).filter(Boolean);
+      const profileData = {
+        email: data.email.trim(),
+        dob: data.dob,
+        gender: data.gender,
+        address: data.address.trim(),
+        course: data.course,
+        branch: data.branch.trim(),
+        batch: data.batch,
+        passing_year: parseInt(data.batch) || 2026,
+        cgpa: data.cgpa ? parseFloat(data.cgpa) : null,
+        skills: skillsArray,
+        soft_skills: softSkillsArray,
+        linkedin: data.linkedin.trim() || null,
+        github: data.github.trim() || null,
+        portfolio: data.portfolio.trim() || null,
+      };
+
+      // 3. Save to backend database
+      const response = await studentService.updateProfile(profileData);
+      const updatedUser = response.data.data;
+
+      // 4. Calculate local completion and save to localStorage for compatibility
+      const mockFields = {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.mobile,
+        dob: updatedUser.dob,
+        gender: updatedUser.gender,
+        address: updatedUser.address,
+        course: updatedUser.course,
+        branch: updatedUser.branch,
+        batch: updatedUser.batch,
+        cgpa: updatedUser.cgpa,
+        skills: updatedUser.skills,
+        technicalSkills: data.technicalSkills,
+        softSkills: data.softSkills,
+        soft_skills: updatedUser.soft_skills || softSkillsArray,
+        linkedin: updatedUser.linkedin,
+        github: updatedUser.github,
+        portfolio: updatedUser.portfolio,
+        profilePhoto: photoBase64,
+        resumeName: resumeName,
+        resumeUrl: resumeUrl,
+        profileCompletion: updatedUser.profile_completion,
+      };
+
+      updateStudentProfile(student.id, mockFields);
+
+      // 5. Update auth context & state
       const token = localStorage.getItem("apms_token");
-      login(updated, "student", token);
+      login(updatedUser, "student", token);
+      setStudent(updatedUser);
 
       toast.success("Profile Updated Successfully 🎉");
       setEditing(false);
-    } else {
-      toast.error("Failed to update profile.");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to update profile.");
     }
   };
 
@@ -132,6 +179,11 @@ export default function Profile() {
     "MCA",
     "MBA"
   ];
+
+  const profileCompletion = student.profile_completion ?? student.profileCompletion ?? 0;
+  const hasResume = !!(student.resume_url || student.resumeUrl);
+  const resumeFileName = student.resume_url?.split("/").pop() || student.resumeUrl?.split("/").pop() || student.resumeName || "resume.pdf";
+  const resumeUrl = student.resume_url ? `http://localhost:8000${student.resume_url}` : (student.resumeUrl ? `http://localhost:8000${student.resumeUrl}` : "#");
 
   return (
     <div className="container-lg">
@@ -171,10 +223,10 @@ export default function Profile() {
             <div className="mb-3">
               <div className="d-flex justify-content-between mb-1">
                 <small className="fw-semibold">Profile Completion</small>
-                <small className="fw-bold text-primary">{student.profileCompletion}%</small>
+                <small className="fw-bold text-primary">{profileCompletion}%</small>
               </div>
               <div className="progress" style={{ height: 8 }}>
-                <div className="progress-bar bg-primary" style={{ width: `${student.profileCompletion}%` }}></div>
+                <div className="progress-bar bg-primary" style={{ width: `${profileCompletion}%` }}></div>
               </div>
             </div>
 
@@ -194,6 +246,19 @@ export default function Profile() {
                 ))
               ) : (
                 <span className="text-muted small">No technical skills added yet</span>
+              )}
+            </div>
+          </div>
+
+          <div className="card border-0 shadow-sm p-3 mt-3">
+            <h6 className="fw-bold mb-3 small text-muted text-uppercase">Soft Skills</h6>
+            <div className="d-flex flex-wrap gap-2">
+              {(student.soft_skills || student.softSkills) && (student.soft_skills || student.softSkills).length > 0 ? (
+                (student.soft_skills || student.softSkills).map((s, i) => (
+                  <span key={i} className="badge bg-success bg-opacity-10 text-success px-2 py-1">{s}</span>
+                ))
+              ) : (
+                <span className="text-muted small">No soft skills added yet</span>
               )}
             </div>
           </div>
@@ -382,16 +447,16 @@ export default function Profile() {
                 </div>
                 <div className="mb-4">
                   {editing ? (
-                    <ResumeUpload onFileSelect={setResumeFile} currentFile={student.resumeName || student.resumeUrl?.split("/").pop()} />
+                    <ResumeUpload onFileSelect={setResumeFile} currentFile={resumeFileName} />
                   ) : (
-                    student.resumeName || student.resumeUrl ? (
+                    hasResume ? (
                       <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-3">
                         <i className="bi bi-file-earmark-pdf-fill text-danger fs-4"></i>
                         <div className="flex-grow-1">
-                          <p className="fw-medium mb-0 small">{student.resumeName || student.resumeUrl?.split("/").pop()}</p>
+                          <p className="fw-medium mb-0 small">{resumeFileName}</p>
                           <small className="text-muted">Uploaded and active</small>
                         </div>
-                        <a href="#" onClick={(e) => e.preventDefault()} className="btn btn-sm btn-outline-primary"><i className="bi bi-eye me-1"></i>View Resume</a>
+                        <a href={resumeUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary"><i className="bi bi-eye me-1"></i>View Resume</a>
                       </div>
                     ) : (
                       <div className="alert alert-warning small py-2 mb-0"><i className="bi bi-exclamation-triangle-fill me-2"></i>No resume uploaded. Please edit your profile to upload one.</div>

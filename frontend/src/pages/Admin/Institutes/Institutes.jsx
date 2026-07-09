@@ -1,41 +1,88 @@
-import { useState } from "react";
-import { institutes as initialInstitutes } from "../../../utils/mockData";
+import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
+import { instituteService } from "../../../services/api";
 
 export default function Institutes() {
-  const [institutes, setInstitutes] = useState(initialInstitutes.filter(i => i.name !== "Other"));
+  const [institutes, setInstitutes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingInstitute, setEditingInstitute] = useState(null);
   const [deletingInstitute, setDeletingInstitute] = useState(null);
   const [formName, setFormName] = useState("");
   const [search, setSearch] = useState("");
 
+  const fetchInstitutes = async () => {
+    try {
+      setLoading(true);
+      const res = await instituteService.getAll();
+      const list = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      // Filter out special fallback values like "Other"
+      setInstitutes(list.filter(i => i.name !== "Other"));
+    } catch (err) {
+      console.error("Failed to load institutes", err);
+      toast.error("Failed to load institutes list.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInstitutes();
+  }, []);
+
   const filtered = institutes.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!formName.trim()) { toast.error("Institute name is required"); return; }
-    const newInst = { id: Date.now(), name: formName.trim() };
-    setInstitutes([...institutes, newInst]);
-    toast.success("Institute added successfully!");
-    setFormName(""); setShowAddModal(false);
+    try {
+      await instituteService.create({ name: formName.trim() });
+      toast.success("Institute added successfully!");
+      setFormName(""); 
+      setShowAddModal(false);
+      fetchInstitutes();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to add institute.");
+    }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!formName.trim()) { toast.error("Name is required"); return; }
-    setInstitutes(institutes.map(i => i.id === editingInstitute.id ? { ...i, name: formName } : i));
-    toast.success("Institute updated!");
-    setEditingInstitute(null); setFormName("");
+    try {
+      await instituteService.update(editingInstitute.id, { name: formName.trim() });
+      toast.success("Institute updated!");
+      setEditingInstitute(null); 
+      setFormName("");
+      fetchInstitutes();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to update institute.");
+    }
   };
 
-  const handleDelete = () => {
-    setInstitutes(institutes.filter(i => i.id !== deletingInstitute.id));
-    toast.success("Institute deleted.");
-    setDeletingInstitute(null);
+  const handleDelete = async () => {
+    try {
+      await instituteService.delete(deletingInstitute.id);
+      toast.success("Institute deleted.");
+      setDeletingInstitute(null);
+      fetchInstitutes();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to delete institute.");
+    }
   };
 
   const openEdit = (inst) => { setEditingInstitute(inst); setFormName(inst.name); };
+
+  if (loading) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading institutes list...
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -64,29 +111,35 @@ export default function Institutes() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((inst, i) => (
-                  <tr key={inst.id}>
-                    <td className="px-4 text-muted">{i + 1}</td>
-                    <td>
-                      <div className="d-flex align-items-center gap-3">
-                        <div className="rounded-2 bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-                          <i className="bi bi-bank2 text-primary"></i>
+                {filtered.length > 0 ? (
+                  filtered.map((inst, i) => (
+                    <tr key={inst.id}>
+                      <td className="px-4 text-muted">{i + 1}</td>
+                      <td>
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="rounded-2 bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
+                            <i className="bi bi-bank2 text-primary"></i>
+                          </div>
+                          <span className="fw-medium">{inst.name}</span>
                         </div>
-                        <span className="fw-medium">{inst.name}</span>
-                      </div>
-                    </td>
-                    <td className="text-end px-4">
-                      <div className="d-flex gap-2 justify-content-end">
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(inst)}>
-                          <i className="bi bi-pencil"></i>
-                        </button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => setDeletingInstitute(inst)}>
-                          <i className="bi bi-trash"></i>
-                        </button>
-                      </div>
-                    </td>
+                      </td>
+                      <td className="text-end px-4">
+                        <div className="d-flex gap-2 justify-content-end">
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(inst)}>
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => setDeletingInstitute(inst)}>
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="text-center py-4 text-muted small">No institutes registered yet</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

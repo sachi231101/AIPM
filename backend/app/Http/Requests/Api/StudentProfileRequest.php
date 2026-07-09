@@ -25,11 +25,13 @@ class StudentProfileRequest extends FormRequest
             'batch'        => 'nullable|string|max:10',
             'passing_year' => 'nullable|digits:4|integer|min:2000|max:2035',
             'cgpa'         => 'nullable|numeric|min:0|max:10',
-            'skills'       => 'nullable|array',
-            'skills.*'     => 'string|max:100',
-            'linkedin'     => 'nullable|url|max:500',
-            'github'       => 'nullable|url|max:500',
-            'portfolio'    => 'nullable|url|max:500',
+            'skills'        => 'nullable|array',
+            'skills.*'      => 'string|max:100',
+            'soft_skills'   => 'nullable|array',
+            'soft_skills.*' => 'string|max:100',
+            'linkedin'      => 'nullable|url|max:500',
+            'github'        => 'nullable|url|max:500',
+            'portfolio'     => 'nullable|url|max:500',
         ];
     }
 }

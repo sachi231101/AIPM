@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { jobs, currentStudent } from "../../../utils/mockData";
-import { getStudents } from "../../../utils/studentStorage";
+import { useState, useEffect } from "react";
 import JobCard from "../../../components/JobCard/JobCard";
 import SearchBar from "../../../components/SearchBar/SearchBar";
 import EmptyState from "../../../components/EmptyState/EmptyState";
@@ -8,24 +6,82 @@ import Pagination from "../../../components/Pagination/Pagination";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
+import { studentService, jobService, applicationService } from "../../../services/api";
 
 const ITEMS_PER_PAGE = 6;
 
 export default function AvailableJobs() {
   const { user } = useAuth();
-  const student = { ...currentStudent, ...user };
-
+  const [student, setStudent] = useState(null);
+  const [jobsList, setJobsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [page, setPage] = useState(1);
 
-  const eligibleJobs = jobs.filter(
-    (j) => j.status === "Published" && j.eligibleInstitutes.includes(student.instituteId)
-  );
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [profileRes, jobsRes] = await Promise.all([
+          studentService.getProfile(),
+          jobService.getAll()
+        ]);
+        
+        const profile = profileRes.data.data;
+        setStudent(profile);
 
-  const locations = [...new Set(eligibleJobs.map((j) => j.location))];
+        const rawJobs = jobsRes.data.data || [];
+        const mappedJobs = rawJobs.map((job) => ({
+          id: job.id,
+          title: job.title,
+          company: job.company?.name || "Unknown Company",
+          companyLogo: job.company?.logo_path
+            ? `http://localhost:8000/storage/${job.company.logo_path}`
+            : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+          location: job.location,
+          salary: job.salary,
+          experience: job.experience,
+          skills: job.skills || [],
+          status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
+          lastDate: job.last_date,
+          eligibleInstitutes: job.institutes?.map((i) => i.id) || [],
+          instituteId: job.institutes?.map((i) => i.id) || [],
+        }));
+        setJobsList(mappedJobs);
+      } catch (err) {
+        console.error("Failed to load available jobs", err);
+        toast.error("Failed to load available jobs.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const filtered = eligibleJobs.filter((j) => {
+  if (loading || !student) {
+    return (
+      <div className="text-center py-5" style={{ height: "400px" }}>
+        <span className="spinner-border spinner-border-sm me-2"></span>
+        Loading available jobs...
+      </div>
+    );
+  }
+
+  // Calculate dynamic completion checklist
+  const sections = {
+    personal: !!(student.email && student.dob && student.gender && student.address),
+    academic: !!(student.course && student.branch && student.batch),
+    resume: !!(student.resume_url || student.resumeUrl),
+    skills: !!(student.skills && student.skills.length > 0)
+  };
+  const completedCount = Object.values(sections).filter(Boolean).length;
+  const profileCompletion = completedCount * 25;
+
+  const locations = [...new Set(jobsList.map((j) => j.location))];
+
+  const filtered = jobsList.filter((j) => {
     const matchSearch =
       j.title.toLowerCase().includes(search.toLowerCase()) ||
       j.company.toLowerCase().includes(search.toLowerCase());
@@ -36,14 +92,18 @@ export default function AvailableJobs() {
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const handleApply = (job) => {
-    const allStudents = getStudents();
-    const current = allStudents.find((s) => s.id === user?.id) || { ...currentStudent, ...user };
-    if (current.profileCompletion < 100) {
+  const handleApply = async (job) => {
+    if (profileCompletion < 100) {
       toast.error("Please complete your profile and upload your resume before applying.");
       return;
     }
-    toast.success(`Applied for ${job.title} at ${job.company}! 🎉`);
+    try {
+      await applicationService.apply({ job_id: job.id });
+      toast.success(`Applied for ${job.title} at ${job.company}! 🎉`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to submit application.");
+    }
   };
 
   return (
