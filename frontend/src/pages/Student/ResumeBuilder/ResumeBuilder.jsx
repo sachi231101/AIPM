@@ -5,6 +5,7 @@ import { studentService, resumeService } from "../../../services/api";
 import {
   getAllResumes,
   saveResume,
+  createDefaultResume,
   createNewResume,
   duplicateResume,
   deleteResume,
@@ -77,44 +78,36 @@ export default function ResumeBuilder() {
   const [targetRole, setTargetRole] = useState("Full Stack Developer");
   const [newSkillInput, setNewSkillInput] = useState({});
 
-  // Fetch initial profile data & sync saved resumes with Database API
+  // Fetch initial profile data & build resume from student registration details
   useEffect(() => {
-    // 1. Render stored local resumes instantly (<1ms)
-    const initialLocal = getAllResumes({});
-    setResumes(initialLocal);
-    if (initialLocal.length > 0) setActiveResume(initialLocal[0]);
+    studentService.getProfile()
+      .then((pres) => {
+        const pdata = pres.data?.data || {};
+        const freshResume = createDefaultResume(pdata);
+        setResumes([freshResume]);
+        setActiveResume(freshResume);
+        saveResume(freshResume);
 
-    // 2. Sync with Laravel database API in background
-    resumeService.getAll()
-      .then((res) => {
-        const dbResumes = res.data?.data || [];
-        if (dbResumes.length > 0) {
-          const parsed = dbResumes.map((r) => r.content);
-          setResumes(parsed);
-          setActiveResume(parsed[0]);
-          parsed.forEach((p) => saveResume(p));
-        } else {
-          // If no database resumes exist, pre-fill from student profile
-          studentService.getProfile().then((pres) => {
-            const pdata = pres.data?.data || {};
-            if (pdata && Object.keys(pdata).length > 0) {
-              const updated = getAllResumes(pdata);
-              setResumes(updated);
-              setActiveResume((curr) => curr || updated[0]);
-              // Persist initial to database
-              if (updated[0]) {
-                resumeService.save({
-                  resume_key: updated[0].id,
-                  title: updated[0].title || "Master Resume",
-                  content: updated[0],
-                }).catch(() => {});
-              }
-            }
-          }).catch(() => {});
-        }
+        // Sync with database API
+        resumeService.getAll().then((res) => {
+          const dbResumes = res.data?.data || [];
+          if (dbResumes.length > 0) {
+            const parsed = dbResumes.map((r) => r.content);
+            setResumes(parsed);
+            setActiveResume(parsed[0]);
+          } else {
+            resumeService.save({
+              resume_key: freshResume.id,
+              title: freshResume.title || "Master Resume",
+              content: freshResume,
+            }).catch(() => {});
+          }
+        }).catch(() => {});
       })
       .catch(() => {
-        // Fallback to local storage
+        const fallback = createDefaultResume({});
+        setResumes([fallback]);
+        setActiveResume(fallback);
       });
   }, []);
 
@@ -446,40 +439,7 @@ export default function ResumeBuilder() {
             </div>
           </div>
 
-          {/* Completion & ATS Metrics */}
-          <div className="card border-0 shadow-sm mb-3">
-            <div className="card-body p-3">
-              <h6 className="card-title fw-bold mb-3 d-flex align-items-center justify-content-between">
-                <span>Resume Metrics</span>
-                <span className="badge bg-primary-subtle text-primary">Live</span>
-              </h6>
 
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small fw-semibold mb-1">
-                  <span>ATS Optimization Score</span>
-                  <span className="text-success">{atsMetrics.atsScore}%</span>
-                </div>
-                <div className="progress" style={{ height: 8 }}>
-                  <div className="progress-bar bg-success" style={{ width: `${atsMetrics.atsScore}%` }}></div>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small fw-semibold mb-1">
-                  <span>Profile Completion</span>
-                  <span className="text-primary">{atsMetrics.profileScore}%</span>
-                </div>
-                <div className="progress" style={{ height: 8 }}>
-                  <div className="progress-bar bg-primary" style={{ width: `${atsMetrics.profileScore}%` }}></div>
-                </div>
-              </div>
-
-              <div className="p-2 bg-light rounded small">
-                <div className="fw-bold text-dark mb-1"><i className="bi bi-lightbulb text-warning me-1"></i>Optimization Tip</div>
-                <p className="text-muted mb-0">{atsMetrics.suggestions[0]}</p>
-              </div>
-            </div>
-          </div>
 
           {/* Template Quick Selector */}
           <div className="card border-0 shadow-sm mb-3">

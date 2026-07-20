@@ -3,17 +3,21 @@
 const STORAGE_KEY = "apms_student_resumes";
 const ACTIVE_RESUME_KEY = "apms_active_resume_id";
 
-// Default blank/populated resume structure
+// Default blank resume structure (uses strictly student profile data, NO mock data)
 export function createDefaultResume(profileData = {}) {
-  const name = profileData.name || "Student Name";
-  const email = profileData.email || "student@example.com";
-  const phone = profileData.mobile || profileData.phone || "+91 9876543210";
-  const location = profileData.address || "Bengaluru, India";
-  const course = profileData.course || "B.Tech";
-  const branch = profileData.branch || "Computer Science";
-  const institute = profileData.institute || "Aadya Institute";
-  const cgpa = profileData.cgpa || "8.5";
+  const name = profileData.name || profileData.fullName || "";
+  const email = profileData.email || "";
+  const phone = profileData.mobile || profileData.phone || "";
+  const location = profileData.address || "";
+  const course = profileData.course || "";
+  const branch = profileData.branch || "";
+  const institute = profileData.institute?.name || profileData.other_institute_name || (typeof profileData.institute === "string" ? profileData.institute : "");
+  const cgpa = profileData.cgpa ? String(profileData.cgpa) : "";
   const photo = profileData.profile_photo || profileData.profilePhoto || "";
+
+  // Skill array from student profile if available
+  const profileSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
+  const softSkills = Array.isArray(profileData.soft_skills) ? profileData.soft_skills : [];
 
   return {
     id: "resume_" + Date.now(),
@@ -22,140 +26,64 @@ export function createDefaultResume(profileData = {}) {
     personal: {
       photo: photo,
       fullName: name,
-      professionalTitle: `${branch} Student / Developer`,
+      professionalTitle: course ? `${course}${branch ? ` - ${branch}` : ""} Student` : "",
       email: email,
       phone: phone,
       location: location,
-      linkedin: profileData.linkedin || "https://linkedin.com/in/student",
-      github: profileData.github || "https://github.com/student",
-      portfolio: profileData.portfolio || "https://student.dev",
-      leetcode: profileData.leetcode || "https://leetcode.com/student",
-      hackerrank: profileData.hackerrank || "",
-      codechef: profileData.codechef || "",
-      gender: profileData.gender || "Male",
-      dob: profileData.dob || "2002-05-15",
+      linkedin: profileData.linkedin || "",
+      github: profileData.github || "",
+      portfolio: profileData.portfolio || "",
+      leetcode: "",
+      hackerrank: "",
+      codechef: "",
+      gender: profileData.gender || "",
+      dob: profileData.dob || "",
       nationality: "Indian",
       // Visibility toggles
-      showPhoto: true,
-      showLinkedin: true,
-      showGithub: true,
-      showPortfolio: true,
-      showLeetcode: true,
-      showHackerrank: true,
+      showPhoto: !!photo,
+      showLinkedin: !!profileData.linkedin,
+      showGithub: !!profileData.github,
+      showPortfolio: !!profileData.portfolio,
+      showLeetcode: false,
+      showHackerrank: false,
       showCodechef: false,
       showGender: false,
       showDob: false,
       showNationality: false,
     },
-    summary: `Motivated and detail-oriented ${course} graduate specializing in ${branch} from ${institute}. Proficient in modern software development methodologies, algorithms, and web technologies. Passionate about solving complex technical challenges and contributing to high-impact projects.`,
-    education: [
-      {
-        id: "edu_1",
-        degree: course,
-        specialization: branch,
-        college: institute,
-        university: "Bangalore University",
-        location: "Bengaluru, Karnataka",
-        startYear: "2021",
-        endYear: "2025",
-        cgpa: cgpa,
-        percentage: "85%",
-        currentlyStudying: true,
-      },
-      {
-        id: "edu_2",
-        degree: "Higher Secondary (XII)",
-        specialization: "Science (PCMB)",
-        college: "Aadya PU College",
-        university: "State Board",
-        location: "Bengaluru, Karnataka",
-        startYear: "2019",
-        endYear: "2021",
-        cgpa: "9.0",
-        percentage: "90%",
-        currentlyStudying: false,
-      },
-    ],
-    experience: [
-      {
-        id: "exp_1",
-        company: "Tech Mahindra (Internship)",
-        designation: "Software Developer Intern",
-        employmentType: "Internship",
-        location: "Bengaluru, India",
-        startDate: "2024-05",
-        endDate: "2024-08",
-        currentCompany: false,
-        responsibilities: "Developed RESTful APIs using Node.js and Express. Integrated PostgreSQL database schemas. Improved API latency by 25% through indexing and caching queries.",
-        technologies: "Node.js, Express, PostgreSQL, REST API, Git",
-      },
-    ],
-    projects: [
-      {
-        id: "proj_1",
-        name: "Campus Placement Management System",
-        role: "Full Stack Developer",
-        duration: "3 Months",
-        technologies: "React, Node.js, Express, SQLite, Bootstrap 5",
-        githubLink: "https://github.com/student/campus-placement-portal",
-        liveDemo: "https://placement.aadyainstitution.com",
-        description: "A complete recruitment automation portal enabling companies to post drives and students to apply online.",
-        responsibilities: "Designed responsive React UI components. Implemented JWT authentication and backend REST endpoints. Created real-time application status tracking for 1000+ candidates.",
-      },
-      {
-        id: "proj_2",
-        name: "AI Resume & ATS Optimization Engine",
-        role: "Frontend & AI Integration Developer",
-        duration: "2 Months",
-        technologies: "React 19, JavaScript ES6+, HTML5, CSS3, Vite",
-        githubLink: "https://github.com/student/ai-resume-builder",
-        liveDemo: "",
-        description: "Interactive resume builder tool featuring real-time ATS scoring, custom templates, and AI text enhancement.",
-        responsibilities: "Built interactive 11-step stepper form. Integrated client-side PDF export engine with instant live document preview.",
-      },
-    ],
+    summary: "",
+    education: (course || institute)
+      ? [
+          {
+            id: "edu_1",
+            degree: course,
+            specialization: branch,
+            college: institute,
+            university: "",
+            location: location,
+            startYear: "",
+            endYear: profileData.passing_year || profileData.batch || "",
+            cgpa: cgpa,
+            percentage: "",
+            currentlyStudying: true,
+          },
+        ]
+      : [],
+    experience: [],
+    projects: [],
     skills: {
-      accountingFinance: ["Tally Prime", "Tally ERP 9", "Financial Accounting", "GST Filing"],
-      officeTools: ["Advanced MS Excel", "MS Word", "MS PowerPoint", "Data Entry"],
-      programmingLanguages: ["JavaScript", "Python", "Java", "SQL"],
-      frontend: ["React.js", "HTML5", "CSS3", "Bootstrap 5"],
-      backend: ["Node.js", "Express.js", "REST APIs"],
-      tools: ["VS Code", "Postman", "Canva"],
-      softSkills: ["Problem Solving", "Communication", "Team Leadership", "Time Management"],
+      technical: profileSkills,
+      accountingFinance: [],
+      officeTools: [],
+      programmingLanguages: [],
+      frontend: [],
+      backend: [],
+      tools: [],
+      softSkills: softSkills,
     },
-    certifications: [
-      {
-        id: "cert_1",
-        name: "Full Stack Web Development Certification",
-        organization: "Aadya Institute",
-        issueDate: "2024-04",
-        credentialUrl: "https://aadyainstitution.com/certificates/12345",
-        description: "Intensive 6-month hands-on certification covering MERN stack web application development and system architecture.",
-      },
-    ],
-    achievements: [
-      {
-        id: "ach_1",
-        category: "Hackathons",
-        title: "First Runner Up - Smart India Hackathon 2024",
-        issuer: "Ministry of Education, Govt of India",
-        date: "2024-03",
-        description: "Built an automated AI candidate ranking prototype within 36 hours competing against 150+ national teams.",
-      },
-      {
-        id: "ach_2",
-        category: "Coding Competitions",
-        title: "Top 5% Rank in LeetCode Weekly Contest",
-        issuer: "LeetCode",
-        date: "2024-01",
-        description: "Solved 4/4 algorithmic problems in 45 minutes achieving global rank 850 out of 18,000 participants.",
-      },
-    ],
-    languages: [
-      { id: "lang_1", language: "English", proficiency: "Professional" },
-      { id: "lang_2", language: "Kannada", proficiency: "Native" },
-      { id: "lang_3", language: "Hindi", proficiency: "Intermediate" },
-    ],
+    certifications: [],
+    achievements: [],
+    languages: [],
     settings: {
       template: "modern", // modern, professional, minimal, executive, student
       accentColor: "#0F4C81",
