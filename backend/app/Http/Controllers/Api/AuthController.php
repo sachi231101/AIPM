@@ -125,6 +125,36 @@ class AuthController extends Controller
         return response()->json(['message' => 'Password changed successfully.']);
     }
 
+    // ───────── POST /api/student/forgot-password ─────────
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'student_id_card' => 'required|string',
+            'mobile'          => 'required|string',
+            'password'        => 'required|string|min:8|confirmed',
+        ]);
+
+        $student = \App\Models\Student::where('student_id_card', $request->student_id_card)
+            ->where('mobile', $request->mobile)
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'message' => 'The provided Student ID Card Number and Mobile Number do not match our records.'
+            ], 422);
+        }
+
+        $user = $student->user;
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        return response()->json([
+            'message' => 'Password reset successful. You can now login with your new password.'
+        ]);
+    }
+
     // ───────── Helper ─────────
 
     private function formatStudent(User $user, ?Student $student): array

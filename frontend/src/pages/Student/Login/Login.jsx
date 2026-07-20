@@ -79,7 +79,7 @@ export default function StudentLogin() {
                       <input type="checkbox" className="form-check-input" id="rememberMe" />
                       <label className="form-check-label small" htmlFor="rememberMe">Remember me</label>
                     </div>
-                    <a href="#" className="small text-primary text-decoration-none">Forgot password?</a>
+                    <Link to="/student/forgot-password" className="small text-primary text-decoration-none">Forgot password?</Link>
                   </div>
 
                   <button type="submit" className="btn btn-primary w-100 py-2 fw-semibold" disabled={isSubmitting}>

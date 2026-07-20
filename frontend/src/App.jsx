@@ -25,6 +25,7 @@ const JobDetails = lazy(() => import("./pages/JobDetails/JobDetails"));
 // Student Pages
 const StudentLogin = lazy(() => import("./pages/Student/Login/Login"));
 const Register = lazy(() => import("./pages/Student/Register/Register"));
+const ForgotPassword = lazy(() => import("./pages/Student/ForgotPassword/ForgotPassword"));
 const StudentDashboard = lazy(() => import("./pages/Student/Dashboard/Dashboard"));
 const Profile = lazy(() => import("./pages/Student/Profile/Profile"));
 const AvailableJobs = lazy(() => import("./pages/Student/AvailableJobs/AvailableJobs"));
@@ -65,6 +66,7 @@ export default function App() {
             {/* ── AUTH (no layout) ─────────────────────────────────────────── */}
             <Route path="/student/login" element={<StudentLogin />} />
             <Route path="/student/register" element={<Register />} />
+            <Route path="/student/forgot-password" element={<ForgotPassword />} />
             <Route path="/admin/login" element={<AdminLogin />} />
 
             {/* ── STUDENT ──────────────────────────────────────────────────── */}

@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 // Student Auth
 Route::post('/student/register', [AuthController::class, 'register']);
 Route::post('/student/login',    [AuthController::class, 'login']);
+Route::post('/student/forgot-password', [AuthController::class, 'forgotPassword']);
 
 // Admin Auth
 Route::post('/admin/login',      [AdminAuthController::class, 'login']);
@@ -92,9 +93,9 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     // Email Logs
     Route::get('/email-logs',               [\App\Http\Controllers\Api\Admin\EmailLogController::class, 'index']);
 
-    // Settings
     Route::get('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'show']);
     Route::put('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'update']);
+    Route::post('/settings/logo',            [\App\Http\Controllers\Api\Admin\SettingsController::class, 'uploadLogo']);
 
     // Contact Messages Management
     Route::get('/contact-messages',         [AdminContactMessageController::class, 'index']);

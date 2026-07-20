@@ -34,7 +34,20 @@ class CompanyController extends Controller
             $company->update(['logo_path' => $logoPath]);
         }
 
-        // 3. Create the job (status = pending by default)
+        // 3. Create the job (status = pending by default, or published if auto-approve is enabled for registered companies)
+        $autoApprove = filter_var(
+            \Illuminate\Support\Facades\DB::table('settings')->where('key', 'auto_approve_companies')->value('value') ?? '0',
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        $status = 'pending';
+        $message = 'Job request submitted successfully. It will be reviewed by the admin.';
+
+        if ($autoApprove && !$company->wasRecentlyCreated) {
+            $status = 'published';
+            $message = 'Job request submitted and automatically approved! 🎉';
+        }
+
         $job = PlacementJob::create([
             'company_id'  => $company->id,
             'title'       => $request->title,
@@ -46,18 +59,24 @@ class CompanyController extends Controller
             'location'    => $request->location,
             'openings'    => $request->openings ?? 1,
             'last_date'   => $request->last_date,
+            'status'      => $status,
         ]);
+
+        if ($status === 'published') {
+            $allInstituteIds = \App\Models\Institute::pluck('id')->toArray();
+            $job->institutes()->sync($allInstituteIds);
+        }
 
         // Create admin notification
         Notification::create([
             'type'    => 'new_job',
             'title'   => 'New Job Request',
-            'message' => $company->name . ' submitted a job: ' . $job->title,
+            'message' => $company->name . ($status === 'published' ? ' posted a job: ' : ' submitted a job: ') . $job->title,
             'link'    => '/admin/jobs',
         ]);
 
         return response()->json([
-            'message' => 'Job request submitted successfully. It will be reviewed by the admin.',
+            'message' => $message,
         ], 201);
     }
 }
