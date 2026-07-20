@@ -14,13 +14,34 @@ const menuItems = [
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
-  const { logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate("/admin/login");
   };
+
+  const filteredMenuItems = menuItems.filter((item) => {
+    if (role === "admin") return true;
+    if (role === "subadmin" && user) {
+      const perms = user.permissions || {};
+      if (item.to === "/admin/dashboard") return true;
+      if (item.to === "/admin/institutes") return !!perms.institutes;
+      if (item.to === "/admin/students") return !!perms.students;
+      if (
+        item.to === "/admin/companies" ||
+        item.to === "/admin/jobs" ||
+        item.to === "/admin/applications" ||
+        item.to === "/admin/email-logs"
+      ) {
+        return !!perms.jobs;
+      }
+      if (item.to === "/admin/settings") return !!perms.settings;
+      if (item.to === "/admin/contact-messages") return true;
+    }
+    return false;
+  });
 
   return (
     <aside className={`apms-sidebar d-flex flex-column ${collapsed ? "collapsed" : ""}`}>
@@ -41,7 +62,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       {/* Nav Items */}
       <nav className="flex-grow-1 py-2">
-        {menuItems.map((item) => (
+        {filteredMenuItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

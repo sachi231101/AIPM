@@ -10,6 +10,7 @@ import "./index.css";
 import { AuthProvider } from "./hooks/useAuth";
 import Loading from "./components/Loading/Loading";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
+import ProtectedLayout from "./components/ProtectedLayout/ProtectedLayout";
 
 // Layouts
 import PublicLayout from "./layouts/PublicLayout";
@@ -84,15 +85,47 @@ export default function App() {
             {/* ── ADMIN ────────────────────────────────────────────────────── */}
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/institutes" element={<Institutes />} />
-              <Route path="/admin/students" element={<Students />} />
-              <Route path="/admin/companies" element={<Companies />} />
-              <Route path="/admin/jobs" element={<Jobs />} />
-              <Route path="/admin/jobs/:id" element={<AdminJobDetails />} />
-              <Route path="/admin/applications" element={<Applications />} />
-              <Route path="/admin/email-logs" element={<EmailLogs />} />
+              <Route path="/admin/institutes" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="institutes">
+                  <Institutes />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/students" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="students">
+                  <Students />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/companies" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <Companies />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/jobs" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <Jobs />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/jobs/:id" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <AdminJobDetails />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/applications" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <Applications />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/email-logs" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <EmailLogs />
+                </ProtectedLayout>
+              } />
               <Route path="/admin/contact-messages" element={<AdminMessages />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/settings" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="settings">
+                  <AdminSettings />
+                </ProtectedLayout>
+              } />
             </Route>
           </Routes>
         </Suspense>

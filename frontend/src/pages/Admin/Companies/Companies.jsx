@@ -1,44 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { companyService } from "../../../services/api";
-import { toast } from "react-toastify";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 export default function Companies() {
-  const [companiesList, setCompaniesList] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(null);
 
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoading(true);
-        const res = await companyService.getAll();
-        const rawList = res.data.data || [];
-        const mapped = rawList.map((c) => ({
-          id: c.id,
-          name: c.name,
-          logo: c.logo_path
-            ? `http://localhost:8000/storage/${c.logo_path}`
-            : "https://placehold.co/100x100?text=" + encodeURIComponent(c.name),
-          website: c.website || "N/A",
-          industry: c.industry || "Technology",
-          hrName: c.hr_name || "N/A",
-          hrEmail: c.hr_email || "N/A",
-          phone: c.phone || "N/A",
-          openings: c.openings || 0,
-          status: "Active", // since registered company is active
-        }));
-        setCompaniesList(mapped);
-      } catch (err) {
-        console.error("Failed to load companies", err);
-        toast.error("Failed to load recruiters list.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCompanies();
-  }, []);
+  const { data: rawCompaniesResponse, loading } = useCachedData(
+    "admin_companies",
+    companyService.getAll
+  );
+
+  const rawList = rawCompaniesResponse?.data || [];
+  const companiesList = rawList.map((c) => ({
+    id: c.id,
+    name: c.name,
+    logo: c.logo_path
+      ? `http://localhost:8000/storage/${c.logo_path}`
+      : "https://placehold.co/100x100?text=" + encodeURIComponent(c.name),
+    website: c.website || "N/A",
+    industry: c.industry || "Technology",
+    hrName: c.hr_name || "N/A",
+    hrEmail: c.hr_email || "N/A",
+    phone: c.phone || "N/A",
+    openings: c.openings || 0,
+    status: "Active",
+  }));
 
   const filtered = companiesList.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||

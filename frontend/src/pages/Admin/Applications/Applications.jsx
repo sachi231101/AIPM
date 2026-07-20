@@ -2,71 +2,46 @@ import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
 import { jobService, applicationService } from "../../../services/api";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 export default function Applications() {
-  const [publishedJobs, setPublishedJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState("");
-  const [applicationsList, setApplicationsList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingApps, setLoadingApps] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Fetch all published/approved jobs to populate the dropdown
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setLoading(true);
-        const res = await jobService.adminGetAll();
-        const rawJobs = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.data || []);
-        // Filter jobs that are Published or Approved
-        const filteredJobs = rawJobs.filter(j => j.status === "published" || j.status === "approved");
-        setPublishedJobs(filteredJobs);
-        
-        // Auto-select the first job if available
-        if (filteredJobs.length > 0) {
-          setSelectedJob(filteredJobs[0].id.toString());
-        }
-      } catch (err) {
-        console.error("Failed to load jobs", err);
-        toast.error("Failed to load placement drives list.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchJobs();
-  }, []);
+  // Cache job listings for dropdown
+  const { data: rawJobsResponse, loading } = useCachedData(
+    "admin_jobs",
+    jobService.adminGetAll
+  );
 
-  // Fetch applications whenever the selected job changes
+  const rawJobs = rawJobsResponse ? (Array.isArray(rawJobsResponse.data) ? rawJobsResponse.data : (rawJobsResponse.data?.data || [])) : [];
+  const publishedJobs = rawJobs.filter(j => j.status === "published" || j.status === "approved");
+
+  // Auto-select the first job if available
   useEffect(() => {
-    if (!selectedJob) {
-      setApplicationsList([]);
-      return;
+    if (publishedJobs.length > 0 && !selectedJob) {
+      setSelectedJob(publishedJobs[0].id.toString());
     }
-    const fetchApps = async () => {
-      try {
-        setLoadingApps(true);
-        const res = await applicationService.getByJob(parseInt(selectedJob));
-        const rawApps = res.data.data || [];
-        const mapped = rawApps.map((app) => ({
-          id: app.id,
-          studentName: app.student?.name || "Student",
-          institute: app.student?.institute || "Unknown Institute",
-          course: app.student?.course || "N/A",
-          email: app.student?.email || "",
-          appliedDate: app.applied_at,
-          status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : "Rejected"),
-          resumeUrl: app.resume_url ? `http://localhost:8000${app.resume_url}` : "#"
-        }));
-        setApplicationsList(mapped);
-      } catch (err) {
-        console.error("Failed to load applications", err);
-        toast.error("Failed to load applications for this job.");
-      } finally {
-        setLoadingApps(false);
-      }
-    };
-    fetchApps();
-  }, [selectedJob]);
+  }, [publishedJobs, selectedJob]);
+
+  // Cache applications scoped by selectedJob
+  const { data: rawAppsResponse, loading: loadingApps } = useCachedData(
+    `admin_applications_${selectedJob}`,
+    () => selectedJob ? applicationService.getByJob(parseInt(selectedJob)) : Promise.resolve({ data: [] }),
+    [selectedJob]
+  );
+
+  const rawApps = selectedJob ? (rawAppsResponse?.data || []) : [];
+  const applicationsList = rawApps.map((app) => ({
+    id: app.id,
+    studentName: app.student?.name || "Student",
+    institute: app.student?.institute || "Unknown Institute",
+    course: app.student?.course || "N/A",
+    email: app.student?.email || "",
+    appliedDate: app.applied_at,
+    status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : "Rejected"),
+    resumeUrl: app.resume_url ? `http://localhost:8000${app.resume_url}` : "#"
+  }));
 
   const filtered = applicationsList.filter(a => {
     return a.studentName.toLowerCase().includes(search.toLowerCase()) ||

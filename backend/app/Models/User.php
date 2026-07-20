@@ -16,6 +16,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'permissions',
     ];
 
     protected $hidden = [
@@ -26,6 +27,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password'          => 'hashed',
+        'permissions'       => 'array',
     ];
 
     public function student(): \Illuminate\Database\Eloquent\Relations\HasOne

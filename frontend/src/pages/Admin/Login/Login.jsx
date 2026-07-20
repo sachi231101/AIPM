@@ -18,8 +18,8 @@ export default function AdminLogin() {
       const loggedInAdmin = response.data.user;
       const token = response.data.token;
 
-      login(loggedInAdmin, "admin", token);
-      toast.success("Welcome, Admin! 🛡️");
+      login(loggedInAdmin, loggedInAdmin.role, token);
+      toast.success(loggedInAdmin.role === "admin" ? "Welcome, Admin! 🛡️" : "Welcome, Sub-admin! 🛡️");
       navigate("/admin/dashboard");
     } catch (err) {
       console.error(err);

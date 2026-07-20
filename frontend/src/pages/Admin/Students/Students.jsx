@@ -1,49 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { studentService } from "../../../services/api";
-import { toast } from "react-toastify";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 export default function Students() {
-  const [studentsList, setStudentsList] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [instituteFilter, setInstituteFilter] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        const res = await studentService.getAll();
-        const rawList = res.data.data || [];
-        const mapped = rawList.map((s) => ({
-          id: s.id,
-          name: s.name,
-          email: s.email,
-          phone: s.mobile || "N/A",
-          gender: s.gender || "N/A",
-          dob: s.dob || "N/A",
-          address: s.address || "N/A",
-          institute: s.institute || "Unknown Institute",
-          course: s.course || "N/A",
-          branch: s.branch || "N/A",
-          batch: s.batch || "N/A",
-          cgpa: s.cgpa || 0,
-          skills: s.skills || [],
-          softSkills: s.softSkills || s.soft_skills || [],
-          profileCompletion: s.profile_completion || 0,
-          resumeUrl: s.resume_url ? `http://localhost:8000${s.resume_url}` : "#"
-        }));
-        setStudentsList(mapped);
-      } catch (err) {
-        console.error("Failed to load students list", err);
-        toast.error("Failed to load registered students.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStudents();
-  }, []);
+  const { data: rawStudentsResponse, loading } = useCachedData(
+    "admin_students",
+    studentService.getAll
+  );
+
+  const rawList = rawStudentsResponse?.data || [];
+  const studentsList = rawList.map((s) => ({
+    id: s.id,
+    name: s.name,
+    email: s.email,
+    phone: s.mobile || "N/A",
+    gender: s.gender || "N/A",
+    dob: s.dob || "N/A",
+    address: s.address || "N/A",
+    institute: s.institute || "Unknown Institute",
+    course: s.course || "N/A",
+    branch: s.branch || "N/A",
+    batch: s.batch || "N/A",
+    cgpa: s.cgpa || 0,
+    skills: s.skills || [],
+    softSkills: s.softSkills || s.soft_skills || [],
+    profileCompletion: s.profile_completion || 0,
+    resumeUrl: s.resume_url ? `http://localhost:8000${s.resume_url}` : "#"
+  }));
 
   const institutes = [...new Set(studentsList.map(s => s.institute).filter(Boolean))];
 
