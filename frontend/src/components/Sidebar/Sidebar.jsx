@@ -29,7 +29,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         {!collapsed && (
           <div className="d-flex align-items-center gap-2">
             <i className="bi bi-mortarboard-fill text-warning fs-5"></i>
-            <span className="fw-bold text-white">APMS Admin</span>
+            <span className="fw-bold text-white">Aadya Placement Cell</span>
           </div>
         )}
         <button className="btn btn-sm btn-link text-white p-0" onClick={onToggle} aria-label="Toggle sidebar">

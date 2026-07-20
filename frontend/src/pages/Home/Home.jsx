@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import { homeStats, companies, testimonials, institutes } from "../../utils/mockData";
+import {companies, testimonials, institutes } from "../../utils/mockData";
 import JobCard from "../../components/JobCard/JobCard";
 import CompanyCard from "../../components/CompanyCard/CompanyCard";
 import { jobService } from "../../services/api";
@@ -103,26 +103,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── STATS ────────────────────────────────────────────────────────── */}
-      <section className="py-5 bg-light">
-        <div className="container">
-          <div className="row g-4 justify-content-center">
-            {homeStats.map((stat, i) => (
-              <div key={i} className="col-6 col-md-3">
-                <div className="card border-0 shadow-sm text-center p-4 h-100 stat-card-home">
-                  <div className="mb-3">
-                    <div className="stat-home-icon mx-auto rounded-circle d-flex align-items-center justify-content-center" style={{ width: 56, height: 56, background: "#e3f0ff" }}>
-                      <i className={`bi ${stat.icon} fs-4 text-primary`}></i>
-                    </div>
-                  </div>
-                  <h3 className="fw-bold text-primary mb-1">{stat.value}</h3>
-                  <p className="text-muted small mb-0">{stat.label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+   
 
       {/* ── LATEST DRIVES ────────────────────────────────────────────────── */}
       <section className="py-5">

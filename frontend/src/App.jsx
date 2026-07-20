@@ -9,6 +9,7 @@ import "./index.css";
 
 import { AuthProvider } from "./hooks/useAuth";
 import Loading from "./components/Loading/Loading";
+import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 
 // Layouts
 const PublicLayout = lazy(() => import("./layouts/PublicLayout"));
@@ -51,6 +52,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Suspense fallback={<Loading />}>
           <Routes>
             {/* ── PUBLIC ──────────────────────────────────────────────────── */}

@@ -11,10 +11,10 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark apms-navbar sticky-top shadow-sm">
+    <nav className="navbar navbar-expand-lg navbar-light apms-navbar sticky-top">
       <div className="container">
         <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
-          <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "38px", objectFit: "contain" }} />
+          <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
         </Link>
 
         <button
@@ -30,7 +30,7 @@ export default function Navbar() {
         </button>
 
         <div className="collapse navbar-collapse" id="navbarMain">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+          <ul className="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-lg-2">
             <li className="nav-item">
               <NavLink className="nav-link" to="/" end>Home</NavLink>
             </li>
@@ -52,7 +52,7 @@ export default function Navbar() {
             {user && role === "student" ? (
               <div className="dropdown">
                 <button
-                  className="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2"
+                  className="btn btn-outline-secondary btn-sm dropdown-toggle d-flex align-items-center gap-2"
                   type="button"
                   data-bs-toggle="dropdown"
                 >
@@ -75,7 +75,7 @@ export default function Navbar() {
                   type="button"
                   data-bs-toggle="dropdown"
                 >
-                  <i className="bi bi-shield-lock me-2"></i>Admin
+                  <i className="bi bi-shield-exclamation me-1"></i>Admin
                 </button>
                 <ul className="dropdown-menu dropdown-menu-end shadow">
                   <li><Link className="dropdown-item" to="/admin/dashboard"><i className="bi bi-speedometer2 me-2"></i>Dashboard</Link></li>
@@ -85,11 +85,11 @@ export default function Navbar() {
               </div>
             ) : (
               <>
-                <Link to="/student/login" className="btn btn-outline-light btn-sm">
+                <Link to="/student/login" className="btn btn-outline-primary btn-sm px-3 py-1-5">
                   <i className="bi bi-person me-1"></i>Student Login
                 </Link>
-                <Link to="/admin/login" className="btn btn-warning btn-sm">
-                  <i className="bi bi-shield-lock me-1"></i>Admin
+                <Link to="/admin/login" className="btn btn-warning btn-sm px-3 py-1-5 text-dark fw-medium">
+                  <i className="bi bi-shield-exclamation me-1"></i>Admin
                 </Link>
               </>
             )}

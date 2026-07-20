@@ -379,13 +379,7 @@ export const dashboardStats = {
   placedStudents: 9261,
 };
 
-// ─── HOME STATS ──────────────────────────────────────────────────────────────
-export const homeStats = [
-  { label: "Students Enrolled", value: "9,749+", icon: "bi-mortarboard-fill" },
-  { label: "Certified Trainers", value: "30+", icon: "bi-person-badge-fill" },
-  { label: "Career Focused Courses", value: "10+", icon: "bi-book-half" },
-  { label: "Student Success Ratio", value: "95%", icon: "bi-graph-up-arrow" },
-];
+
 
 // ─── TESTIMONIALS ────────────────────────────────────────────────────────────
 export const testimonials = [
