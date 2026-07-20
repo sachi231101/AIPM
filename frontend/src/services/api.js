@@ -57,6 +57,13 @@ export const studentService = {
   }),
 };
 
+// ─── RESUMES ──────────────────────────────────────────────────────────────────
+export const resumeService = {
+  getAll: () => api.get("/student/resumes"),
+  save: (data) => api.post("/student/resumes", data),
+  delete: (key) => api.delete(`/student/resumes/${key}`),
+};
+
 // ─── APPLICATIONS ────────────────────────────────────────────────────────────
 export const applicationService = {
   apply: (data) => api.post("/apply", data),

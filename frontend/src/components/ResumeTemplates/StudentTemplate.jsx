@@ -1,0 +1,149 @@
+export default function StudentTemplate({ resume }) {
+  if (!resume) return null;
+  const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
+  const accent = settings?.accentColor || "#0F4C81";
+
+  const allSkillItems = Object.entries(skills || {}).map(([cat, list]) => ({
+    category: cat.replace(/([A-Z])/g, " $1").trim(),
+    items: Array.isArray(list) ? list : [],
+  })).filter((s) => s.items.length > 0);
+
+  return (
+    <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-sans" style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
+      {/* Header */}
+      <div className="text-center pb-3 mb-4 border-bottom border-2" style={{ borderColor: accent }}>
+        <h2 className="fw-bold text-uppercase mb-1" style={{ color: accent, fontSize: "1.85rem" }}>
+          {personal?.fullName}
+        </h2>
+        <div className="fw-medium text-secondary mb-2">{personal?.professionalTitle}</div>
+        <div className="d-flex flex-wrap justify-content-center gap-3 small text-muted">
+          <span><i className="bi bi-envelope me-1"></i>{personal?.email}</span>
+          <span><i className="bi bi-telephone me-1"></i>{personal?.phone}</span>
+          <span><i className="bi bi-geo-alt me-1"></i>{personal?.location}</span>
+        </div>
+        <div className="d-flex flex-wrap justify-content-center gap-3 small text-primary mt-1">
+          {personal?.showLinkedin && personal?.linkedin && <span><i className="bi bi-linkedin me-1"></i>{personal.linkedin}</span>}
+          {personal?.showGithub && personal?.github && <span><i className="bi bi-github me-1"></i>{personal.github}</span>}
+          {personal?.showLeetcode && personal?.leetcode && <span><i className="bi bi-code-slash me-1"></i>{personal.leetcode}</span>}
+        </div>
+      </div>
+
+      {/* Summary */}
+      {summary && (
+        <div className="mb-4">
+          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+            Career Objective / Summary
+          </h6>
+          <p className="text-secondary mb-0">{summary}</p>
+        </div>
+      )}
+
+      {/* Education First for Freshers */}
+      {education && education.length > 0 && (
+        <div className="mb-4">
+          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+            Education & Academic Credentials
+          </h6>
+          {education.map((edu) => (
+            <div key={edu.id} className="mb-2 d-flex justify-content-between">
+              <div>
+                <span className="fw-bold text-dark">{edu.degree} — {edu.specialization}</span>
+                <div className="small text-muted">{edu.college} ({edu.university})</div>
+              </div>
+              <div className="text-end small">
+                <span className="fw-semibold">{edu.startYear} – {edu.endYear}</span>
+                {edu.cgpa && <div className="text-muted">CGPA / Percentage: <strong>{edu.cgpa}</strong> ({edu.percentage})</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Skills */}
+      {allSkillItems.length > 0 && (
+        <div className="mb-4">
+          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+            Technical & Professional Skills
+          </h6>
+          <div className="row g-2">
+            {allSkillItems.map((sk, idx) => (
+              <div key={idx} className="col-md-6 small">
+                <strong className="text-dark capitalize">{sk.category}: </strong>
+                <span className="text-secondary">{sk.items.join(", ")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Academic & Personal Projects */}
+      {projects && projects.length > 0 && (
+        <div className="mb-4">
+          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+            Key Projects & Applications
+          </h6>
+          {projects.map((proj) => (
+            <div key={proj.id} className="mb-3">
+              <div className="d-flex justify-content-between align-items-baseline">
+                <span className="fw-bold text-dark">{proj.name} <span className="fw-normal text-muted">({proj.role})</span></span>
+                <span className="small text-muted">{proj.duration}</span>
+              </div>
+              <p className="text-secondary small mb-1">{proj.description}</p>
+              {proj.responsibilities && <p className="text-secondary small mb-1"><strong>Key Highlights:</strong> {proj.responsibilities}</p>}
+              {proj.technologies && <div className="small text-muted"><strong>Stack:</strong> {proj.technologies}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Experience / Internships */}
+      {experience && experience.length > 0 && (
+        <div className="mb-4">
+          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+            Internship & Practical Experience
+          </h6>
+          {experience.map((exp) => (
+            <div key={exp.id} className="mb-2">
+              <div className="d-flex justify-content-between">
+                <span className="fw-bold text-dark">{exp.designation} <span className="fw-normal text-muted">({exp.company})</span></span>
+                <span className="small text-muted">{exp.startDate} – {exp.endDate}</span>
+              </div>
+              <p className="text-secondary small mb-0">{exp.responsibilities}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Achievements & Certifications */}
+      <div className="row g-3">
+        {achievements && achievements.length > 0 && (
+          <div className="col-md-6">
+            <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+              Achievements & Competitions
+            </h6>
+            {achievements.map((a) => (
+              <div key={a.id} className="small mb-2">
+                <strong className="text-dark">{a.title}</strong>
+                <div className="text-muted">{a.issuer} ({a.date})</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {certifications && certifications.length > 0 && (
+          <div className="col-md-6">
+            <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+              Certifications
+            </h6>
+            {certifications.map((c) => (
+              <div key={c.id} className="small mb-2">
+                <strong className="text-dark">{c.name}</strong>
+                <div className="text-muted">{c.organization} ({c.issueDate})</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -12,41 +12,42 @@ import Loading from "./components/Loading/Loading";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 
 // Layouts
-const PublicLayout = lazy(() => import("./layouts/PublicLayout"));
-const StudentLayout = lazy(() => import("./layouts/StudentLayout"));
-const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
+import PublicLayout from "./layouts/PublicLayout";
+import StudentLayout from "./layouts/StudentLayout";
+import AdminLayout from "./layouts/AdminLayout";
 
 // Public Pages
-const Home = lazy(() => import("./pages/Home/Home"));
-const About = lazy(() => import("./pages/About/About"));
-const Contact = lazy(() => import("./pages/Contact/Contact"));
-const PlacementDrives = lazy(() => import("./pages/PlacementDrives/PlacementDrives"));
-const JobDetails = lazy(() => import("./pages/JobDetails/JobDetails"));
+import Home from "./pages/Home/Home";
+import About from "./pages/About/About";
+import Contact from "./pages/Contact/Contact";
+import PlacementDrives from "./pages/PlacementDrives/PlacementDrives";
+import JobDetails from "./pages/JobDetails/JobDetails";
 
 // Student Pages
-const StudentLogin = lazy(() => import("./pages/Student/Login/Login"));
-const Register = lazy(() => import("./pages/Student/Register/Register"));
-const ForgotPassword = lazy(() => import("./pages/Student/ForgotPassword/ForgotPassword"));
-const StudentDashboard = lazy(() => import("./pages/Student/Dashboard/Dashboard"));
-const Profile = lazy(() => import("./pages/Student/Profile/Profile"));
-const AvailableJobs = lazy(() => import("./pages/Student/AvailableJobs/AvailableJobs"));
-const AppliedJobs = lazy(() => import("./pages/Student/AppliedJobs/AppliedJobs"));
+import StudentLogin from "./pages/Student/Login/Login";
+import Register from "./pages/Student/Register/Register";
+import ForgotPassword from "./pages/Student/ForgotPassword/ForgotPassword";
+import StudentDashboard from "./pages/Student/Dashboard/Dashboard";
+import Profile from "./pages/Student/Profile/Profile";
+import AvailableJobs from "./pages/Student/AvailableJobs/AvailableJobs";
+import AppliedJobs from "./pages/Student/AppliedJobs/AppliedJobs";
+import ResumeBuilder from "./pages/Student/ResumeBuilder/ResumeBuilder";
 
 // Company Pages
-const SubmitJob = lazy(() => import("./pages/Company/SubmitJob/SubmitJob"));
+import SubmitJob from "./pages/Company/SubmitJob/SubmitJob";
 
 // Admin Pages
-const AdminLogin = lazy(() => import("./pages/Admin/Login/Login"));
-const AdminDashboard = lazy(() => import("./pages/Admin/Dashboard/Dashboard"));
-const Institutes = lazy(() => import("./pages/Admin/Institutes/Institutes"));
-const Students = lazy(() => import("./pages/Admin/Students/Students"));
-const Companies = lazy(() => import("./pages/Admin/Companies/Companies"));
-const Jobs = lazy(() => import("./pages/Admin/Jobs/Jobs"));
-const AdminJobDetails = lazy(() => import("./pages/Admin/JobDetails/JobDetails"));
-const Applications = lazy(() => import("./pages/Admin/Applications/Applications"));
-const EmailLogs = lazy(() => import("./pages/Admin/EmailLogs/EmailLogs"));
-const AdminMessages = lazy(() => import("./pages/Admin/Messages/Messages"));
-const AdminSettings = lazy(() => import("./pages/Admin/Settings/Settings"));
+import AdminLogin from "./pages/Admin/Login/Login";
+import AdminDashboard from "./pages/Admin/Dashboard/Dashboard";
+import Institutes from "./pages/Admin/Institutes/Institutes";
+import Students from "./pages/Admin/Students/Students";
+import Companies from "./pages/Admin/Companies/Companies";
+import Jobs from "./pages/Admin/Jobs/Jobs";
+import AdminJobDetails from "./pages/Admin/JobDetails/JobDetails";
+import Applications from "./pages/Admin/Applications/Applications";
+import EmailLogs from "./pages/Admin/EmailLogs/EmailLogs";
+import AdminMessages from "./pages/Admin/Messages/Messages";
+import AdminSettings from "./pages/Admin/Settings/Settings";
 
 export default function App() {
   return (
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="/student/profile" element={<Profile />} />
               <Route path="/student/jobs" element={<AvailableJobs />} />
               <Route path="/student/applied" element={<AppliedJobs />} />
+              <Route path="/student/resume-builder" element={<ResumeBuilder />} />
             </Route>
 
             {/* ── ADMIN ────────────────────────────────────────────────────── */}
