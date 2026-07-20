@@ -182,7 +182,7 @@ export default function Profile() {
 
   const profileCompletion = student.profile_completion ?? student.profileCompletion ?? 0;
   const hasResume = !!(student.resume_url || student.resumeUrl);
-  const resumeFileName = student.resume_url?.split("/").pop() || student.resumeUrl?.split("/").pop() || student.resumeName || "resume.pdf";
+  const resumeFileName = hasResume ? (student.resume_url?.split("/").pop() || student.resumeUrl?.split("/").pop() || student.resumeName || "resume.pdf") : null;
   const resumeUrl = student.resume_url ? `http://localhost:8000${student.resume_url}` : (student.resumeUrl ? `http://localhost:8000${student.resumeUrl}` : "#");
 
   return (

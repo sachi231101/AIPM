@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -7,85 +8,88 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "./index.css";
 
 import { AuthProvider } from "./hooks/useAuth";
+import Loading from "./components/Loading/Loading";
 
 // Layouts
-import PublicLayout from "./layouts/PublicLayout";
-import StudentLayout from "./layouts/StudentLayout";
-import AdminLayout from "./layouts/AdminLayout";
+const PublicLayout = lazy(() => import("./layouts/PublicLayout"));
+const StudentLayout = lazy(() => import("./layouts/StudentLayout"));
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 
 // Public Pages
-import Home from "./pages/Home/Home";
-import About from "./pages/About/About";
-import Contact from "./pages/Contact/Contact";
-import PlacementDrives from "./pages/PlacementDrives/PlacementDrives";
-import JobDetails from "./pages/JobDetails/JobDetails";
+const Home = lazy(() => import("./pages/Home/Home"));
+const About = lazy(() => import("./pages/About/About"));
+const Contact = lazy(() => import("./pages/Contact/Contact"));
+const PlacementDrives = lazy(() => import("./pages/PlacementDrives/PlacementDrives"));
+const JobDetails = lazy(() => import("./pages/JobDetails/JobDetails"));
 
 // Student Pages
-import StudentLogin from "./pages/Student/Login/Login";
-import Register from "./pages/Student/Register/Register";
-import StudentDashboard from "./pages/Student/Dashboard/Dashboard";
-import Profile from "./pages/Student/Profile/Profile";
-import AvailableJobs from "./pages/Student/AvailableJobs/AvailableJobs";
-import AppliedJobs from "./pages/Student/AppliedJobs/AppliedJobs";
+const StudentLogin = lazy(() => import("./pages/Student/Login/Login"));
+const Register = lazy(() => import("./pages/Student/Register/Register"));
+const StudentDashboard = lazy(() => import("./pages/Student/Dashboard/Dashboard"));
+const Profile = lazy(() => import("./pages/Student/Profile/Profile"));
+const AvailableJobs = lazy(() => import("./pages/Student/AvailableJobs/AvailableJobs"));
+const AppliedJobs = lazy(() => import("./pages/Student/AppliedJobs/AppliedJobs"));
 
 // Company Pages
-import SubmitJob from "./pages/Company/SubmitJob/SubmitJob";
+const SubmitJob = lazy(() => import("./pages/Company/SubmitJob/SubmitJob"));
 
 // Admin Pages
-import AdminLogin from "./pages/Admin/Login/Login";
-import AdminDashboard from "./pages/Admin/Dashboard/Dashboard";
-import Institutes from "./pages/Admin/Institutes/Institutes";
-import Students from "./pages/Admin/Students/Students";
-import Companies from "./pages/Admin/Companies/Companies";
-import Jobs from "./pages/Admin/Jobs/Jobs";
-import AdminJobDetails from "./pages/Admin/JobDetails/JobDetails";
-import Applications from "./pages/Admin/Applications/Applications";
-import EmailLogs from "./pages/Admin/EmailLogs/EmailLogs";
-import AdminMessages from "./pages/Admin/Messages/Messages";
-import AdminSettings from "./pages/Admin/Settings/Settings";
+const AdminLogin = lazy(() => import("./pages/Admin/Login/Login"));
+const AdminDashboard = lazy(() => import("./pages/Admin/Dashboard/Dashboard"));
+const Institutes = lazy(() => import("./pages/Admin/Institutes/Institutes"));
+const Students = lazy(() => import("./pages/Admin/Students/Students"));
+const Companies = lazy(() => import("./pages/Admin/Companies/Companies"));
+const Jobs = lazy(() => import("./pages/Admin/Jobs/Jobs"));
+const AdminJobDetails = lazy(() => import("./pages/Admin/JobDetails/JobDetails"));
+const Applications = lazy(() => import("./pages/Admin/Applications/Applications"));
+const EmailLogs = lazy(() => import("./pages/Admin/EmailLogs/EmailLogs"));
+const AdminMessages = lazy(() => import("./pages/Admin/Messages/Messages"));
+const AdminSettings = lazy(() => import("./pages/Admin/Settings/Settings"));
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          {/* ── PUBLIC ──────────────────────────────────────────────────── */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/placement-drives" element={<PlacementDrives />} />
-            <Route path="/job/:id" element={<JobDetails />} />
-            <Route path="/company/submit-job" element={<SubmitJob />} />
-          </Route>
+        <Suspense fallback={<Loading />}>
+          <Routes>
+            {/* ── PUBLIC ──────────────────────────────────────────────────── */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/placement-drives" element={<PlacementDrives />} />
+              <Route path="/job/:id" element={<JobDetails />} />
+              <Route path="/company/submit-job" element={<SubmitJob />} />
+            </Route>
 
-          {/* ── AUTH (no layout) ─────────────────────────────────────────── */}
-          <Route path="/student/login" element={<StudentLogin />} />
-          <Route path="/student/register" element={<Register />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
+            {/* ── AUTH (no layout) ─────────────────────────────────────────── */}
+            <Route path="/student/login" element={<StudentLogin />} />
+            <Route path="/student/register" element={<Register />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* ── STUDENT ──────────────────────────────────────────────────── */}
-          <Route element={<StudentLayout />}>
-            <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/student/profile" element={<Profile />} />
-            <Route path="/student/jobs" element={<AvailableJobs />} />
-            <Route path="/student/applied" element={<AppliedJobs />} />
-          </Route>
+            {/* ── STUDENT ──────────────────────────────────────────────────── */}
+            <Route element={<StudentLayout />}>
+              <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route path="/student/profile" element={<Profile />} />
+              <Route path="/student/jobs" element={<AvailableJobs />} />
+              <Route path="/student/applied" element={<AppliedJobs />} />
+            </Route>
 
-          {/* ── ADMIN ────────────────────────────────────────────────────── */}
-          <Route element={<AdminLayout />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/institutes" element={<Institutes />} />
-            <Route path="/admin/students" element={<Students />} />
-            <Route path="/admin/companies" element={<Companies />} />
-            <Route path="/admin/jobs" element={<Jobs />} />
-            <Route path="/admin/jobs/:id" element={<AdminJobDetails />} />
-            <Route path="/admin/applications" element={<Applications />} />
-            <Route path="/admin/email-logs" element={<EmailLogs />} />
-            <Route path="/admin/contact-messages" element={<AdminMessages />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
-          </Route>
-        </Routes>
+            {/* ── ADMIN ────────────────────────────────────────────────────── */}
+            <Route element={<AdminLayout />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/institutes" element={<Institutes />} />
+              <Route path="/admin/students" element={<Students />} />
+              <Route path="/admin/companies" element={<Companies />} />
+              <Route path="/admin/jobs" element={<Jobs />} />
+              <Route path="/admin/jobs/:id" element={<AdminJobDetails />} />
+              <Route path="/admin/applications" element={<Applications />} />
+              <Route path="/admin/email-logs" element={<EmailLogs />} />
+              <Route path="/admin/contact-messages" element={<AdminMessages />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
 
       <ToastContainer

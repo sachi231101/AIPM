@@ -1,9 +1,13 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function ResumeUpload({ onFileSelect, currentFile }) {
   const inputRef = useRef();
   const [dragging, setDragging] = useState(false);
   const [fileName, setFileName] = useState(currentFile || null);
+
+  useEffect(() => {
+    setFileName(currentFile || null);
+  }, [currentFile]);
 
   const handleFile = (file) => {
     if (file && file.type === "application/pdf") {
