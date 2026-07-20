@@ -18,10 +18,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url || "";
+    const isAuthRequest = url.includes("login") || url.includes("register") || url.includes("forgot-password");
+    
+    console.log("[Axios Interceptor] URL:", url, "Status:", err.response?.status, "isAuthRequest:", isAuthRequest);
+    
+    if (err.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem("apms_token");
       localStorage.removeItem("apms_user");
-      window.location.href = "/student/login";
+      localStorage.removeItem("apms_role");
+      
+      const isAdminPath = window.location.pathname.startsWith("/admin");
+      window.location.href = isAdminPath ? "/admin/login" : "/student/login";
     }
     return Promise.reject(err);
   }

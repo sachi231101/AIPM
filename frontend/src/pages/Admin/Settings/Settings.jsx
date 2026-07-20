@@ -130,13 +130,56 @@ export default function Settings() {
     }
   };
 
-  const handleCreateSubadmin = async (e) => {
+  const [editingSubadmin, setEditingSubadmin] = useState(null);
+
+  const openCreateModal = () => {
+    setEditingSubadmin(null);
+    setSubadminForm({
+      name: "",
+      email: "",
+      password: "",
+      permissions: { students: false, jobs: false, institutes: false, settings: false }
+    });
+    setShowModal(true);
+  };
+
+  const openEditModal = (subadmin) => {
+    setEditingSubadmin(subadmin);
+    setSubadminForm({
+      name: subadmin.name,
+      email: subadmin.email,
+      password: "",
+      permissions: {
+        students: !!subadmin.permissions?.students,
+        jobs: !!subadmin.permissions?.jobs,
+        institutes: !!subadmin.permissions?.institutes,
+        settings: !!subadmin.permissions?.settings,
+      }
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmitSubadmin = async (e) => {
     e.preventDefault();
     try {
       setSavingSubadmin(true);
-      await subadminService.create(subadminForm);
-      toast.success("Sub-admin created successfully! 🎉");
+      if (editingSubadmin) {
+        const payload = {
+          name: subadminForm.name,
+          email: subadminForm.email,
+          permissions: subadminForm.permissions,
+        };
+        if (subadminForm.password) {
+          payload.password = subadminForm.password;
+        }
+        await subadminService.update(editingSubadmin.id, payload);
+        toast.success("Sub-admin updated successfully! 🎉");
+      } else {
+        await subadminService.create(subadminForm);
+        toast.success("Sub-admin created successfully! 🎉");
+      }
       setShowModal(false);
+      setEditingSubadmin(null);
       setSubadminForm({
         name: "",
         email: "",
@@ -146,7 +189,7 @@ export default function Settings() {
       refreshSubadmins();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to create sub-admin.");
+      toast.error(err.response?.data?.message || `Failed to ${editingSubadmin ? 'update' : 'create'} sub-admin.`);
     } finally {
       setSavingSubadmin(false);
     }
@@ -320,7 +363,7 @@ export default function Settings() {
               <i className="bi bi-shield-lock-fill text-primary fs-5"></i>
               <h6 className="fw-bold mb-0">Sub-admin Accounts</h6>
             </div>
-            <button className="btn btn-primary btn-sm fw-semibold" onClick={() => setShowModal(true)}>
+            <button className="btn btn-primary btn-sm fw-semibold" onClick={openCreateModal}>
               <i className="bi bi-plus-circle me-1"></i>Create Sub-admin
             </button>
           </div>
@@ -369,6 +412,9 @@ export default function Settings() {
                           <input type="checkbox" className="form-check-input" checked={!!subadmin.permissions?.settings} onChange={() => handleTogglePermission(subadmin, "settings")} />
                         </td>
                         <td className="text-end">
+                          <button className="btn btn-outline-primary btn-sm border-0 me-2" onClick={() => openEditModal(subadmin)} title="Edit Subadmin">
+                            <i className="bi bi-pencil-fill"></i>
+                          </button>
                           <button className="btn btn-outline-danger btn-sm border-0" onClick={() => handleDeleteSubadmin(subadmin.id)} title="Delete Subadmin">
                             <i className="bi bi-trash3-fill"></i>
                           </button>
@@ -387,10 +433,10 @@ export default function Settings() {
               <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content border-0 shadow-lg">
                   <div className="modal-header border-bottom-0 pt-4 px-4">
-                    <h6 className="modal-title fw-bold">Create Sub-admin Account</h6>
+                    <h6 className="modal-title fw-bold">{editingSubadmin ? "Edit Sub-admin Account" : "Create Sub-admin Account"}</h6>
                     <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
                   </div>
-                  <form onSubmit={handleCreateSubadmin}>
+                  <form onSubmit={handleSubmitSubadmin}>
                     <div className="modal-body px-4 py-3">
                       <div className="mb-3">
                         <label className="form-label small fw-medium">Name</label>
@@ -402,7 +448,7 @@ export default function Settings() {
                       </div>
                       <div className="mb-3">
                         <label className="form-label small fw-medium">Password</label>
-                        <input type="password" required className="form-control" minLength={6} value={subadminForm.password} onChange={(e) => setSubadminForm({ ...subadminForm, password: e.target.value })} />
+                        <input type="password" required={!editingSubadmin} className="form-control" minLength={6} placeholder={editingSubadmin ? "Leave blank to keep current" : ""} value={subadminForm.password} onChange={(e) => setSubadminForm({ ...subadminForm, password: e.target.value })} />
                       </div>
 
                       <div className="mb-2 small fw-bold text-secondary">Initial Permission Levels</div>
@@ -424,7 +470,7 @@ export default function Settings() {
                       <button type="button" className="btn btn-light" onClick={() => setShowModal(false)}>Cancel</button>
                       <button type="submit" className="btn btn-primary" disabled={savingSubadmin}>
                         {savingSubadmin ? <span className="spinner-border spinner-border-sm me-1"></span> : null}
-                        Create Account
+                        {editingSubadmin ? "Save Changes" : "Create Account"}
                       </button>
                     </div>
                   </form>
