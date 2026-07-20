@@ -5,6 +5,7 @@ import { studentService, resumeService } from "../../../services/api";
 import {
   getAllResumes,
   saveResume,
+  createDefaultResume,
   createNewResume,
   duplicateResume,
   deleteResume,
@@ -77,44 +78,36 @@ export default function ResumeBuilder() {
   const [targetRole, setTargetRole] = useState("Full Stack Developer");
   const [newSkillInput, setNewSkillInput] = useState({});
 
-  // Fetch initial profile data & sync saved resumes with Database API
+  // Fetch initial profile data & build resume from student registration details
   useEffect(() => {
-    // 1. Render stored local resumes instantly (<1ms)
-    const initialLocal = getAllResumes({});
-    setResumes(initialLocal);
-    if (initialLocal.length > 0) setActiveResume(initialLocal[0]);
+    studentService.getProfile()
+      .then((pres) => {
+        const pdata = pres.data?.data || {};
+        const freshResume = createDefaultResume(pdata);
+        setResumes([freshResume]);
+        setActiveResume(freshResume);
+        saveResume(freshResume);
 
-    // 2. Sync with Laravel database API in background
-    resumeService.getAll()
-      .then((res) => {
-        const dbResumes = res.data?.data || [];
-        if (dbResumes.length > 0) {
-          const parsed = dbResumes.map((r) => r.content);
-          setResumes(parsed);
-          setActiveResume(parsed[0]);
-          parsed.forEach((p) => saveResume(p));
-        } else {
-          // If no database resumes exist, pre-fill from student profile
-          studentService.getProfile().then((pres) => {
-            const pdata = pres.data?.data || {};
-            if (pdata && Object.keys(pdata).length > 0) {
-              const updated = getAllResumes(pdata);
-              setResumes(updated);
-              setActiveResume((curr) => curr || updated[0]);
-              // Persist initial to database
-              if (updated[0]) {
-                resumeService.save({
-                  resume_key: updated[0].id,
-                  title: updated[0].title || "Master Resume",
-                  content: updated[0],
-                }).catch(() => {});
-              }
-            }
-          }).catch(() => {});
-        }
+        // Sync with database API
+        resumeService.getAll().then((res) => {
+          const dbResumes = res.data?.data || [];
+          if (dbResumes.length > 0) {
+            const parsed = dbResumes.map((r) => r.content);
+            setResumes(parsed);
+            setActiveResume(parsed[0]);
+          } else {
+            resumeService.save({
+              resume_key: freshResume.id,
+              title: freshResume.title || "Master Resume",
+              content: freshResume,
+            }).catch(() => {});
+          }
+        }).catch(() => {});
       })
       .catch(() => {
-        // Fallback to local storage
+        const fallback = createDefaultResume({});
+        setResumes([fallback]);
+        setActiveResume(fallback);
       });
   }, []);
 
