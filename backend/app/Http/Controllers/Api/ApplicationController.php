@@ -30,6 +30,15 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'This placement drive is not currently open.'], 422);
         }
 
+        // Validate application deadline with buffer days
+        $bufferDays = (int) (\Illuminate\Support\Facades\DB::table('settings')->where('key', 'application_deadline_buffer')->value('value') ?? '2');
+        if ($job->last_date) {
+            $deadline = $job->last_date->copy()->addDays($bufferDays)->endOfDay();
+            if (now()->gt($deadline)) {
+                return response()->json(['message' => 'The application deadline for this placement drive has passed.'], 422);
+            }
+        }
+
         // Check institute eligibility (students with other institutes cannot apply)
         if ($student->institute_id) {
             $eligible = $job->institutes->pluck('id')->contains($student->institute_id);

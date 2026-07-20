@@ -24,6 +24,7 @@ class SettingsController extends Controller
                 'applicationDeadlineBuffer'  => $settings->get('application_deadline_buffer', '2'),
                 'emailNotifications'         => filter_var($settings->get('email_notifications', '1'), FILTER_VALIDATE_BOOLEAN),
                 'autoApproveCompanies'       => filter_var($settings->get('auto_approve_companies', '0'), FILTER_VALIDATE_BOOLEAN),
+                'instituteLogo'              => $settings->get('institute_logo') ? \Illuminate\Support\Facades\Storage::url($settings->get('institute_logo')) : '/logo.png',
             ]
         ]);
     }
@@ -52,5 +53,29 @@ class SettingsController extends Controller
         }
 
         return response()->json(['message' => 'Settings saved successfully!']);
+    }
+
+    public function uploadLogo(Request $request): JsonResponse
+    {
+        $request->validate([
+            'logo' => 'required|image|mimes:png,jpg,jpeg,svg|max:2048',
+        ]);
+
+        $oldLogo = DB::table('settings')->where('key', 'institute_logo')->value('value');
+        if ($oldLogo) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldLogo);
+        }
+
+        $path = $request->file('logo')->store('settings', 'public');
+
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'institute_logo'],
+            ['value' => $path, 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        return response()->json([
+            'message' => 'Logo uploaded successfully!',
+            'logo_url' => \Illuminate\Support\Facades\Storage::url($path),
+        ]);
     }
 }

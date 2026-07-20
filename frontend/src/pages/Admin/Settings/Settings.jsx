@@ -7,6 +7,8 @@ import { settingsService } from "../../../services/api";
 export default function Settings() {
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm();
   const [loading, setLoading] = useState(true);
+  const [logoUrl, setLogoUrl] = useState("/logo.png");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -14,6 +16,7 @@ export default function Settings() {
         setLoading(true);
         const res = await settingsService.get();
         reset(res.data.data);
+        setLogoUrl(res.data.data.instituteLogo || "/logo.png");
       } catch (err) {
         console.error("Failed to load settings", err);
         toast.error("Failed to load system settings.");
@@ -23,6 +26,30 @@ export default function Settings() {
     };
     fetchSettings();
   }, [reset]);
+
+  const handleLogoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("logo", file);
+
+    try {
+      setUploadingLogo(true);
+      const res = await settingsService.uploadLogo(formData);
+      // Backend returns full URL or path, prepend backend base URL if relative path
+      const newLogoUrl = res.data.logo_url.startsWith("http")
+        ? res.data.logo_url
+        : `http://localhost:8000${res.data.logo_url}`;
+      setLogoUrl(newLogoUrl);
+      toast.success("Institute logo updated successfully! 🎉");
+    } catch (err) {
+      console.error("Failed to upload logo", err);
+      toast.error(err.response?.data?.message || "Failed to upload institute logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const onSubmit = async (data) => {
     try {
@@ -94,10 +121,14 @@ export default function Settings() {
               </div>
               <div className="card-body p-4">
                 <div className="d-flex align-items-center gap-4">
-                  <img src="/logo.png" alt="Aadya Institute Logo" style={{ width: "120px", height: "72px", objectFit: "contain" }} />
+                  <img src={logoUrl} alt="Aadya Institute Logo" style={{ width: "120px", height: "72px", objectFit: "contain" }} />
                   <div>
-                    <input type="file" className="form-control" accept="image/*" disabled />
-                    <small className="text-muted">PNG, JPG or SVG. Max 2MB. Recommended: 200×200px</small>
+                    <input type="file" className="form-control" accept="image/*" onChange={handleLogoChange} disabled={uploadingLogo} />
+                    {uploadingLogo ? (
+                      <small className="text-primary fw-medium"><span className="spinner-border spinner-border-sm me-1" style={{ width: "12px", height: "12px" }}></span>Uploading logo...</small>
+                    ) : (
+                      <small className="text-muted">PNG, JPG or SVG. Max 2MB. Recommended: 200×200px</small>
+                    )}
                   </div>
                 </div>
               </div>

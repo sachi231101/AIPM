@@ -31,6 +31,7 @@ api.interceptors.response.use(
 export const authService = {
   studentLogin: (data) => api.post("/student/login", data),
   studentRegister: (data) => api.post("/student/register", data),
+  studentForgotPassword: (data) => api.post("/student/forgot-password", data),
   adminLogin: (data) => api.post("/admin/login", data),
   logout: () => api.post("/logout"),
 };
@@ -83,10 +84,12 @@ export const emailService = {
   getLogs: () => api.get("/admin/email-logs"),
 };
 
-// ─── SETTINGS ────────────────────────────────────────────────────────────────
 export const settingsService = {
   get: () => api.get("/admin/settings"),
   update: (data) => api.put("/admin/settings", data),
+  uploadLogo: (formData) => api.post("/admin/settings/logo", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  }),
 };
 
 // ─── ADMIN ───────────────────────────────────────────────────────────────────

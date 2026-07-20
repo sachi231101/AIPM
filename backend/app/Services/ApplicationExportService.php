@@ -19,6 +19,19 @@ class ApplicationExportService
     public function sendApplicantsEmail(int $jobId): array
     {
         try {
+            // Check if email notifications are enabled globally in settings
+            $emailNotificationsEnabled = filter_var(
+                \Illuminate\Support\Facades\DB::table('settings')->where('key', 'email_notifications')->value('value') ?? '1',
+                FILTER_VALIDATE_BOOLEAN
+            );
+
+            if (!$emailNotificationsEnabled) {
+                return [
+                    'success' => false,
+                    'message' => 'Email notifications are currently disabled in settings.',
+                ];
+            }
+
             $job = PlacementJob::with('company')->findOrFail($jobId);
 
             $applications = Application::with(['student.user', 'student.institute'])
