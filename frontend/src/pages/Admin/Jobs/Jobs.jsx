@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 import { jobService } from "../../../services/api";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 const statusColors = { 
   Published: "success", 
@@ -21,40 +22,27 @@ const statusMap = {
 };
 
 export default function Jobs() {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const fetchJobs = async () => {
-    try {
-      setLoading(true);
-      const res = await jobService.adminGetAll();
-      const rawJobs = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.data || []);
-      const mapped = rawJobs.map((job) => ({
-        id: job.id,
-        title: job.title,
-        company: job.company?.name || "Unknown Company",
-        companyLogo: job.company?.logo_path
-          ? `http://localhost:8000/storage/${job.company.logo_path}`
-          : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
-        location: job.location,
-        salary: job.salary,
-        status: statusMap[job.status] || "Pending",
-        lastDate: job.last_date,
-      }));
-      setJobs(mapped);
-    } catch (err) {
-      console.error("Failed to load jobs", err);
-      toast.error("Failed to load placement drives.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: rawJobsResponse, loading, refresh } = useCachedData(
+    "admin_jobs",
+    jobService.adminGetAll
+  );
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
+  const rawJobs = rawJobsResponse ? (Array.isArray(rawJobsResponse.data) ? rawJobsResponse.data : (rawJobsResponse.data?.data || [])) : [];
+  const jobs = rawJobs.map((job) => ({
+    id: job.id,
+    title: job.title,
+    company: job.company?.name || "Unknown Company",
+    companyLogo: job.company?.logo_path
+      ? `http://localhost:8000/storage/${job.company.logo_path}`
+      : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+    location: job.location,
+    salary: job.salary,
+    status: statusMap[job.status] || "Pending",
+    lastDate: job.last_date,
+  }));
 
   const filtered = jobs.filter(j => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.company.toLowerCase().includes(search.toLowerCase());
@@ -74,7 +62,7 @@ export default function Jobs() {
         await jobService.close(id);
       }
       toast.success(`Job drive status updated to ${action.toLowerCase()}!`);
-      fetchJobs();
+      refresh();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to update drive status.");

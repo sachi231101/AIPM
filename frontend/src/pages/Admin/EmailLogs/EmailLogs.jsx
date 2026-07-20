@@ -1,29 +1,16 @@
-import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { emailService } from "../../../services/api";
-import { toast } from "react-toastify";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 const statusColors = { Sent: "success", Failed: "danger", Pending: "warning" };
 
 export default function EmailLogs() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rawLogsResponse, loading } = useCachedData(
+    "admin_email_logs",
+    emailService.getLogs
+  );
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        setLoading(true);
-        const res = await emailService.getLogs();
-        setLogs(res.data.data || []);
-      } catch (err) {
-        console.error("Failed to load email logs", err);
-        toast.error("Failed to load email records.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLogs();
-  }, []);
+  const logs = rawLogsResponse?.data || [];
 
   if (loading) {
     return (

@@ -92,9 +92,18 @@ export const settingsService = {
   }),
 };
 
+// ─── SUB-ADMINS ──────────────────────────────────────────────────────────────
+export const subadminService = {
+  list: () => api.get("/admin/subadmins"),
+  create: (data) => api.post("/admin/subadmins", data),
+  update: (id, data) => api.put(`/admin/subadmins/${id}`, data),
+  delete: (id) => api.delete(`/admin/subadmins/${id}`),
+};
+
 // ─── ADMIN ───────────────────────────────────────────────────────────────────
 export const adminService = {
   getDashboardStats: () => api.get("/admin/dashboard"),
+  getMe: () => api.get("/admin/me"),
 };
 
 // ─── CONTACT MESSAGES ────────────────────────────────────────────────────────

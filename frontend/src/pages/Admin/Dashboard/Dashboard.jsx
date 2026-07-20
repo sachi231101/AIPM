@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import StatCard from "../../../components/StatCard/StatCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { adminService } from "../../../services/api";
-import { toast } from "react-toastify";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 const statusColors = { 
   Published: "success", 
@@ -22,24 +21,12 @@ const statusMap = {
 };
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { data: statsResponse, loading } = useCachedData(
+    "admin_dashboard",
+    adminService.getDashboardStats
+  );
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        setLoading(true);
-        const res = await adminService.getDashboardStats();
-        setStats(res.data.data);
-      } catch (err) {
-        console.error("Failed to load dashboard stats", err);
-        toast.error("Failed to load dashboard statistics.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboard();
-  }, []);
+  const stats = statsResponse?.data;
 
   if (loading || !stats) {
     return (

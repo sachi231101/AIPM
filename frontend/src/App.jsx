@@ -10,6 +10,7 @@ import "./index.css";
 import { AuthProvider } from "./hooks/useAuth";
 import Loading from "./components/Loading/Loading";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
+import ProtectedLayout from "./components/ProtectedLayout/ProtectedLayout";
 
 // Layouts
 const PublicLayout = lazy(() => import("./layouts/PublicLayout"));
@@ -37,16 +38,16 @@ const SubmitJob = lazy(() => import("./pages/Company/SubmitJob/SubmitJob"));
 
 // Admin Pages
 const AdminLogin = lazy(() => import("./pages/Admin/Login/Login"));
-const AdminDashboard = lazy(() => import("./pages/Admin/Dashboard/Dashboard"));
-const Institutes = lazy(() => import("./pages/Admin/Institutes/Institutes"));
-const Students = lazy(() => import("./pages/Admin/Students/Students"));
-const Companies = lazy(() => import("./pages/Admin/Companies/Companies"));
-const Jobs = lazy(() => import("./pages/Admin/Jobs/Jobs"));
-const AdminJobDetails = lazy(() => import("./pages/Admin/JobDetails/JobDetails"));
-const Applications = lazy(() => import("./pages/Admin/Applications/Applications"));
-const EmailLogs = lazy(() => import("./pages/Admin/EmailLogs/EmailLogs"));
-const AdminMessages = lazy(() => import("./pages/Admin/Messages/Messages"));
-const AdminSettings = lazy(() => import("./pages/Admin/Settings/Settings"));
+import AdminDashboard from "./pages/Admin/Dashboard/Dashboard";
+import Institutes from "./pages/Admin/Institutes/Institutes";
+import Students from "./pages/Admin/Students/Students";
+import Companies from "./pages/Admin/Companies/Companies";
+import Jobs from "./pages/Admin/Jobs/Jobs";
+import AdminJobDetails from "./pages/Admin/JobDetails/JobDetails";
+import Applications from "./pages/Admin/Applications/Applications";
+import EmailLogs from "./pages/Admin/EmailLogs/EmailLogs";
+import AdminMessages from "./pages/Admin/Messages/Messages";
+import AdminSettings from "./pages/Admin/Settings/Settings";
 
 export default function App() {
   return (
@@ -82,15 +83,47 @@ export default function App() {
             {/* ── ADMIN ────────────────────────────────────────────────────── */}
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/institutes" element={<Institutes />} />
-              <Route path="/admin/students" element={<Students />} />
-              <Route path="/admin/companies" element={<Companies />} />
-              <Route path="/admin/jobs" element={<Jobs />} />
-              <Route path="/admin/jobs/:id" element={<AdminJobDetails />} />
-              <Route path="/admin/applications" element={<Applications />} />
-              <Route path="/admin/email-logs" element={<EmailLogs />} />
+              <Route path="/admin/institutes" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="institutes">
+                  <Institutes />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/students" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="students">
+                  <Students />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/companies" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <Companies />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/jobs" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <Jobs />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/jobs/:id" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <AdminJobDetails />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/applications" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <Applications />
+                </ProtectedLayout>
+              } />
+              <Route path="/admin/email-logs" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
+                  <EmailLogs />
+                </ProtectedLayout>
+              } />
               <Route path="/admin/contact-messages" element={<AdminMessages />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/settings" element={
+                <ProtectedLayout requiredRole="admin" requiredPermission="settings">
+                  <AdminSettings />
+                </ProtectedLayout>
+              } />
             </Route>
           </Routes>
         </Suspense>
