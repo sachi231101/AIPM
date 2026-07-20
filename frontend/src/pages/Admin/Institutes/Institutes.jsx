@@ -1,35 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
 import { instituteService } from "../../../services/api";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 export default function Institutes() {
-  const [institutes, setInstitutes] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingInstitute, setEditingInstitute] = useState(null);
   const [deletingInstitute, setDeletingInstitute] = useState(null);
   const [formName, setFormName] = useState("");
   const [search, setSearch] = useState("");
 
-  const fetchInstitutes = async () => {
-    try {
-      setLoading(true);
-      const res = await instituteService.getAll();
-      const list = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-      // Filter out special fallback values like "Other"
-      setInstitutes(list.filter(i => i.name !== "Other"));
-    } catch (err) {
-      console.error("Failed to load institutes", err);
-      toast.error("Failed to load institutes list.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: rawInstitutesResponse, loading, refresh } = useCachedData(
+    "admin_institutes",
+    instituteService.getAll
+  );
 
-  useEffect(() => {
-    fetchInstitutes();
-  }, []);
+  const rawInstitutes = rawInstitutesResponse?.data || [];
+  const institutes = Array.isArray(rawInstitutes) ? rawInstitutes.filter(i => i.name !== "Other") : [];
 
   const filtered = institutes.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -40,7 +28,7 @@ export default function Institutes() {
       toast.success("Institute added successfully!");
       setFormName(""); 
       setShowAddModal(false);
-      fetchInstitutes();
+      refresh();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to add institute.");
@@ -54,7 +42,7 @@ export default function Institutes() {
       toast.success("Institute updated!");
       setEditingInstitute(null); 
       setFormName("");
-      fetchInstitutes();
+      refresh();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to update institute.");
@@ -66,7 +54,7 @@ export default function Institutes() {
       await instituteService.delete(deletingInstitute.id);
       toast.success("Institute deleted.");
       setDeletingInstitute(null);
-      fetchInstitutes();
+      refresh();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to delete institute.");

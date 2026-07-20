@@ -60,42 +60,48 @@ Route::middleware(['auth:sanctum', 'role:student'])->group(function () {
 // ADMIN PROTECTED ROUTES (Sanctum + role:admin)
 // ═══════════════════════════════════════════════════════════════
 
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin,subadmin'])->prefix('admin')->group(function () {
     Route::post('/logout',              [AdminAuthController::class, 'logout']);
+    Route::get('/me',                   [AdminAuthController::class, 'me']);
 
     // Dashboard
     Route::get('/dashboard',            [DashboardController::class, 'index']);
 
-    // Job Management
-    Route::get('/jobs',                 [AdminJobController::class, 'index']);
-    Route::put('/jobs/{id}/approve',    [AdminJobController::class, 'approve']);
-    Route::put('/jobs/{id}/reject',     [AdminJobController::class, 'reject']);
-    Route::put('/jobs/{id}/publish',    [AdminJobController::class, 'publish']);
-    Route::put('/jobs/{id}/close',      [AdminJobController::class, 'close']);
+    // Job & Company & Applicant Management (Jobs Permission)
+    Route::middleware('permission:jobs')->group(function () {
+        Route::get('/jobs',                 [AdminJobController::class, 'index']);
+        Route::put('/jobs/{id}/approve',    [AdminJobController::class, 'approve']);
+        Route::put('/jobs/{id}/reject',     [AdminJobController::class, 'reject']);
+        Route::put('/jobs/{id}/publish',    [AdminJobController::class, 'publish']);
+        Route::put('/jobs/{id}/close',      [AdminJobController::class, 'close']);
 
-    // Applicant Management
-    Route::get('/jobs/{id}/applications',   [AdminApplicationController::class, 'index']);
-    Route::post('/send-to-company',         [AdminApplicationController::class, 'sendToCompany']);
+        Route::get('/jobs/{id}/applications',   [AdminApplicationController::class, 'index']);
+        Route::post('/send-to-company',         [AdminApplicationController::class, 'sendToCompany']);
 
-    // Institute Management
-    Route::get('/institutes',               [InstituteController::class, 'index']);
-    Route::post('/institutes',              [InstituteController::class, 'store']);
-    Route::put('/institutes/{id}',          [InstituteController::class, 'update']);
-    Route::put('/institutes/{id}/toggle',   [InstituteController::class, 'toggleStatus']);
-    Route::delete('/institutes/{id}',       [InstituteController::class, 'destroy']);
+        Route::get('/companies',                [\App\Http\Controllers\Api\Admin\CompanyController::class, 'index']);
+    });
 
-    // Student Management
-    Route::get('/students',                 [\App\Http\Controllers\Api\Admin\StudentController::class, 'index']);
+    // Institute Management (Institutes Permission)
+    Route::middleware('permission:institutes')->group(function () {
+        Route::get('/institutes',               [InstituteController::class, 'index']);
+        Route::post('/institutes',              [InstituteController::class, 'store']);
+        Route::put('/institutes/{id}',          [InstituteController::class, 'update']);
+        Route::put('/institutes/{id}/toggle',   [InstituteController::class, 'toggleStatus']);
+        Route::delete('/institutes/{id}',       [InstituteController::class, 'destroy']);
+    });
 
-    // Company Management
-    Route::get('/companies',                [\App\Http\Controllers\Api\Admin\CompanyController::class, 'index']);
+    // Student Management (Students Permission)
+    Route::middleware('permission:students')->group(function () {
+        Route::get('/students',                 [\App\Http\Controllers\Api\Admin\StudentController::class, 'index']);
+    });
 
-    // Email Logs
-    Route::get('/email-logs',               [\App\Http\Controllers\Api\Admin\EmailLogController::class, 'index']);
-
-    Route::get('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'show']);
-    Route::put('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'update']);
-    Route::post('/settings/logo',            [\App\Http\Controllers\Api\Admin\SettingsController::class, 'uploadLogo']);
+    // Settings & Email Logs (Settings Permission)
+    Route::middleware('permission:settings')->group(function () {
+        Route::get('/email-logs',               [\App\Http\Controllers\Api\Admin\EmailLogController::class, 'index']);
+        Route::get('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'show']);
+        Route::put('/settings',                 [\App\Http\Controllers\Api\Admin\SettingsController::class, 'update']);
+        Route::post('/settings/logo',            [\App\Http\Controllers\Api\Admin\SettingsController::class, 'uploadLogo']);
+    });
 
     // Contact Messages Management
     Route::get('/contact-messages',         [AdminContactMessageController::class, 'index']);
@@ -105,4 +111,12 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/notifications',             [NotificationController::class, 'index']);
     Route::put('/notifications/read-all',    [NotificationController::class, 'markAllAsRead']);
     Route::put('/notifications/{id}/read',   [NotificationController::class, 'markAsRead']);
+
+    // Sub-admin management (Main Admin ONLY)
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/subadmins',            [\App\Http\Controllers\Api\Admin\SubadminController::class, 'index']);
+        Route::post('/subadmins',           [\App\Http\Controllers\Api\Admin\SubadminController::class, 'store']);
+        Route::put('/subadmins/{id}',       [\App\Http\Controllers\Api\Admin\SubadminController::class, 'update']);
+        Route::delete('/subadmins/{id}',    [\App\Http\Controllers\Api\Admin\SubadminController::class, 'destroy']);
+    });
 });

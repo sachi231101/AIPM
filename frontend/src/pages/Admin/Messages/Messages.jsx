@@ -1,31 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { contactService } from "../../../services/api";
 import { toast } from "react-toastify";
+import { useCachedData } from "../../../hooks/useCachedData";
 
 export default function Messages() {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [deletingMessage, setDeletingMessage] = useState(null);
 
-  const fetchMessages = async () => {
-    try {
-      setLoading(true);
-      const res = await contactService.getAll();
-      setMessages(res.data?.data || []);
-    } catch (err) {
-      console.error("Failed to fetch messages", err);
-      toast.error("Failed to load contact messages.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: rawMessagesResponse, loading, refresh } = useCachedData(
+    "admin_messages",
+    contactService.getAll
+  );
 
-  useEffect(() => {
-    fetchMessages();
-  }, []);
+  const messages = rawMessagesResponse?.data || [];
 
   const handleDelete = async () => {
     if (!deletingMessage) return;
@@ -33,7 +22,7 @@ export default function Messages() {
       await contactService.delete(deletingMessage.id);
       toast.success("Message deleted successfully.");
       setDeletingMessage(null);
-      fetchMessages();
+      refresh();
     } catch (err) {
       console.error("Failed to delete message", err);
       toast.error("Failed to delete contact message.");
