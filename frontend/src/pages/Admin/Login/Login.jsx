@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -5,6 +6,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { authService } from "../../../services/api";
 
 export default function AdminLogin() {
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
@@ -70,11 +72,18 @@ export default function AdminLogin() {
                     <div className="input-group">
                       <span className="input-group-text bg-light border-end-0"><i className="bi bi-lock text-muted"></i></span>
                       <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         {...register("password", { required: "Password is required" })}
-                        className={`form-control border-start-0 ${errors.password ? "is-invalid" : ""}`}
+                        className={`form-control border-start-0 border-end-0 ${errors.password ? "is-invalid" : ""}`}
                         placeholder="••••••••"
                       />
+                      <span 
+                        className="input-group-text bg-white border-start-0" 
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <i className={`bi ${showPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                      </span>
                       {errors.password && <div className="invalid-feedback">{errors.password.message}</div>}
                     </div>
                   </div>
