@@ -36,7 +36,7 @@ export default function StudentLogin() {
             <div className="text-center mb-4">
               <Link to="/" className="d-inline-flex align-items-center gap-2 text-decoration-none">
                 <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "48px", objectFit: "contain" }} />
-                <span className="fw-bold fs-4 text-dark ms-1">Aadya Placements</span>
+                <span className="fw-bold fs-4 text-dark ms-1">Aadya Placement Cell</span>
               </Link>
             </div>
             <div className="card border-0 shadow-lg rounded-4 overflow-hidden">

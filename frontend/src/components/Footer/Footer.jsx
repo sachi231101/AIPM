@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="col-lg-4">
             <div className="d-flex align-items-center gap-2 mb-3">
               <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
-              <h5 className="mb-0 fw-bold ms-1">Aadya Placements</h5>
+              <h5 className="mb-0 fw-bold ms-1">Aadya Placement Cell</h5>
             </div>
             <p className="text-white-50 small">
               Aadya Institution — Transforming lives through professional training and skill development since 2016.
@@ -59,7 +59,7 @@ export default function Footer() {
 
         <hr className="border-secondary mt-4" />
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-center text-white-50 small">
-          <p className="mb-1 mb-md-0">© 2026 Aadya Placements. All rights reserved.</p>
+          <p className="mb-1 mb-md-0">© 2026 Aadya Placement Cell. All rights reserved.</p>
           <p className="mb-0">Built with <i className="bi bi-heart-fill text-danger"></i> for students</p>
         </div>
       </div>
