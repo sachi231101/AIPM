@@ -439,40 +439,7 @@ export default function ResumeBuilder() {
             </div>
           </div>
 
-          {/* Completion & ATS Metrics */}
-          <div className="card border-0 shadow-sm mb-3">
-            <div className="card-body p-3">
-              <h6 className="card-title fw-bold mb-3 d-flex align-items-center justify-content-between">
-                <span>Resume Metrics</span>
-                <span className="badge bg-primary-subtle text-primary">Live</span>
-              </h6>
 
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small fw-semibold mb-1">
-                  <span>ATS Optimization Score</span>
-                  <span className="text-success">{atsMetrics.atsScore}%</span>
-                </div>
-                <div className="progress" style={{ height: 8 }}>
-                  <div className="progress-bar bg-success" style={{ width: `${atsMetrics.atsScore}%` }}></div>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <div className="d-flex justify-content-between small fw-semibold mb-1">
-                  <span>Profile Completion</span>
-                  <span className="text-primary">{atsMetrics.profileScore}%</span>
-                </div>
-                <div className="progress" style={{ height: 8 }}>
-                  <div className="progress-bar bg-primary" style={{ width: `${atsMetrics.profileScore}%` }}></div>
-                </div>
-              </div>
-
-              <div className="p-2 bg-light rounded small">
-                <div className="fw-bold text-dark mb-1"><i className="bi bi-lightbulb text-warning me-1"></i>Optimization Tip</div>
-                <p className="text-muted mb-0">{atsMetrics.suggestions[0]}</p>
-              </div>
-            </div>
-          </div>
 
           {/* Template Quick Selector */}
           <div className="card border-0 shadow-sm mb-3">
