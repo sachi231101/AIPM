@@ -3,6 +3,7 @@ import JobCard from "../../components/JobCard/JobCard";
 import SearchBar from "../../components/SearchBar/SearchBar";
 import EmptyState from "../../components/EmptyState/EmptyState";
 import Pagination from "../../components/Pagination/Pagination";
+import { SkeletonGrid } from "../../components/Skeleton/Skeleton";
 import { jobService } from "../../services/api";
 import { toast } from "react-toastify";
 
@@ -73,9 +74,8 @@ export default function PlacementDrives() {
 
   if (loading) {
     return (
-      <div className="text-center py-5" style={{ height: "400px" }}>
-        <span className="spinner-border spinner-border-sm me-2"></span>
-        Loading placement drives...
+      <div className="container py-5">
+        <SkeletonGrid count={6} />
       </div>
     );
   }

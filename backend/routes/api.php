@@ -54,6 +54,11 @@ Route::middleware(['auth:sanctum', 'role:student'])->group(function () {
 
     Route::post('/apply',                   [ApplicationController::class, 'apply']);
     Route::get('/student/applications',     [ApplicationController::class, 'myApplications']);
+
+    // Student Resume Builder Persistence Routes
+    Route::get('/student/resumes',          [\App\Http\Controllers\Api\Student\StudentResumeController::class, 'index']);
+    Route::post('/student/resumes',         [\App\Http\Controllers\Api\Student\StudentResumeController::class, 'store']);
+    Route::delete('/student/resumes/{key}', [\App\Http\Controllers\Api\Student\StudentResumeController::class, 'destroy']);
 });
 
 // ═══════════════════════════════════════════════════════════════

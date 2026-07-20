@@ -14,10 +14,10 @@ export default function Footer() {
               Aadya Institution — Transforming lives through professional training and skill development since 2016.
             </p>
             <div className="d-flex gap-3 mt-3">
-              <a href="#" className="text-white-50 hover-white fs-5"><i className="bi bi-linkedin"></i></a>
-              <a href="#" className="text-white-50 hover-white fs-5"><i className="bi bi-twitter-x"></i></a>
-              <a href="#" className="text-white-50 hover-white fs-5"><i className="bi bi-facebook"></i></a>
-              <a href="#" className="text-white-50 hover-white fs-5"><i className="bi bi-instagram"></i></a>
+              <a href="https://www.instagram.com/aadya_institution/" target="_blank" rel="noreferrer" className="text-white-50 hover-white fs-5" title="Instagram"><i className="bi bi-instagram"></i></a>
+              <a href="https://www.facebook.com/aadyainstitution" target="_blank" rel="noreferrer" className="text-white-50 hover-white fs-5" title="Facebook"><i className="bi bi-facebook"></i></a>
+              <a href="https://x.com/aadya_institute" target="_blank" rel="noreferrer" className="text-white-50 hover-white fs-5" title="X (Twitter)"><i className="bi bi-twitter-x"></i></a>
+              <a href="http://www.youtube.com/@aadyainstituteoftechnology" target="_blank" rel="noreferrer" className="text-white-50 hover-white fs-5" title="YouTube"><i className="bi bi-youtube"></i></a>
             </div>
           </div>
 

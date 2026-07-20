@@ -1,10 +1,9 @@
-export default function Loading({ message = "Loading..." }) {
+import { SkeletonGrid } from "../Skeleton/Skeleton";
+
+export default function Loading() {
   return (
-    <div className="d-flex flex-column align-items-center justify-content-center py-5 gap-3">
-      <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
-        <span className="visually-hidden">Loading...</span>
-      </div>
-      <p className="text-muted">{message}</p>
+    <div className="container py-5">
+      <SkeletonGrid count={6} />
     </div>
   );
 }

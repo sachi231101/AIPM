@@ -78,9 +78,14 @@ export default function Contact() {
               ))}
 
               <div className="d-flex gap-3 mt-4">
-                {["bi-linkedin", "bi-twitter-x", "bi-facebook", "bi-instagram"].map((icon, i) => (
-                  <a key={i} href="#" className="btn btn-light btn-sm d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-                    <i className={`bi ${icon}`}></i>
+                {[
+                  { icon: "bi-instagram", url: "https://www.instagram.com/aadya_institution/", title: "Instagram" },
+                  { icon: "bi-facebook", url: "https://www.facebook.com/aadyainstitution", title: "Facebook" },
+                  { icon: "bi-twitter-x", url: "https://x.com/aadya_institute", title: "X (Twitter)" },
+                  { icon: "bi-youtube", url: "http://www.youtube.com/@aadyainstituteoftechnology", title: "YouTube" }
+                ].map((item, i) => (
+                  <a key={i} href={item.url} target="_blank" rel="noreferrer" title={item.title} className="btn btn-light btn-sm d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
+                    <i className={`bi ${item.icon}`}></i>
                   </a>
                 ))}
               </div>
@@ -171,31 +176,43 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* Map Placeholder */}
+      {/* Interactive Google Maps */}
       <section className="pb-5">
         <div className="container">
           <div className="row g-4">
             <div className="col-md-6">
-              <div
-                className="rounded-4 overflow-hidden shadow-sm d-flex align-items-center justify-content-center"
-                style={{ height: 250, background: "linear-gradient(135deg, #e3f0ff 0%, #f8f9fa 100%)", border: "1px solid #dee2e6" }}
-              >
-                <div className="text-center text-muted">
-                  <i className="bi bi-map-fill fs-1 text-primary mb-3 d-block"></i>
-                  <h6 className="fw-semibold">Google Maps</h6>
-                  <small>Aadya Institute – Ramamurthy Nagar Branch</small>
+              <div className="card border-0 shadow-sm overflow-hidden h-100">
+                <div className="card-header bg-white border-0 py-3 d-flex align-items-center gap-2">
+                  <i className="bi bi-geo-alt-fill text-primary"></i>
+                  <h6 className="fw-bold mb-0">Branch 1 – Ramamurthy Nagar</h6>
+                </div>
+                <div className="ratio ratio-16x9">
+                  <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2819.360898183914!2d77.66541960882527!3d13.01162691395017!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae1126f5388df9%3A0xbe33d9befab37b59!2sAadya%20Institute!5e1!3m2!1sen!2sin!4v1784550755499!5m2!1sen!2sin"
+                    style={{ border: 0 }}
+                    allowFullScreen=""
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    title="Aadya Institute - Ramamurthy Nagar Branch"
+                  ></iframe>
                 </div>
               </div>
             </div>
             <div className="col-md-6">
-              <div
-                className="rounded-4 overflow-hidden shadow-sm d-flex align-items-center justify-content-center"
-                style={{ height: 250, background: "linear-gradient(135deg, #fff8e1 0%, #f8f9fa 100%)", border: "1px solid #dee2e6" }}
-              >
-                <div className="text-center text-muted">
-                  <i className="bi bi-map-fill fs-1 text-warning mb-3 d-block"></i>
-                  <h6 className="fw-semibold">Google Maps</h6>
-                  <small>Aadya Institute – Malleshwaram Branch</small>
+              <div className="card border-0 shadow-sm overflow-hidden h-100">
+                <div className="card-header bg-white border-0 py-3 d-flex align-items-center gap-2">
+                  <i className="bi bi-geo-alt-fill text-info"></i>
+                  <h6 className="fw-bold mb-0">Branch 2 – Malleshwaram</h6>
+                </div>
+                <div className="ratio ratio-16x9">
+                  <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2819.4237023634755!2d77.5685629088251!3d13.006102514071655!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae1731d02d939d%3A0xff3c4cecf7c0b9f!2sAadya%20Institute%20Malleshwaram!5e1!3m2!1sen!2sin!4v1784550818272!5m2!1sen!2sin"
+                    style={{ border: 0 }}
+                    allowFullScreen=""
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    title="Aadya Institute - Malleshwaram Branch"
+                  ></iframe>
                 </div>
               </div>
             </div>

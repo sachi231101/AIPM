@@ -4,6 +4,7 @@ import SearchBar from "../../../components/SearchBar/SearchBar";
 import EmptyState from "../../../components/EmptyState/EmptyState";
 import Pagination from "../../../components/Pagination/Pagination";
 import PageHeader from "../../../components/PageHeader/PageHeader";
+import { SkeletonGrid } from "../../../components/Skeleton/Skeleton";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { studentService, jobService, applicationService } from "../../../services/api";
@@ -60,11 +61,10 @@ export default function AvailableJobs() {
     fetchData();
   }, []);
 
-  if (loading || !student) {
+  if (loading) {
     return (
-      <div className="text-center py-5" style={{ height: "400px" }}>
-        <span className="spinner-border spinner-border-sm me-2"></span>
-        Loading available jobs...
+      <div className="container-lg py-4">
+        <SkeletonGrid count={6} />
       </div>
     );
   }

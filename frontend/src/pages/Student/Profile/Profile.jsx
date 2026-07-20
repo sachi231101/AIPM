@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
@@ -190,6 +191,11 @@ export default function Profile() {
       <PageHeader
         title="My Profile"
         breadcrumbs={[{ label: "Dashboard", to: "/student/dashboard" }, { label: "Profile" }]}
+        action={
+          <Link to="/student/resume-builder" className="btn btn-warning btn-sm fw-bold d-flex align-items-center gap-2 text-dark">
+            <i className="bi bi-file-earmark-person"></i> Generate Resume
+          </Link>
+        }
       />
 
       <div className="row g-4">
@@ -231,9 +237,14 @@ export default function Profile() {
             </div>
 
             {!editing && (
-              <button className="btn btn-outline-primary btn-sm w-100" onClick={() => setEditing(true)}>
-                <i className="bi bi-pencil me-1"></i> Edit Profile
-              </button>
+              <div className="d-flex flex-column gap-2">
+                <button className="btn btn-outline-primary btn-sm w-100" onClick={() => setEditing(true)}>
+                  <i className="bi bi-pencil me-1"></i> Edit Profile
+                </button>
+                <Link to="/student/resume-builder" className="btn btn-warning btn-sm w-100 fw-bold text-dark">
+                  <i className="bi bi-file-earmark-person me-1"></i> Generate Resume
+                </Link>
+              </div>
             )}
           </div>
 
@@ -440,10 +451,15 @@ export default function Profile() {
 
                 <hr className="my-4" />
 
-                {/* 4. RESUME UPLOAD */}
-                <div className="d-flex align-items-center gap-2 mb-3">
-                  <i className="bi bi-file-earmark-arrow-up-fill text-danger"></i>
-                  <h6 className="fw-bold mb-0">Resume Upload <span className="text-danger">*</span></h6>
+                {/* 4. RESUME UPLOAD & BUILDER */}
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <i className="bi bi-file-earmark-arrow-up-fill text-danger"></i>
+                    <h6 className="fw-bold mb-0">Resume & Documents <span className="text-danger">*</span></h6>
+                  </div>
+                  <Link to="/student/resume-builder" className="btn btn-warning btn-sm fw-bold text-dark">
+                    <i className="bi bi-file-earmark-person me-1"></i> Generate Resume
+                  </Link>
                 </div>
                 <div className="mb-4">
                   {editing ? (

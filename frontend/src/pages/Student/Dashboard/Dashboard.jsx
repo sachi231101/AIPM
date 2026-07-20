@@ -171,6 +171,20 @@ export default function StudentDashboard() {
         </div>
       </div>
 
+      {/* AI Resume Builder Banner */}
+      <div className="card border-0 shadow-sm mb-4" style={{ background: "linear-gradient(135deg, #0F4C81 0%, #1565C0 100%)", color: "white" }}>
+        <div className="card-body p-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+          <div>
+            <div className="badge bg-warning text-dark fw-bold mb-2">NEW FEATURE</div>
+            <h4 className="fw-bold mb-1">Build Your ATS-Friendly Professional Resume</h4>
+            <p className="text-white-75 mb-0 small">Automatically import your profile data, customize section contents, score ATS compatibility, and download PDF resumes.</p>
+          </div>
+          <Link to="/student/resume-builder" className="btn btn-warning btn-lg fw-bold text-nowrap">
+            <i className="bi bi-file-earmark-person me-2"></i> Launch Resume Builder
+          </Link>
+        </div>
+      </div>
+
       <div className="row g-4">
         {/* Left: Checklist + Recent Jobs */}
         <div className="col-lg-8">
