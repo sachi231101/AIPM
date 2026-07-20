@@ -97,7 +97,7 @@ export default function AdminLayout() {
 
   return (
     <ProtectedLayout requiredRole="admin">
-      <div className="admin-layout d-flex" style={{ minHeight: "100vh" }}>
+      <div className="admin-layout d-flex" style={{ height: "100vh", overflow: "hidden" }}>
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
         <div className="admin-content flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
           {/* Top bar */}

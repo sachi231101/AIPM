@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { authService } from "../../../services/api";
 
 export default function ForgotPassword() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm();
   
@@ -86,14 +89,21 @@ export default function ForgotPassword() {
                     <div className="input-group">
                       <span className="input-group-text bg-light border-end-0"><i className="bi bi-lock text-muted"></i></span>
                       <input 
-                        type="password" 
+                        type={showPassword ? "text" : "password"} 
                         {...register("password", { 
                           required: "Password is required", 
                           minLength: { value: 8, message: "Password must be at least 8 characters" } 
                         })} 
-                        className={`form-control border-start-0 ps-0 ${errors.password ? "is-invalid" : ""}`} 
+                        className={`form-control border-start-0 border-end-0 ps-0 ${errors.password ? "is-invalid" : ""}`} 
                         placeholder="Min 8 characters" 
                       />
+                      <span 
+                        className="input-group-text bg-white border-start-0" 
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <i className={`bi ${showPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                      </span>
                       {errors.password && <div className="invalid-feedback">{errors.password.message}</div>}
                     </div>
                   </div>
@@ -104,14 +114,21 @@ export default function ForgotPassword() {
                     <div className="input-group">
                       <span className="input-group-text bg-light border-end-0"><i className="bi bi-lock-fill text-muted"></i></span>
                       <input 
-                        type="password" 
+                        type={showConfirmPassword ? "text" : "password"} 
                         {...register("confirmPassword", { 
                           required: "Please confirm your password", 
                           validate: (v) => v === password || "Passwords do not match" 
                         })} 
-                        className={`form-control border-start-0 ps-0 ${errors.confirmPassword ? "is-invalid" : ""}`} 
+                        className={`form-control border-start-0 border-end-0 ps-0 ${errors.confirmPassword ? "is-invalid" : ""}`} 
                         placeholder="Repeat new password" 
                       />
+                      <span 
+                        className="input-group-text bg-white border-start-0" 
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <i className={`bi ${showConfirmPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                      </span>
                       {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword.message}</div>}
                     </div>
                   </div>

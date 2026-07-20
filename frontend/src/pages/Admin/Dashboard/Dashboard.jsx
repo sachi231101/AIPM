@@ -1,8 +1,10 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import StatCard from "../../../components/StatCard/StatCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { adminService } from "../../../services/api";
 import { useCachedData } from "../../../hooks/useCachedData";
+import Chart from "chart.js/auto";
 
 const statusColors = { 
   Published: "success", 
@@ -27,6 +29,178 @@ export default function AdminDashboard() {
   );
 
   const stats = statsResponse?.data;
+
+  const trendsChartRef = useRef(null);
+  const statusChartRef = useRef(null);
+  const trendsChartInst = useRef(null);
+  const statusChartInst = useRef(null);
+
+  useEffect(() => {
+    if (loading || !stats) return;
+
+    // 1. Placement Trends Chart
+    if (trendsChartRef.current && stats.placement_trends) {
+      if (trendsChartInst.current) {
+        trendsChartInst.current.destroy();
+      }
+
+      const labels = stats.placement_trends.map(t => t.month);
+      const applicationsData = stats.placement_trends.map(t => t.applications);
+      const offersData = stats.placement_trends.map(t => t.offers);
+      const placementsData = stats.placement_trends.map(t => t.placements);
+
+      const ctx = trendsChartRef.current.getContext("2d");
+      trendsChartInst.current = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Applications",
+              data: applicationsData,
+              backgroundColor: "rgba(13, 110, 253, 0.75)",
+              borderColor: "rgb(13, 110, 253)",
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+            {
+              label: "Offers",
+              data: offersData,
+              backgroundColor: "rgba(25, 135, 84, 0.75)",
+              borderColor: "rgb(25, 135, 84)",
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+            {
+              label: "Placements",
+              data: placementsData,
+              backgroundColor: "rgba(220, 53, 69, 0.75)",
+              borderColor: "rgb(220, 53, 69)",
+              borderWidth: 1,
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: {
+                boxWidth: 12,
+                font: {
+                  family: "'Inter', sans-serif",
+                  size: 11
+                }
+              }
+            },
+            tooltip: {
+              padding: 10,
+              bodyFont: { family: "'Inter', sans-serif" },
+              titleFont: { family: "'Inter', sans-serif", weight: "bold" }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { family: "'Inter', sans-serif", size: 11 } }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: "rgba(0, 0, 0, 0.05)" },
+              ticks: { font: { family: "'Inter', sans-serif", size: 11 }, precision: 0 }
+            }
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (trendsChartInst.current) {
+        trendsChartInst.current.destroy();
+        trendsChartInst.current = null;
+      }
+    };
+  }, [stats, loading]);
+
+  useEffect(() => {
+    if (loading || !stats) return;
+
+    // 2. Jobs by Status Chart
+    if (statusChartRef.current && stats.jobs_by_status) {
+      if (statusChartInst.current) {
+        statusChartInst.current.destroy();
+      }
+
+      const rawData = stats.jobs_by_status;
+      const labels = ["Published", "Approved", "Pending", "Rejected", "Closed"];
+      const dataValues = [
+        rawData.published || 0,
+        rawData.approved || 0,
+        rawData.pending || 0,
+        rawData.rejected || 0,
+        rawData.closed || 0
+      ];
+
+      const ctx = statusChartRef.current.getContext("2d");
+      statusChartInst.current = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels,
+          datasets: [
+            {
+              data: dataValues,
+              backgroundColor: [
+                "rgba(25, 135, 84, 0.8)",
+                "rgba(13, 110, 253, 0.8)",
+                "rgba(255, 193, 7, 0.8)",
+                "rgba(220, 53, 69, 0.8)",
+                "rgba(108, 117, 125, 0.8)"
+              ],
+              borderColor: [
+                "#198754",
+                "#0d6efd",
+                "#ffc107",
+                "#dc3545",
+                "#6c757d"
+              ],
+              borderWidth: 1,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "right",
+              labels: {
+                boxWidth: 12,
+                font: {
+                  family: "'Inter', sans-serif",
+                  size: 11
+                }
+              }
+            },
+            tooltip: {
+              padding: 10,
+              bodyFont: { family: "'Inter', sans-serif" },
+              titleFont: { family: "'Inter', sans-serif", weight: "bold" }
+            }
+          },
+          cutout: "70%"
+        }
+      });
+    }
+
+    return () => {
+      if (statusChartInst.current) {
+        statusChartInst.current.destroy();
+        statusChartInst.current = null;
+      }
+    };
+  }, [stats, loading]);
 
   if (loading || !stats) {
     return (
@@ -86,19 +260,15 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Chart Placeholders */}
+      {/* Dynamic Charts */}
       <div className="row g-4 mb-4">
         <div className="col-md-8">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white border-0 pt-4 pb-0 px-4">
               <h6 className="fw-bold mb-0">Placement Trends (Monthly)</h6>
             </div>
-            <div className="card-body d-flex align-items-center justify-content-center p-4" style={{ minHeight: 200 }}>
-              <div className="text-center text-muted">
-                <i className="bi bi-bar-chart-fill text-primary" style={{ fontSize: "3rem" }}></i>
-                <p className="mt-3 mb-0">Chart will render here (Recharts / Chart.js)</p>
-                <small>Monthly applications, offers, and placements</small>
-              </div>
+            <div className="card-body p-4" style={{ minHeight: 280, height: 280 }}>
+              <canvas ref={trendsChartRef}></canvas>
             </div>
           </div>
         </div>
@@ -107,11 +277,8 @@ export default function AdminDashboard() {
             <div className="card-header bg-white border-0 pt-4 pb-0 px-4">
               <h6 className="fw-bold mb-0">Jobs by Status</h6>
             </div>
-            <div className="card-body d-flex align-items-center justify-content-center" style={{ minHeight: 200 }}>
-              <div className="text-center text-muted">
-                <i className="bi bi-pie-chart-fill text-warning" style={{ fontSize: "3rem" }}></i>
-                <p className="mt-3 mb-0">Pie chart placeholder</p>
-              </div>
+            <div className="card-body p-4" style={{ minHeight: 280, height: 280 }}>
+              <canvas ref={statusChartRef}></canvas>
             </div>
           </div>
         </div>

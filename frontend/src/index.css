@@ -267,12 +267,24 @@ body {
 /* ─── Admin Sidebar ─────────────────────────────────────────────────────── */
 .apms-sidebar {
   width: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100vh;
   background: var(--sidebar-bg);
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   overflow: hidden;
   z-index: 100;
+}
+
+/* Custom scrollbar for sidebar nav */
+.apms-sidebar nav::-webkit-scrollbar {
+  width: 4px;
+}
+.apms-sidebar nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.apms-sidebar nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
 }
 .apms-sidebar.collapsed {
   width: var(--sidebar-collapsed);

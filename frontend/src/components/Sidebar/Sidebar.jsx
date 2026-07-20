@@ -61,7 +61,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       <hr className="border-secondary my-0" />
 
       {/* Nav Items */}
-      <nav className="flex-grow-1 py-2">
+      <nav className="flex-grow-1 py-2 overflow-y-auto">
         {filteredMenuItems.map((item) => (
           <NavLink
             key={item.to}
