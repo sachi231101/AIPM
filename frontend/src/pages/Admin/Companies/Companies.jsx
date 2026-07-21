@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { companyService } from "../../../services/api";
-import { useCachedData } from "../../../hooks/useCachedData";
+import { useCachedData, clearCache } from "../../../hooks/useCachedData";
+import { getCompanyLogo, handleLogoError } from "../../../utils/logoHelper";
 
 export default function Companies() {
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(null);
+
+  // Force fresh fetch every time this page mounts (clear stale cache)
+  useEffect(() => {
+    clearCache("admin_companies");
+  }, []);
 
   const { data: rawCompaniesResponse, loading } = useCachedData(
     "admin_companies",
@@ -16,13 +22,11 @@ export default function Companies() {
   const companiesList = rawList.map((c) => ({
     id: c.id,
     name: c.name,
-    logo: c.logo_path
-      ? `http://localhost:8000/storage/${c.logo_path}`
-      : "https://placehold.co/100x100?text=" + encodeURIComponent(c.name),
+    logo: c.logo || getCompanyLogo(c.logo_path, c.name),
     website: c.website || "N/A",
     industry: c.industry || "Technology",
-    hrName: c.hr_name || "N/A",
-    hrEmail: c.hr_email || "N/A",
+    hrName: c.hrName || c.hr_name || "N/A",
+    hrEmail: c.hrEmail || c.hr_email || "N/A",
     phone: c.phone || "N/A",
     openings: c.openings || 0,
     status: "Active",
@@ -77,7 +81,15 @@ export default function Companies() {
                       <td className="px-4 text-muted">{i + 1}</td>
                       <td>
                         <div className="d-flex align-items-center gap-3">
-                          <img src={company.logo} alt={company.name} width={40} height={40} className="rounded-2" style={{ objectFit: "cover" }} />
+                          <img
+                            src={company.logo}
+                            alt={company.name}
+                            width={40}
+                            height={40}
+                            className="rounded-2"
+                            style={{ objectFit: "cover" }}
+                            onError={(e) => handleLogoError(e, company.name)}
+                          />
                           <div>
                             <p className="fw-medium mb-0 small">{company.name}</p>
                             <small className="text-muted">{company.website}</small>
@@ -120,7 +132,15 @@ export default function Companies() {
               </div>
               <div className="modal-body p-4">
                 <div className="text-center mb-4">
-                  <img src={selectedCompany.logo} alt={selectedCompany.name} className="rounded-3 mb-3" width={72} height={72} style={{ objectFit: "cover" }} />
+                  <img
+                    src={selectedCompany.logo}
+                    alt={selectedCompany.name}
+                    className="rounded-3 mb-3"
+                    width={72}
+                    height={72}
+                    style={{ objectFit: "cover" }}
+                    onError={(e) => handleLogoError(e, selectedCompany.name)}
+                  />
                   <h5 className="fw-bold mb-1">{selectedCompany.name}</h5>
                   <span className="badge bg-info bg-opacity-10 text-info">{selectedCompany.industry}</span>
                 </div>

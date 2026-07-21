@@ -13,6 +13,8 @@ class Application extends Model
         'student_id',
         'job_id',
         'resume_path',
+        'resume_type',
+        'resume_key',
         'applied_at',
         'status',
     ];

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import JobCard from "../../../components/JobCard/JobCard";
 import SearchBar from "../../../components/SearchBar/SearchBar";
 import EmptyState from "../../../components/EmptyState/EmptyState";
@@ -8,6 +9,7 @@ import { SkeletonGrid } from "../../../components/Skeleton/Skeleton";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { studentService, jobService, applicationService } from "../../../services/api";
+import { getCompanyLogo } from "../../../utils/logoHelper";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -16,7 +18,8 @@ export default function AvailableJobs() {
   const [student, setStudent] = useState(null);
   const [jobsList, setJobsList] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const [applyingJobId, setApplyingJobId] = useState(null);
+
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -25,22 +28,24 @@ export default function AvailableJobs() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [profileRes, jobsRes] = await Promise.all([
+        const [jobsRes, profileRes, appsRes] = await Promise.all([
+          jobService.getAll(),
           studentService.getProfile(),
-          jobService.getAll()
+          applicationService.getMyApplications().catch(() => ({ data: { data: [] } })),
         ]);
-        
+
         const profile = profileRes.data.data;
         setStudent(profile);
+
+        const myApps = appsRes.data?.data || [];
+        const appliedJobIds = new Set(myApps.map((app) => app.job?.id));
 
         const rawJobs = jobsRes.data.data || [];
         const mappedJobs = rawJobs.map((job) => ({
           id: job.id,
           title: job.title,
           company: job.company?.name || "Unknown Company",
-          companyLogo: job.company?.logo_path
-            ? `http://localhost:8000/storage/${job.company.logo_path}`
-            : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+          companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
           location: job.location,
           salary: job.salary,
           experience: job.experience,
@@ -49,6 +54,7 @@ export default function AvailableJobs() {
           lastDate: job.last_date,
           eligibleInstitutes: job.institutes?.map((i) => i.id) || [],
           instituteId: job.institutes?.map((i) => i.id) || [],
+          isApplied: appliedJobIds.has(job.id),
         }));
         setJobsList(mappedJobs);
       } catch (err) {
@@ -69,15 +75,10 @@ export default function AvailableJobs() {
     );
   }
 
-  // Calculate dynamic completion checklist
-  const sections = {
-    personal: !!(student.email && student.dob && student.gender && student.address),
-    academic: !!(student.course && student.branch && student.batch),
-    resume: !!(student.resume_url || student.resumeUrl),
-    skills: !!(student.skills && student.skills.length > 0)
-  };
-  const completedCount = Object.values(sections).filter(Boolean).length;
-  const profileCompletion = completedCount * 25;
+  // Check if student has a resume uploaded or created
+  const hasUploadedResume = !!(student?.resume_path || student?.resume_url || student?.resumeUrl);
+  const hasCreatedResume = !!(student?.has_created_resume);
+  const hasAnyResume = hasUploadedResume || hasCreatedResume;
 
   const locations = [...new Set(jobsList.map((j) => j.location))];
 
@@ -93,16 +94,25 @@ export default function AvailableJobs() {
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const handleApply = async (job) => {
-    if (profileCompletion < 100) {
-      toast.error("Please complete your profile and upload your resume before applying.");
+    if (!hasAnyResume) {
+      toast.error("Please create a resume in Resume Builder or upload a PDF first before applying.", {
+        autoClose: 4000,
+      });
       return;
     }
     try {
+      setApplyingJobId(job.id);
       await applicationService.apply({ job_id: job.id });
       toast.success(`Applied for ${job.title} at ${job.company}! 🎉`);
+      setJobsList((prev) =>
+        prev.map((j) => (j.id === job.id ? { ...j, isApplied: true } : j))
+      );
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to submit application.");
+      const msg = err.response?.data?.message || "Failed to submit application.";
+      toast.error(msg);
+    } finally {
+      setApplyingJobId(null);
     }
   };
 
@@ -114,22 +124,98 @@ export default function AvailableJobs() {
         breadcrumbs={[{ label: "Dashboard", to: "/student/dashboard" }, { label: "Available Jobs" }]}
       />
 
+      {/* ── No-Resume Banner ── */}
+      {!hasResume && (
+        <div
+          className="alert border-0 mb-4 rounded-3 p-4"
+          style={{
+            background: "linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%)",
+            borderLeft: "4px solid #f39c12 !important",
+          }}
+          role="alert"
+        >
+          <div className="d-flex align-items-start gap-3">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 48, height: 48, background: "#f39c12", color: "#fff", fontSize: 20 }}
+            >
+              <i className="bi bi-file-earmark-person-fill"></i>
+            </div>
+            <div className="flex-grow-1">
+              <h6 className="fw-bold mb-1" style={{ color: "#856404" }}>
+                Resume Required to Apply
+              </h6>
+              <p className="mb-3 small" style={{ color: "#533f03" }}>
+                You haven't uploaded a resume yet. To apply for placement drives, you need to
+                upload your resume first. Your resume will be automatically submitted with every
+                job application.
+              </p>
+              <div className="d-flex gap-2 flex-wrap">
+                <Link
+                  to="/student/profile"
+                  className="btn btn-sm fw-semibold"
+                  style={{ background: "#f39c12", color: "#fff", borderRadius: 8 }}
+                >
+                  <i className="bi bi-upload me-2"></i>Upload Resume Now
+                </Link>
+                <Link
+                  to="/student/resume-builder"
+                  className="btn btn-sm btn-outline-secondary fw-semibold"
+                  style={{ borderRadius: 8 }}
+                >
+                  <i className="bi bi-pencil-square me-2"></i>Build Resume with AI
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Resume Active Banner ── */}
+      {hasResume && (
+        <div
+          className="alert border-0 mb-4 rounded-3 py-2 px-3 d-flex align-items-center gap-2"
+          style={{ background: "#d1fae5", color: "#065f46" }}
+        >
+          <i className="bi bi-check-circle-fill text-success"></i>
+          <span className="small fw-medium">
+            Your resume is ready.{" "}
+            <span className="text-muted fw-normal">
+              It will be automatically submitted with your application.
+            </span>
+          </span>
+          <Link
+            to="/student/profile"
+            className="ms-auto btn btn-sm btn-outline-success"
+            style={{ fontSize: 12, borderRadius: 8 }}
+          >
+            <i className="bi bi-pencil me-1"></i>Update Resume
+          </Link>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body p-3">
-          <div className="row g-3 align-items-end">
-            <div className="col-md-6">
+        <div className="card-body p-3 p-md-4">
+          <div className="row g-2 g-md-3 align-items-end">
+            <div className="col-12 col-md-6">
+              <label className="form-label small fw-medium mb-1">Search</label>
               <SearchBar value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search jobs or companies..." />
             </div>
-            <div className="col-md-4">
+            <div className="col-7 col-md-4">
+              <label className="form-label small fw-medium mb-1">Location</label>
               <select className="form-select" value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }}>
                 <option value="">All Locations</option>
                 {locations.map((loc) => <option key={loc}>{loc}</option>)}
               </select>
             </div>
-            <div className="col-md-2">
-              <button className="btn btn-outline-secondary w-100" onClick={() => { setSearch(""); setLocationFilter(""); setPage(1); }}>
-                <i className="bi bi-x-lg me-1"></i>Clear
+            <div className="col-5 col-md-2">
+              <button
+                className={`btn w-100 ${search || locationFilter ? "btn-outline-danger" : "btn-outline-secondary"}`}
+                disabled={!search && !locationFilter}
+                onClick={() => { setSearch(""); setLocationFilter(""); setPage(1); }}
+              >
+                <i className="bi bi-arrow-counterclockwise me-1"></i>Clear
               </button>
             </div>
           </div>
@@ -145,7 +231,32 @@ export default function AvailableJobs() {
           <div className="row g-4">
             {paginated.map((job) => (
               <div key={job.id} className="col-md-6 col-lg-4">
-                <JobCard job={job} showApply onApply={handleApply} />
+                <div className="position-relative">
+                  <JobCard
+                    job={job}
+                    showApply
+                    onApply={() => handleApply(job)}
+                    applyDisabled={!hasAnyResume || applyingJobId === job.id}
+                    applyLoading={applyingJobId === job.id}
+                  />
+                  {/* Lock overlay when no resume */}
+                  {!hasAnyResume && !job.isApplied && (
+                    <div
+                      className="position-absolute bottom-0 start-0 end-0 d-flex align-items-center justify-content-center rounded-bottom-3"
+                      style={{
+                        background: "rgba(243,156,18,0.12)",
+                        padding: "8px 12px",
+                        borderTop: "1px dashed #f39c12",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <i className="bi bi-lock-fill text-warning me-2" style={{ fontSize: 12 }}></i>
+                      <span className="text-warning fw-semibold" style={{ fontSize: 12 }}>
+                        Create or upload resume to apply
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -435,6 +435,7 @@ body {
 
 /* ─── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .min-vh-75 { min-height: 38vh; }
   .hero-section { min-height: auto; }
   .apms-sidebar { position: fixed; left: -100%; transition: left 0.3s ease; }
   .apms-sidebar.open { left: 0; }

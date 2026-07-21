@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import StatCard from "../../../components/StatCard/StatCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { adminService } from "../../../services/api";
-import { useCachedData } from "../../../hooks/useCachedData";
+import { useCachedData, clearCache } from "../../../hooks/useCachedData";
 import Chart from "chart.js/auto";
 
 const statusColors = { 
@@ -23,6 +23,10 @@ const statusMap = {
 };
 
 export default function AdminDashboard() {
+  useEffect(() => {
+    clearCache("admin_dashboard");
+  }, []);
+
   const { data: statsResponse, loading } = useCachedData(
     "admin_dashboard",
     adminService.getDashboardStats
@@ -227,7 +231,7 @@ export default function AdminDashboard() {
     studentName: app.student?.user?.name || "Student",
     institute: app.student?.institute?.name || app.student?.other_institute_name || "Unknown Institute",
     jobTitle: app.job?.title || "Unknown Job",
-    status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : "Rejected"),
+    status: app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Applied"),
   }));
 
   return (
@@ -358,7 +362,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="small text-muted">{app.jobTitle}</td>
                           <td>
-                            <span className={`badge bg-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "warning")} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "warning")} small`}>
+                            <span className={`badge bg-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "primary")} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "primary")} small`}>
                               {app.status}
                             </span>
                           </td>

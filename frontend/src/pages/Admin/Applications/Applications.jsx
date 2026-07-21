@@ -2,11 +2,17 @@ import { useState, useEffect } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
 import { jobService, applicationService } from "../../../services/api";
-import { useCachedData } from "../../../hooks/useCachedData";
+import { useCachedData, clearCache } from "../../../hooks/useCachedData";
 
 export default function Applications() {
   const [selectedJob, setSelectedJob] = useState("");
   const [search, setSearch] = useState("");
+
+  // Clear application cache on mount so real-time student applications show up
+  useEffect(() => {
+    clearCache("admin_jobs");
+    clearCache("admin_applications");
+  }, []);
 
   // Cache job listings for dropdown
   const { data: rawJobsResponse, loading } = useCachedData(
@@ -17,35 +23,45 @@ export default function Applications() {
   const rawJobs = rawJobsResponse ? (Array.isArray(rawJobsResponse.data) ? rawJobsResponse.data : (rawJobsResponse.data?.data || [])) : [];
   const publishedJobs = rawJobs.filter(j => j.status === "published" || j.status === "approved");
 
-  // Auto-select the first job if available
-  useEffect(() => {
-    if (publishedJobs.length > 0 && !selectedJob) {
-      setSelectedJob(publishedJobs[0].id.toString());
-    }
-  }, [publishedJobs, selectedJob]);
-
-  // Cache applications scoped by selectedJob
+  // Fetch applications (all or by job_id)
   const { data: rawAppsResponse, loading: loadingApps } = useCachedData(
-    `admin_applications_${selectedJob}`,
-    () => selectedJob ? applicationService.getByJob(parseInt(selectedJob)) : Promise.resolve({ data: [] }),
+    `admin_applications_${selectedJob || "all"}`,
+    () => selectedJob ? applicationService.getByJob(parseInt(selectedJob)) : applicationService.getAllAdmin(),
     [selectedJob]
   );
 
-  const rawApps = selectedJob ? (rawAppsResponse?.data || []) : [];
-  const applicationsList = rawApps.map((app) => ({
-    id: app.id,
-    studentName: app.student?.name || "Student",
-    institute: app.student?.institute || "Unknown Institute",
-    course: app.student?.course || "N/A",
-    email: app.student?.email || "",
-    appliedDate: app.applied_at,
-    status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : "Rejected"),
-    resumeUrl: app.resume_url ? `http://localhost:8000${app.resume_url}` : "#"
-  }));
+  const rawApps = rawAppsResponse?.data || [];
+  const applicationsList = rawApps.map((app) => {
+    let uploadedUrl = app.uploaded_resume_url;
+    if (uploadedUrl && !uploadedUrl.startsWith("http")) {
+      uploadedUrl = `http://localhost:8000${uploadedUrl.startsWith('/') ? '' : '/'}${uploadedUrl}`;
+    }
+    let createdUrl = app.created_resume_url;
+    if (createdUrl && !createdUrl.startsWith("http")) {
+      createdUrl = `http://localhost:8000${createdUrl.startsWith('/') ? '' : '/'}${createdUrl}`;
+    }
+
+    return {
+      id: app.id,
+      studentName: app.student?.name || "Student",
+      institute: app.student?.institute || "Unknown Institute",
+      course: app.student?.course || "N/A",
+      email: app.student?.email || "",
+      appliedDate: app.applied_at,
+      status: app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Applied"),
+      jobTitle: app.job?.title || "Drive",
+      companyName: app.job?.company || "",
+      uploadedResumeUrl: uploadedUrl,
+      createdResumeUrl: createdUrl,
+      hasUploaded: !!uploadedUrl || app.has_uploaded_resume,
+      hasCreated: !!createdUrl || app.has_created_resume,
+    };
+  });
 
   const filtered = applicationsList.filter(a => {
     return a.studentName.toLowerCase().includes(search.toLowerCase()) ||
-      a.institute.toLowerCase().includes(search.toLowerCase());
+      a.institute.toLowerCase().includes(search.toLowerCase()) ||
+      a.jobTitle.toLowerCase().includes(search.toLowerCase());
   });
 
   const handleSendToCompany = async () => {
@@ -78,7 +94,7 @@ export default function Applications() {
           <div className="row g-3 align-items-center">
             <div className="col-md-5">
               <select className="form-select" value={selectedJob} onChange={e => setSelectedJob(e.target.value)}>
-                <option value="">-- Select Placement Drive --</option>
+                <option value="">All Placement Drives</option>
                 {publishedJobs.map(j => (
                   <option key={j.id} value={j.id}>
                     {j.title} – {j.company?.name || "Company"}
@@ -89,7 +105,7 @@ export default function Applications() {
             <div className="col-md-4">
               <div className="input-group">
                 <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
-                <input className="form-control border-start-0" placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} disabled={!selectedJob} />
+                <input className="form-control border-start-0" placeholder="Search students, institute, job..." value={search} onChange={e => setSearch(e.target.value)} />
               </div>
             </div>
             <div className="col-md-3 text-end">
@@ -113,6 +129,7 @@ export default function Applications() {
                   <tr>
                     <th className="px-4 py-3">#</th>
                     <th className="py-3">Student</th>
+                    <th className="py-3">Job / Drive</th>
                     <th className="py-3">Institute</th>
                     <th className="py-3">Course</th>
                     <th className="py-3">Email</th>
@@ -129,10 +146,14 @@ export default function Applications() {
                         <td>
                           <div className="d-flex align-items-center gap-2">
                             <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 32, height: 32, fontSize: 12 }}>
-                              {app.studentName[0]}
+                              {app.studentName[0] || "S"}
                             </div>
                             <span className="fw-medium small">{app.studentName}</span>
                           </div>
+                        </td>
+                        <td>
+                          <p className="fw-medium mb-0 small text-primary">{app.jobTitle}</p>
+                          {app.companyName && <small className="text-muted">{app.companyName}</small>}
                         </td>
                         <td className="small text-muted">{app.institute}</td>
                         <td className="small">{app.course}</td>
@@ -141,26 +162,33 @@ export default function Applications() {
                           {app.appliedDate ? new Date(app.appliedDate).toLocaleDateString("en-IN") : "N/A"}
                         </td>
                         <td>
-                          <span className={`badge bg-${app.status === "Shortlisted" ? "success" : "secondary"} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : "secondary"} small`}>
+                          <span className={`badge bg-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "primary")} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : (app.status === "Rejected" ? "danger" : "primary")} small`}>
                             {app.status}
                           </span>
                         </td>
                         <td className="text-end px-4">
-                          <div className="d-flex gap-1 justify-content-end">
-                            <a href={app.resumeUrl} className="btn btn-xs btn-outline-primary py-1 px-2" style={{ fontSize: "0.75rem" }} target="_blank" rel="noreferrer">
-                              <i className="bi bi-eye"></i> View
-                            </a>
-                            <a href={app.resumeUrl} download className="btn btn-xs btn-outline-success py-1 px-2" style={{ fontSize: "0.75rem" }}>
-                              <i className="bi bi-download"></i> Download
-                            </a>
+                          <div className="d-flex gap-1 justify-content-end flex-wrap">
+                            {app.hasUploaded && (
+                              <a href={app.uploadedResumeUrl} className="btn btn-xs btn-outline-primary py-1 px-2" style={{ fontSize: "0.75rem" }} target="_blank" rel="noreferrer" title="Uploaded PDF Resume">
+                                <i className="bi bi-file-earmark-pdf me-1"></i> Uploaded PDF
+                              </a>
+                            )}
+                            {app.hasCreated && (
+                              <a href={app.createdResumeUrl} className="btn btn-xs btn-outline-success py-1 px-2" style={{ fontSize: "0.75rem" }} target="_blank" rel="noreferrer" title="App Created Resume">
+                                <i className="bi bi-pencil-square me-1"></i> App Resume
+                              </a>
+                            )}
+                            {!app.hasUploaded && !app.hasCreated && (
+                              <span className="text-muted small">No Resume</span>
+                            )}
                           </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} className="text-center py-4 text-muted small">
-                        {selectedJob ? "No applications submitted for this placement drive yet." : "Please select a placement drive above to load applications."}
+                      <td colSpan={9} className="text-center py-4 text-muted small">
+                        No applications submitted yet.
                       </td>
                     </tr>
                   )}

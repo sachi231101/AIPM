@@ -3,6 +3,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // In-memory cache store
 const apiCache = {};
 
+export function clearApiCache() {
+  Object.keys(apiCache).forEach(key => delete apiCache[key]);
+}
+
 /**
  * A custom hook to fetch and cache API data using the Stale-While-Revalidate pattern.
  *

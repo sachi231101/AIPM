@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { handleLogoError } from "../../utils/logoHelper";
 
 const statusColors = {
   Published: "success",
@@ -8,11 +9,12 @@ const statusColors = {
   Closed: "secondary",
 };
 
-export default function JobCard({ job, showApply = false, onApply }) {
+export default function JobCard({ job, showApply = false, onApply, applyDisabled, applyLoading }) {
+  const isApplied = job.isApplied || job.applied;
   const badge = statusColors[job.status] || "secondary";
 
   return (
-    <div className="card job-card h-100 shadow-sm border-0">
+    <div className={`card job-card h-100 shadow-sm border-0 ${isApplied ? "border-start border-4 border-success" : ""}`}>
       <div className="card-body d-flex flex-column gap-3 p-4">
         {/* Header */}
         <div className="d-flex align-items-start gap-3">
@@ -23,14 +25,21 @@ export default function JobCard({ job, showApply = false, onApply }) {
             width={56}
             height={56}
             style={{ objectFit: "cover" }}
+            onError={(e) => handleLogoError(e, job.company)}
           />
           <div className="flex-grow-1 min-width-0">
             <h6 className="fw-bold mb-1 text-truncate">{job.title}</h6>
             <p className="text-muted small mb-0">{job.company}</p>
           </div>
-          <span className={`badge bg-${badge} bg-opacity-10 text-${badge} border border-${badge} border-opacity-25 small`}>
-            {job.status}
-          </span>
+          {isApplied ? (
+            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 small fw-semibold">
+              <i className="bi bi-check-circle-fill me-1"></i>Applied
+            </span>
+          ) : (
+            <span className={`badge bg-${badge} bg-opacity-10 text-${badge} border border-${badge} border-opacity-25 small`}>
+              {job.status}
+            </span>
+          )}
         </div>
 
         {/* Meta */}
@@ -54,16 +63,33 @@ export default function JobCard({ job, showApply = false, onApply }) {
         <div className="d-flex align-items-center justify-content-between mt-auto pt-2 border-top">
           <small className="text-danger">
             <i className="bi bi-calendar-x me-1"></i>
-            Last date: {new Date(job.lastDate).toLocaleDateString("en-IN")}
+            Last date: {job.lastDate ? new Date(job.lastDate).toLocaleDateString("en-IN") : "N/A"}
           </small>
           <div className="d-flex gap-2">
             <Link to={`/job/${job.id}`} className="btn btn-sm btn-outline-primary">
               View Details
             </Link>
             {showApply && (
-              <button className="btn btn-sm btn-primary" onClick={() => onApply?.(job)}>
-                Apply
-              </button>
+              isApplied ? (
+                <button className="btn btn-sm btn-success fw-semibold" disabled>
+                  <i className="bi bi-check-lg me-1"></i>Applied
+                </button>
+              ) : (
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={() => onApply?.(job)}
+                  disabled={applyDisabled || applyLoading}
+                >
+                  {applyLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                      Applying...
+                    </>
+                  ) : (
+                    "Apply"
+                  )}
+                </button>
+              )
             )}
           </div>
         </div>
@@ -71,3 +97,4 @@ export default function JobCard({ job, showApply = false, onApply }) {
     </div>
   );
 }
+

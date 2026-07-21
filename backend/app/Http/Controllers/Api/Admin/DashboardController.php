@@ -54,8 +54,8 @@ class DashboardController extends Controller
                 'total_applications' => Application::count(),
                 'recent_jobs'        => PlacementJob::with('company')
                     ->latest()->limit(5)->get(),
-                'recent_applications'=> Application::with(['student.user', 'job'])
-                    ->latest()->limit(5)->get(),
+                'recent_applications'=> Application::with(['student.user', 'student.institute', 'job'])
+                    ->latest()->limit(10)->get(),
                 'placement_trends'   => $trends,
                 'jobs_by_status'     => $jobsByStatus,
             ],

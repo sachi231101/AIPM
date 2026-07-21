@@ -6,6 +6,7 @@ import {
   getAllResumes,
   saveResume,
   createDefaultResume,
+  mergeProfileIntoResume,
   createNewResume,
   duplicateResume,
   deleteResume,
@@ -19,6 +20,7 @@ import {
 
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import ResumePreview from "../../../components/ResumePreview/ResumePreview";
+import TemplateGalleryModal, { TEMPLATE_DEFINITIONS, RealResumeThumbnail } from "../../../components/TemplateGalleryModal/TemplateGalleryModal";
 
 const STEP_NAMES = [
   "Personal Information",
@@ -49,14 +51,12 @@ const SKILL_CATEGORIES = [
 ];
 
 const POPULAR_SKILLS_SUGGESTIONS = [
-  { name: "Tally Prime", category: "accountingFinance" },
-  { name: "Tally ERP 9", category: "accountingFinance" },
-  { name: "Financial Accounting", category: "accountingFinance" },
-  { name: "GST & Income Tax", category: "accountingFinance" },
-  { name: "Advanced MS Excel", category: "officeTools" },
-  { name: "Data Entry", category: "officeTools" },
-  { name: "MS Office Suite", category: "officeTools" },
+  { name: "JavaScript", category: "programmingLanguages" },
+  { name: "React", category: "frontend" },
+  { name: "Node.js", category: "backend" },
   { name: "Python", category: "programmingLanguages" },
+  { name: "HTML5 & CSS3", category: "frontend" },
+  { name: "Git & GitHub", category: "tools" },
   { name: "Java", category: "programmingLanguages" },
   { name: "SQL", category: "backend" },
   { name: "React.js", category: "frontend" },
@@ -68,60 +68,81 @@ const POPULAR_SKILLS_SUGGESTIONS = [
 
 export default function ResumeBuilder() {
   const { user } = useAuth();
-  const [resumes, setResumes] = useState([]);
   const [activeResume, setActiveResume] = useState(null);
   const [currentStep, setCurrentStep] = useState(0); // 0 to 10
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
+  const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const [coverLetterText, setCoverLetterText] = useState("");
   const [targetRole, setTargetRole] = useState("Full Stack Developer");
   const [newSkillInput, setNewSkillInput] = useState({});
 
-  // Fetch initial profile data & build resume from student registration details
+  // Fetch student profile & pre-fill single Master Resume
   useEffect(() => {
+    let profileData = {};
     studentService.getProfile()
       .then((pres) => {
-        const pdata = pres.data?.data || {};
-        const freshResume = createDefaultResume(pdata);
-        setResumes([freshResume]);
-        setActiveResume(freshResume);
-        saveResume(freshResume);
-
-        // Sync with database API
-        resumeService.getAll().then((res) => {
-          const dbResumes = res.data?.data || [];
-          if (dbResumes.length > 0) {
-            const parsed = dbResumes.map((r) => r.content);
-            setResumes(parsed);
-            setActiveResume(parsed[0]);
-          } else {
-            resumeService.save({
-              resume_key: freshResume.id,
-              title: freshResume.title || "Master Resume",
-              content: freshResume,
-            }).catch(() => {});
-          }
-        }).catch(() => {});
+        profileData = pres.data?.data || {};
+        return resumeService.getAll();
+      })
+      .then((res) => {
+        const dbResumes = res.data?.data || [];
+        if (dbResumes.length > 0) {
+          const first = dbResumes[0].content || {};
+          // Merge profile info into existing resume so missing fields get pre-filled
+          const merged = mergeProfileIntoResume(first, profileData);
+          const masterRes = {
+            ...merged,
+            id: dbResumes[0].resume_key || "master",
+            title: "Master Resume",
+          };
+          setActiveResume(masterRes);
+          saveResume(masterRes, user?.id);
+        } else {
+          // 0 resumes in DB -> create single default Master Resume pre-filled with profile data
+          const freshResume = createDefaultResume(profileData);
+          freshResume.id = "master";
+          freshResume.title = "Master Resume";
+          setActiveResume(freshResume);
+          saveResume(freshResume, user?.id);
+          resumeService.save({
+            resume_key: "master",
+            title: "Master Resume",
+            content: freshResume,
+          }).catch(() => {});
+        }
       })
       .catch(() => {
         const fallback = createDefaultResume({});
-        setResumes([fallback]);
+        fallback.id = "master";
+        fallback.title = "Master Resume";
         setActiveResume(fallback);
       });
-  }, []);
+  }, [user?.id]);
 
-  // Autosave when activeResume changes (syncs to both localStorage & database)
+  const handleSyncProfile = async () => {
+    try {
+      const pres = await studentService.getProfile();
+      const pdata = pres.data?.data || {};
+      const merged = mergeProfileIntoResume(activeResume, pdata);
+      handleUpdateResume(merged);
+      toast.success("Pre-filled resume with your latest profile information! 🎉");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch profile information.");
+    }
+  };
+
+  // Autosave when activeResume changes (syncs to both user-scoped localStorage & database)
   const handleUpdateResume = (updatedObj) => {
     setActiveResume(updatedObj);
-    saveResume(updatedObj);
-    const updatedList = resumes.map((r) => (r.id === updatedObj.id ? updatedObj : r));
-    setResumes(updatedList);
+    saveResume(updatedObj, user?.id);
 
     // Save to Database API
     resumeService.save({
-      resume_key: updatedObj.id,
-      title: updatedObj.title || "Master Resume",
+      resume_key: updatedObj.id || "master",
+      title: "Master Resume",
       content: updatedObj,
     }).catch((err) => console.warn("Database sync notice", err));
   };
@@ -129,57 +150,6 @@ export default function ResumeBuilder() {
   if (!activeResume) return <div className="text-center py-5"><div className="spinner-border text-primary"></div></div>;
 
   const atsMetrics = calculateATSMetrics(activeResume);
-
-  // Handlers for switching / creating resumes
-  const handleSwitchResume = (id) => {
-    const target = resumes.find((r) => r.id === id);
-    if (target) setActiveResume(target);
-  };
-
-  const handleCreateResume = () => {
-    const created = createNewResume(`Resume ${resumes.length + 1}`);
-    const updatedList = getAllResumes();
-    setResumes(updatedList);
-    setActiveResume(created);
-    toast.success("Created new resume!");
-
-    resumeService.save({
-      resume_key: created.id,
-      title: created.title,
-      content: created,
-    }).catch(() => {});
-  };
-
-  const handleDuplicate = (id) => {
-    const dup = duplicateResume(id);
-    if (dup) {
-      const updatedList = getAllResumes();
-      setResumes(updatedList);
-      setActiveResume(dup);
-      toast.success("Resume duplicated!");
-
-      resumeService.save({
-        resume_key: dup.id,
-        title: dup.title,
-        content: dup,
-      }).catch(() => {});
-    }
-  };
-
-  const handleDelete = (id) => {
-    if (resumes.length <= 1) {
-      toast.warn("You must keep at least one resume.");
-      return;
-    }
-    if (window.confirm("Are you sure you want to delete this resume?")) {
-      const remaining = deleteResume(id);
-      setResumes(remaining);
-      setActiveResume(remaining[0]);
-      toast.info("Resume deleted.");
-
-      resumeService.delete(id).catch(() => {});
-    }
-  };
 
   // Field change helper for Personal Info
   const handlePersonalChange = (field, val) => {
@@ -395,69 +365,91 @@ export default function ResumeBuilder() {
         title="Resume Builder"
         subtitle="Create, customize, and optimize ATS-friendly resumes for your placement applications."
         action={
-          <button className="btn btn-success btn-sm d-flex align-items-center gap-1" onClick={() => setShowPreviewModal(true)}>
-            <i className="bi bi-eye"></i> Live Preview
-          </button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" onClick={handleSyncProfile}>
+              <i className="bi bi-arrow-repeat"></i> Auto-Fill Profile Info
+            </button>
+            <button className="btn btn-success btn-sm d-flex align-items-center gap-1" onClick={() => setShowPreviewModal(true)}>
+              <i className="bi bi-eye"></i> Live Preview
+            </button>
+          </div>
         }
       />
 
       <div className="row g-4">
         {/* ─── LEFT SIDEBAR (25%) ─────────────────────────────────────────── */}
         <div className="col-lg-3">
-          {/* Active Resume Title & Selector */}
+          {/* Master Resume Card */}
           <div className="card border-0 shadow-sm mb-3">
             <div className="card-body p-3">
-              <label className="form-label small text-muted fw-bold uppercase mb-1">Active Resume Version</label>
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <select className="form-select form-select-sm fw-semibold" value={activeResume.id} onChange={(e) => handleSwitchResume(e.target.value)}>
-                  {resumes.map((r) => (
-                    <option key={r.id} value={r.id}>{r.title}</option>
-                  ))}
-                </select>
-                <button className="btn btn-light btn-sm" onClick={handleCreateResume} title="Create New Resume">
-                  <i className="bi bi-plus-lg"></i>
-                </button>
+              <div className="d-flex align-items-center justify-content-between">
+                <span className="fw-bold text-primary small">
+                  <i className="bi bi-file-earmark-person-fill me-1"></i> My Master Resume
+                </span>
+                <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Active & Synced</span>
               </div>
-
-              {/* Title edit */}
-              <input
-                type="text"
-                className="form-control form-control-sm text-muted small"
-                value={activeResume.title}
-                onChange={(e) => handleUpdateResume({ ...activeResume, title: e.target.value })}
-                placeholder="Resume Version Title"
-              />
-
-              <div className="d-flex justify-content-between mt-2 pt-2 border-top">
-                <button className="btn btn-link btn-sm p-0 text-secondary" onClick={() => handleDuplicate(activeResume.id)}>
-                  <i className="bi bi-files me-1"></i>Duplicate
-                </button>
-                <button className="btn btn-link btn-sm p-0 text-danger" onClick={() => handleDelete(activeResume.id)}>
-                  <i className="bi bi-trash me-1"></i>Delete
-                </button>
-              </div>
+              <small className="text-muted d-block mt-1 mb-2" style={{ fontSize: "0.75rem" }}>
+                Auto-saved and attached to your job applications.
+              </small>
+              <button className="btn btn-sm btn-light-primary w-100 text-primary fw-semibold" style={{ fontSize: "0.75rem" }} onClick={handleSyncProfile}>
+                <i className="bi bi-arrow-repeat me-1"></i> Pre-fill Profile Info
+              </button>
             </div>
           </div>
 
+          {/* Small Live Resume Preview in Sidebar */}
+          <div className="card border-0 shadow-sm mb-3">
+            <div className="card-body p-2">
+              <div className="d-flex align-items-center justify-content-between mb-2 px-1">
+                <span className="fw-bold text-dark small" style={{ fontSize: "0.8rem" }}>
+                  <i className="bi bi-file-earmark-text text-primary me-1"></i> Live Resume Preview
+                </span>
+                <span className="badge bg-primary text-capitalize" style={{ fontSize: "0.65rem" }}>
+                  {activeResume.settings?.template || "modern"}
+                </span>
+              </div>
 
+              {/* Scaled Miniature Live Resume */}
+              <div className="border rounded bg-white overflow-hidden shadow-sm">
+                <RealResumeThumbnail templateId={activeResume.settings?.template || "modern"} resumeData={activeResume} />
+              </div>
 
-          {/* Template Quick Selector */}
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary w-100 fw-semibold mt-2"
+                style={{ fontSize: "0.75rem" }}
+                onClick={() => setShowPreviewModal(true)}
+              >
+                <i className="bi bi-arrows-angle-expand me-1"></i> Fullscreen Preview
+              </button>
+            </div>
+          </div>
+
+          {/* Select Template Style directly in Sidebar */}
           <div className="card border-0 shadow-sm mb-3">
             <div className="card-body p-3">
-              <label className="form-label small text-muted fw-bold uppercase mb-2">Resume Template</label>
-              <div className="d-grid gap-1">
-                {["modern", "professional", "minimal", "executive", "student"].map((tpl) => (
-                  <button
-                    key={tpl}
-                    className={`btn btn-sm text-start capitalize d-flex justify-content-between align-items-center ${
-                      activeResume.settings?.template === tpl ? "btn-primary" : "btn-outline-light text-dark border-0"
-                    }`}
-                    onClick={() => handleUpdateResume({ ...activeResume, settings: { ...activeResume.settings, template: tpl } })}
-                  >
-                    <span>{tpl}</span>
-                    {activeResume.settings?.template === tpl && <i className="bi bi-check-lg"></i>}
-                  </button>
-                ))}
+              <label className="form-label small text-muted fw-bold uppercase mb-2" style={{ letterSpacing: "0.5px" }}>Select Template Style</label>
+              <div className="d-flex flex-column gap-1">
+                {TEMPLATE_DEFINITIONS.map((tpl) => {
+                  const isSelected = (activeResume.settings?.template || "modern") === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      className={`btn btn-sm text-start d-flex align-items-center justify-content-between p-2 rounded transition-all ${
+                        isSelected ? "btn-primary fw-bold shadow-sm" : "btn-outline-light text-dark border border-light-subtle"
+                      }`}
+                      style={{ fontSize: "0.78rem" }}
+                      onClick={() => handleUpdateResume({ ...activeResume, settings: { ...activeResume.settings, template: tpl.id } })}
+                    >
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="rounded-circle border" style={{ width: 10, height: 10, background: tpl.accentColor }}></span>
+                        <span>{tpl.name}</span>
+                      </div>
+                      {isSelected && <i className="bi bi-check-circle-fill"></i>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -964,25 +956,53 @@ export default function ResumeBuilder() {
               {/* STEP 10: Settings */}
               {currentStep === 9 && (
                 <div>
-                  <h5 className="fw-bold text-primary mb-3"><i className="bi bi-sliders me-2"></i>Resume Layout & Design Settings</h5>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <h5 className="fw-bold text-primary mb-0"><i className="bi bi-palette2 me-2"></i>Resume Layout & Template Examples</h5>
+                    <button className="btn btn-primary btn-sm fw-semibold" onClick={() => setShowTemplateGallery(true)}>
+                      <i className="bi bi-grid-fill me-1"></i> Open Full Gallery & Examples
+                    </button>
+                  </div>
+
+                  <div className="row g-3 mb-4">
+                    {TEMPLATE_DEFINITIONS.map((tpl) => {
+                      const isSelected = (activeResume.settings?.template || "modern") === tpl.id;
+                      return (
+                        <div key={tpl.id} className="col-md-6 col-lg-4">
+                          <div
+                            className={`card border-2 h-100 shadow-sm rounded-3 cursor-pointer overflow-hidden ${
+                              isSelected ? "border-primary bg-primary bg-opacity-10" : "border-light-subtle bg-white"
+                            }`}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleUpdateResume({ ...activeResume, settings: { ...activeResume.settings, template: tpl.id } })}
+                          >
+                            <div className="bg-white p-2 border-bottom">
+                              <RealResumeThumbnail templateId={tpl.id} resumeData={activeResume} />
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="d-flex align-items-center justify-content-between mb-1">
+                                <span className="fw-bold small text-dark">{tpl.name}</span>
+                                {isSelected && <span className="badge bg-primary">Active</span>}
+                              </div>
+                              <small className="text-muted d-block mb-2" style={{ fontSize: "0.75rem" }}>
+                                {tpl.category}
+                              </small>
+                              <button
+                                type="button"
+                                className={`btn btn-xs w-100 ${isSelected ? "btn-primary fw-bold" : "btn-outline-primary"}`}
+                                style={{ fontSize: "0.75rem" }}
+                              >
+                                {isSelected ? "Active Selected" : "Use This Template"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   <div className="row g-4">
                     <div className="col-md-6">
-                      <label className="form-label small text-muted fw-bold">Template Style</label>
-                      <select
-                        className="form-select"
-                        value={activeResume.settings?.template || "modern"}
-                        onChange={(e) => handleUpdateResume({ ...activeResume, settings: { ...activeResume.settings, template: e.target.value } })}
-                      >
-                        <option value="modern">Modern (Clean & Professional)</option>
-                        <option value="professional">Professional (Corporate Executive)</option>
-                        <option value="minimal">Minimal (Typography Focused)</option>
-                        <option value="executive">Executive (Two-Column Sidebar)</option>
-                        <option value="student">Student / Fresher Focused</option>
-                      </select>
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label small text-muted fw-bold">Accent Color</label>
+                      <label className="form-label small text-muted fw-bold">Accent Theme Color</label>
                       <div className="d-flex align-items-center gap-2">
                         <input
                           type="color"
@@ -990,7 +1010,7 @@ export default function ResumeBuilder() {
                           value={activeResume.settings?.accentColor || "#0F4C81"}
                           onChange={(e) => handleUpdateResume({ ...activeResume, settings: { ...activeResume.settings, accentColor: e.target.value } })}
                         />
-                        <span className="small text-muted">{activeResume.settings?.accentColor || "#0F4C81"}</span>
+                        <span className="small text-muted font-monospace">{activeResume.settings?.accentColor || "#0F4C81"}</span>
                       </div>
                     </div>
                   </div>
@@ -1065,6 +1085,21 @@ export default function ResumeBuilder() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── VISUAL TEMPLATE GALLERY MODAL ─────────────────────────────────── */}
+      {showTemplateGallery && (
+        <TemplateGalleryModal
+          currentTemplate={activeResume.settings?.template || "modern"}
+          resumeData={activeResume}
+          onSelectTemplate={(tplId) =>
+            handleUpdateResume({
+              ...activeResume,
+              settings: { ...activeResume.settings, template: tplId },
+            })
+          }
+          onClose={() => setShowTemplateGallery(false)}
+        />
       )}
     </div>
   );

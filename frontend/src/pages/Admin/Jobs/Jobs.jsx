@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 import { jobService } from "../../../services/api";
 import { useCachedData } from "../../../hooks/useCachedData";
+import { getCompanyLogo, handleLogoError } from "../../../utils/logoHelper";
 
 const statusColors = { 
   Published: "success", 
@@ -35,9 +36,7 @@ export default function Jobs() {
     id: job.id,
     title: job.title,
     company: job.company?.name || "Unknown Company",
-    companyLogo: job.company?.logo_path
-      ? `http://localhost:8000/storage/${job.company.logo_path}`
-      : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+    companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
     location: job.location,
     salary: job.salary,
     status: statusMap[job.status] || "Pending",
@@ -123,7 +122,15 @@ export default function Jobs() {
                       <td className="px-4 text-muted">{i + 1}</td>
                       <td>
                         <div className="d-flex align-items-center gap-3">
-                          <img src={job.companyLogo} alt={job.company} width={36} height={36} className="rounded-2" style={{ objectFit: "cover" }} />
+                          <img
+                            src={job.companyLogo}
+                            alt={job.company}
+                            width={36}
+                            height={36}
+                            className="rounded-2"
+                            style={{ objectFit: "cover" }}
+                            onError={(e) => handleLogoError(e, job.company)}
+                          />
                           <div>
                             <p className="fw-medium mb-0 small">{job.title}</p>
                             <small className="text-muted">{job.company}</small>

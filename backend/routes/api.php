@@ -31,7 +31,8 @@ Route::post('/admin/login',      [AdminAuthController::class, 'login']);
 Route::get('/jobs',         [JobController::class, 'index']);
 Route::get('/jobs/{id}',    [JobController::class, 'show']);
 
-// Company Public Job Submission
+// Company Public Job Submission & Listing
+Route::get('/companies',            [CompanyController::class, 'index']);
 Route::post('/company/job-request', [CompanyController::class, 'submitJob']);
 
 // Public Institute Listing (for registration dropdown)
@@ -80,6 +81,7 @@ Route::middleware(['auth:sanctum', 'role:admin,subadmin'])->prefix('admin')->gro
         Route::put('/jobs/{id}/publish',    [AdminJobController::class, 'publish']);
         Route::put('/jobs/{id}/close',      [AdminJobController::class, 'close']);
 
+        Route::get('/applications',             [AdminApplicationController::class, 'index']);
         Route::get('/jobs/{id}/applications',   [AdminApplicationController::class, 'index']);
         Route::post('/send-to-company',         [AdminApplicationController::class, 'sendToCompany']);
 

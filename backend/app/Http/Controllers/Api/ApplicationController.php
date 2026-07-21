@@ -20,7 +20,9 @@ class ApplicationController extends Controller
         $student = $user->student;
 
         $request->validate([
-            'job_id' => 'required|exists:placement_jobs,id',
+            'job_id'      => 'required|exists:placement_jobs,id',
+            'resume_type' => 'nullable|string|in:uploaded,builder',
+            'resume_key'  => 'nullable|string',
         ]);
 
         $job = PlacementJob::with('institutes')->findOrFail($request->job_id);
@@ -49,10 +51,13 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'Students from unlisted institutes cannot apply.'], 403);
         }
 
-        // Check profile completion
-        if ($student->profile_completion < 100) {
+        // Check profile completion (must have uploaded resume OR created resume in app)
+        $hasUploadedResume = filled($student->resume_path);
+        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
+
+        if (!$hasUploadedResume && !$hasCreatedResume) {
             return response()->json([
-                'message' => 'Please complete your profile and upload your resume before applying.',
+                'message' => 'Please create a resume or upload one before applying.',
             ], 422);
         }
 
@@ -65,10 +70,20 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'You have already applied for this placement drive.'], 409);
         }
 
+        $resumeType = $request->resume_type ?? ($hasUploadedResume ? 'uploaded' : 'builder');
+        $resumeKey  = $request->resume_key;
+
+        if ($resumeType === 'builder' && !$resumeKey) {
+            $defaultResume = \App\Models\StudentResume::where('student_id', $student->id)->orderByDesc('is_default')->first();
+            $resumeKey = $defaultResume?->resume_key;
+        }
+
         Application::create([
             'student_id'  => $student->id,
             'job_id'      => $job->id,
             'resume_path' => $student->resume_path,
+            'resume_type' => $resumeType,
+            'resume_key'  => $resumeKey,
             'applied_at'  => now(),
         ]);
 

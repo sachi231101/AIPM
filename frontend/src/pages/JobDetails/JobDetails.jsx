@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "react-toastify";
 import { jobService, studentService, applicationService } from "../../services/api";
+import { getCompanyLogo, handleLogoError } from "../../utils/logoHelper";
 
 const statusMap = {
   published: "Published",
@@ -14,26 +15,27 @@ const statusMap = {
 
 export default function JobDetails() {
   const { id } = useParams();
-  const { user, role } = useAuth();
+  const { user } = useAuth();
+  const role = user?.role;
   const [job, setJob] = useState(null);
   const [student, setStudent] = useState(null);
+  const [isApplied, setIsApplied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const jobRes = await jobService.getById(id);
-        const backendJob = jobRes.data.data;
+        const res = await jobService.getById(id);
+        const backendJob = res.data.data;
 
         // Map backend job to UI structure
         const mappedJob = {
           id: backendJob.id,
           title: backendJob.title,
           company: backendJob.company?.name || "Unknown Company",
-          companyLogo: backendJob.company?.logo_path
-            ? `http://localhost:8000/storage/${backendJob.company.logo_path}`
-            : "https://placehold.co/100x100?text=" + encodeURIComponent(backendJob.company?.name || "Job"),
+          companyLogo: getCompanyLogo(backendJob.company?.logo_path, backendJob.company?.name),
           location: backendJob.location,
           salary: backendJob.salary,
           experience: backendJob.experience,
@@ -50,8 +52,14 @@ export default function JobDetails() {
 
         if (role === "student") {
           try {
-            const profileRes = await studentService.getProfile();
+            const [profileRes, appsRes] = await Promise.all([
+              studentService.getProfile(),
+              applicationService.getMyApplications().catch(() => ({ data: { data: [] } })),
+            ]);
             setStudent(profileRes.data.data);
+            const myApps = appsRes.data?.data || [];
+            const applied = myApps.some((app) => String(app.job?.id) === String(id));
+            setIsApplied(applied);
           } catch (profileErr) {
             console.error("Failed to load student profile for eligibility check", profileErr);
           }
@@ -94,26 +102,22 @@ export default function JobDetails() {
       toast.error("Student profile not loaded.");
       return;
     }
-    // Calculate dynamic completion checklist locally
-    const sections = {
-      personal: !!(student.email && student.dob && student.gender && student.address),
-      academic: !!(student.course && student.branch && student.batch),
-      resume: !!(student.resume_url || student.resumeUrl),
-      skills: !!(student.skills && student.skills.length > 0)
-    };
-    const completedCount = Object.values(sections).filter(Boolean).length;
-    const profileCompletion = completedCount * 25;
-
-    if (profileCompletion < 100) {
-      toast.error("Please complete your profile and upload your resume before applying.");
+    const hasUploadedResume = !!(student.resume_path || student.resume_url || student.resumeUrl);
+    const hasCreatedResume = !!(student.has_created_resume);
+    if (!hasUploadedResume && !hasCreatedResume) {
+      toast.error("Please create a resume in Resume Builder or upload a PDF first before applying.", { autoClose: 4000 });
       return;
     }
     try {
+      setApplying(true);
       await applicationService.apply({ job_id: job.id });
+      setIsApplied(true);
       toast.success(`Successfully applied for ${job.title} at ${job.company}! 🎉`);
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to submit application.");
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -145,6 +149,7 @@ export default function JobDetails() {
                     width={80}
                     height={80}
                     style={{ objectFit: "cover" }}
+                    onError={(e) => handleLogoError(e, job.company)}
                   />
                   <div className="flex-grow-1">
                     <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
@@ -209,12 +214,33 @@ export default function JobDetails() {
               ) : role === "student" && isEligible ? (
                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                   <div>
-                    <h6 className="fw-bold text-success mb-1"><i className="bi bi-check-circle-fill me-2"></i>You are eligible for this drive!</h6>
-                    <p className="text-muted small mb-0">Your institute is part of this placement drive.</p>
+                    <h6 className="fw-bold text-success mb-1">
+                      <i className="bi bi-check-circle-fill me-2"></i>
+                      {isApplied ? "You have applied for this drive!" : "You are eligible for this drive!"}
+                    </h6>
+                    <p className="text-muted small mb-0">
+                      {isApplied
+                        ? "Your application and resume have been submitted."
+                        : "Your institute is part of this placement drive."}
+                    </p>
                   </div>
-                  <button className="btn btn-success btn-lg" onClick={handleApply}>
-                    <i className="bi bi-send me-2"></i>Apply Now
-                  </button>
+                  {isApplied ? (
+                    <button className="btn btn-success btn-lg fw-semibold" disabled>
+                      <i className="bi bi-check-circle-fill me-2"></i>Applied
+                    </button>
+                  ) : (
+                    <button className="btn btn-success btn-lg" onClick={handleApply} disabled={applying}>
+                      {applying ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>Applying...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-send me-2"></i>Apply Now
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               ) : role === "student" ? (
                 <div className="d-flex align-items-start gap-3">

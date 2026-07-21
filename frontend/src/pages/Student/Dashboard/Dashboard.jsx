@@ -6,6 +6,7 @@ import StatCard from "../../../components/StatCard/StatCard";
 import JobCard from "../../../components/JobCard/JobCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { studentService, jobService, applicationService } from "../../../services/api";
+import { getCompanyLogo } from "../../../utils/logoHelper";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -26,28 +27,9 @@ export default function StudentDashboard() {
         const profile = profileRes.data.data;
         setStudent(profile);
 
-        // Fetch and map jobs
-        const rawJobs = jobsRes.data.data || [];
-        const mappedJobs = rawJobs.map((job) => ({
-          id: job.id,
-          title: job.title,
-          company: job.company?.name || "Unknown Company",
-          companyLogo: job.company?.logo_path
-            ? `http://localhost:8000/storage/${job.company.logo_path}`
-            : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
-          location: job.location,
-          salary: job.salary,
-          experience: job.experience,
-          skills: job.skills || [],
-          status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
-          lastDate: job.last_date,
-          eligibleInstitutes: job.institutes?.map((i) => i.id) || [],
-          instituteId: job.institutes?.map((i) => i.id) || [],
-        }));
-        setAvailableJobs(mappedJobs);
-
         // Fetch and map applications
         const rawApps = appsRes.data.data || [];
+        const appliedJobIds = new Set(rawApps.map((app) => app.job?.id));
         const mappedApps = rawApps.map((app) => ({
           id: app.id,
           jobTitle: app.job?.title || "Unknown Job",
@@ -56,6 +38,25 @@ export default function StudentDashboard() {
           appliedAt: app.applied_at,
         }));
         setMyApplications(mappedApps);
+
+        // Fetch and map jobs
+        const rawJobs = jobsRes.data.data || [];
+        const mappedJobs = rawJobs.map((job) => ({
+          id: job.id,
+          title: job.title,
+          company: job.company?.name || "Unknown Company",
+          companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
+          location: job.location,
+          salary: job.salary,
+          experience: job.experience,
+          skills: job.skills || [],
+          status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
+          lastDate: job.last_date,
+          eligibleInstitutes: job.institutes?.map((i) => i.id) || [],
+          instituteId: job.institutes?.map((i) => i.id) || [],
+          isApplied: appliedJobIds.has(job.id),
+        }));
+        setAvailableJobs(mappedJobs);
       } catch (err) {
         console.error("Error loading dashboard data", err);
         toast.error("Failed to load dashboard statistics.");
@@ -96,15 +97,25 @@ export default function StudentDashboard() {
     { id: 3, type: "warning", icon: "bi-exclamation-circle-fill", text: `Profile completion is at ${student.profileCompletion}%. Please update your details.`, time: "Just now" },
   ];
 
+  const hasUploadedResume = !!(student?.resume_path || student?.resume_url || student?.resumeUrl);
+  const hasCreatedResume = !!(student?.has_created_resume);
+  const hasAnyResume = hasUploadedResume || hasCreatedResume;
+
   const handleApply = async (job) => {
-    if (student.profileCompletion < 100) {
-      toast.error("Please complete your profile and upload your resume before applying.");
+    if (!hasAnyResume) {
+      toast.error("Please create a resume in Resume Builder or upload a PDF first before applying.", {
+        autoClose: 4000,
+      });
       return;
     }
     try {
       await applicationService.apply({ job_id: job.id });
       toast.success(`Applied for ${job.title} at ${job.company}! 🎉`);
-      
+
+      setAvailableJobs((prev) =>
+        prev.map((j) => (j.id === job.id ? { ...j, isApplied: true } : j))
+      );
+
       // Refresh applications list
       const appsRes = await applicationService.getMyApplications();
       const rawApps = appsRes.data.data || [];
@@ -194,9 +205,9 @@ export default function StudentDashboard() {
             <div className="card-body p-4">
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <div className="d-flex align-items-center gap-3">
-                  {student.profilePhoto ? (
+                  {(student.profile_photo || student.profilePhoto) ? (
                     <img 
-                      src={student.profilePhoto} 
+                      src={student.profile_photo || student.profilePhoto} 
                       alt={student.name} 
                       className="rounded-circle border border-primary border-2 p-1" 
                       style={{ width: 48, height: 48, objectFit: "cover" }} 
@@ -259,7 +270,7 @@ export default function StudentDashboard() {
             {recentJobs.length > 0 ? (
               recentJobs.map((job) => (
                 <div key={job.id} className="col-md-6">
-                  <JobCard job={job} showApply onApply={handleApply} />
+                  <JobCard job={job} showApply onApply={() => handleApply(job)} />
                 </div>
               ))
             ) : (
@@ -308,7 +319,7 @@ export default function StudentDashboard() {
                       <p className="small fw-medium mb-0">{app.jobTitle}</p>
                       <small className="text-muted">{app.company}</small>
                     </div>
-                    <span className={`badge bg-${app.status === "Shortlisted" ? "success" : "secondary"} bg-opacity-10 text-${app.status === "Shortlisted" ? "success" : "secondary"} small`}>
+                    <span className={`badge bg-${app.status === "shortlisted" || app.status === "Shortlisted" ? "success" : (app.status === "rejected" || app.status === "Rejected" ? "danger" : "primary")} bg-opacity-10 text-${app.status === "shortlisted" || app.status === "Shortlisted" ? "success" : (app.status === "rejected" || app.status === "Rejected" ? "danger" : "primary")} small`}>
                       {app.status}
                     </span>
                   </div>

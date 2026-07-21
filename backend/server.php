@@ -4,6 +4,51 @@
 if (isset($_SERVER['REQUEST_URI'])) {
     $uriPath = rawurldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
     
+    // Match /storage/company-logos/{filename}
+    if (preg_match('|^/storage/company-logos/([^/]+)$|i', $uriPath, $matches)) {
+        $filename = $matches[1];
+        $filePath = __DIR__ . '/storage/app/public/company-logos/' . $filename;
+        if (file_exists($filePath)) {
+            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            $mimeMap = [
+                'png'  => 'image/png',
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'webp' => 'image/webp',
+                'svg'  => 'image/svg+xml',
+                'gif'  => 'image/gif',
+            ];
+            $mime = $mimeMap[$ext] ?? 'image/png';
+            header('Content-Type: ' . $mime);
+            header('Content-Length: ' . filesize($filePath));
+            header('Cache-Control: public, max-age=86400');
+            readfile($filePath);
+            exit;
+        }
+    }
+
+    // Match /storage/settings/{filename}
+    if (preg_match('|^/storage/settings/([^/]+)$|i', $uriPath, $matches)) {
+        $filename = $matches[1];
+        $filePath = __DIR__ . '/storage/app/public/settings/' . $filename;
+        if (file_exists($filePath)) {
+            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            $mimeMap = [
+                'png'  => 'image/png',
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'webp' => 'image/webp',
+                'svg'  => 'image/svg+xml',
+            ];
+            $mime = $mimeMap[$ext] ?? 'image/png';
+            header('Content-Type: ' . $mime);
+            header('Content-Length: ' . filesize($filePath));
+            header('Cache-Control: public, max-age=86400');
+            readfile($filePath);
+            exit;
+        }
+    }
+
     // Match /storage/resumes/{studentId}/{filename}
     if (preg_match('|^/storage/resumes/([^/]+)/([^/]+)$|i', $uriPath, $matches)) {
         $studentId = $matches[1];
@@ -45,6 +90,7 @@ if (isset($_SERVER['REQUEST_URI'])) {
         }
     }
 }
+
 
 define('LARAVEL_START', microtime(true));
 
