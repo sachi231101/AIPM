@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
@@ -14,7 +13,9 @@ class CompanyController extends Controller
         $companies = Company::with('jobs')->get();
 
         $data = $companies->map(function ($company) {
-            $logoUrl = $company->logo_path ? Storage::url($company->logo_path) : 'https://placehold.co/100x100?text=' . urlencode($company->name);
+            $logoUrl = $company->logo_path
+                ? url('/storage/' . $company->logo_path)
+                : 'https://ui-avatars.com/api/?name=' . urlencode($company->name) . '&background=0F4C81&color=fff&size=128';
             return [
                 'id'       => $company->id,
                 'logo'     => $logoUrl,

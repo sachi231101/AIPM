@@ -32,6 +32,7 @@ class StudentProfileRequest extends FormRequest
             'linkedin'      => 'nullable|url|max:500',
             'github'        => 'nullable|url|max:500',
             'portfolio'     => 'nullable|url|max:500',
+            'profile_photo' => 'nullable|string',
         ];
     }
 }

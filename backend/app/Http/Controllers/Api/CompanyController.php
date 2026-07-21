@@ -79,4 +79,28 @@ class CompanyController extends Controller
             'message' => $message,
         ], 201);
     }
+
+    // ───────── GET /api/companies ─────────
+    public function index(): JsonResponse
+    {
+        $companies = Company::withCount(['jobs' => function ($q) {
+            $q->where('status', 'published');
+        }])->latest()->get()->map(function ($c) {
+            return [
+                'id'         => $c->id,
+                'name'       => $c->name,
+                'industry'   => $c->industry ?? 'Technology',
+                'location'   => $c->location ?? 'India',
+                'website'    => $c->website,
+                'logo_url'   => $c->logo_path ? url('/storage/' . $c->logo_path) : null,
+                'logo'       => $c->logo_path ? url('/storage/' . $c->logo_path) : null,
+                'open_jobs'  => $c->jobs_count ?? 0,
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Companies retrieved successfully.',
+            'data'    => $companies,
+        ]);
+    }
 }

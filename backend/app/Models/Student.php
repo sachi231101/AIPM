@@ -80,10 +80,13 @@ class Student extends Model
      */
     public function completionSections(): array
     {
+        $hasUploaded = filled($this->resume_path);
+        $hasCreated  = \App\Models\StudentResume::where('student_id', $this->id)->exists();
+
         return [
             'personal'  => filled($this->user?->email) && filled($this->dob) && filled($this->gender) && filled($this->address),
             'academic'  => filled($this->course) && filled($this->branch) && filled($this->batch),
-            'resume'    => filled($this->resume_path),
+            'resume'    => $hasUploaded || $hasCreated,
             'skills'    => !empty($this->skills),
         ];
     }

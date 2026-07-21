@@ -155,20 +155,20 @@ export default function Students() {
                     <h6 className="fw-bold">{selectedStudent.name}</h6>
                     <p className="text-muted small">{selectedStudent.course}</p>
                     <div className="progress mb-2" style={{ height: 8 }}>
-                      <div className="progress-bar bg-primary" style={{ width: `${selectedStudent.profileCompletion}%` }}></div>
+                      <div className="progress-bar bg-primary" style={{ width: `${selectedStudent.profileCompletion || selectedStudent.profile_completion || 100}%` }}></div>
                     </div>
-                    <small className="text-muted">{selectedStudent.profileCompletion}% Profile Complete</small>
+                    <small className="text-muted">{selectedStudent.profileCompletion || selectedStudent.profile_completion || 100}% Profile Complete</small>
                   </div>
                   <div className="col-md-8">
                     <div className="row g-3">
                       {[
-                        { label: "Email", value: selectedStudent.email, icon: "bi-envelope" },
-                        { label: "Phone", value: selectedStudent.phone, icon: "bi-telephone" },
-                        { label: "Institute", value: selectedStudent.institute, icon: "bi-bank2" },
-                        { label: "Batch/Passing Year", value: selectedStudent.batch, icon: "bi-calendar" },
+                        { label: "Email", value: selectedStudent.email || "N/A", icon: "bi-envelope" },
+                        { label: "Phone", value: selectedStudent.phone || selectedStudent.mobile || "N/A", icon: "bi-telephone" },
+                        { label: "Institute", value: selectedStudent.institute || "N/A", icon: "bi-bank2" },
+                        { label: "Batch/Passing Year", value: selectedStudent.batch || selectedStudent.passing_year || "N/A", icon: "bi-calendar" },
                         { label: "CGPA / Percentage", value: selectedStudent.cgpa || "N/A", icon: "bi-star" },
-                        { label: "Gender", value: selectedStudent.gender, icon: "bi-gender-ambiguous" },
-                        { label: "Date of Birth", value: selectedStudent.dob, icon: "bi-calendar-event" },
+                        { label: "Gender", value: selectedStudent.gender || "N/A", icon: "bi-gender-ambiguous" },
+                        { label: "Date of Birth", value: selectedStudent.dob || "N/A", icon: "bi-calendar-event" },
                       ].map((item, i) => (
                         <div key={i} className="col-6">
                           <small className="text-muted d-block"><i className={`bi ${item.icon} me-1`}></i>{item.label}</small>
@@ -178,7 +178,7 @@ export default function Students() {
                       <div className="col-12">
                         <small className="text-muted d-block mb-2"><i className="bi bi-tools me-1"></i>Technical Skills</small>
                         <div className="d-flex flex-wrap gap-1 mb-2">
-                          {selectedStudent.skills.length > 0 ? (
+                          {(selectedStudent.skills && selectedStudent.skills.length > 0) ? (
                             selectedStudent.skills.map((s, i) => <span key={i} className="badge bg-primary bg-opacity-10 text-primary">{s}</span>)
                           ) : (
                             <span className="text-muted small">No technical skills added</span>
@@ -188,19 +188,32 @@ export default function Students() {
                       <div className="col-12">
                         <small className="text-muted d-block mb-2"><i className="bi bi-person-heart me-1"></i>Soft Skills</small>
                         <div className="d-flex flex-wrap gap-1">
-                          {selectedStudent.softSkills.length > 0 ? (
+                          {(selectedStudent.softSkills && selectedStudent.softSkills.length > 0) ? (
                             selectedStudent.softSkills.map((s, i) => <span key={i} className="badge bg-success bg-opacity-10 text-success">{s}</span>)
+                          ) : (selectedStudent.soft_skills && selectedStudent.soft_skills.length > 0) ? (
+                            selectedStudent.soft_skills.map((s, i) => <span key={i} className="badge bg-success bg-opacity-10 text-success">{s}</span>)
                           ) : (
                             <span className="text-muted small">No soft skills added</span>
                           )}
                         </div>
                       </div>
-                      <div className="col-12">
-                        {selectedStudent.resumeUrl && selectedStudent.resumeUrl !== "#" ? (
-                          <a href={selectedStudent.resumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
-                            <i className="bi-file-earmark-pdf me-1"></i>View / Download Resume
+                      <div className="col-12 d-flex flex-wrap gap-2">
+                        {selectedStudent.createdResumeUrl && (
+                          <a href={selectedStudent.createdResumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
+                            <i className="bi bi-file-earmark-person me-1"></i>View Master Resume
                           </a>
-                        ) : (
+                        )}
+                        {selectedStudent.uploadedResumeUrl && (
+                          <a href={selectedStudent.uploadedResumeUrl} className="btn btn-sm btn-outline-secondary" target="_blank" rel="noreferrer">
+                            <i className="bi bi-file-earmark-pdf me-1"></i>Uploaded PDF
+                          </a>
+                        )}
+                        {!selectedStudent.createdResumeUrl && !selectedStudent.uploadedResumeUrl && selectedStudent.resumeUrl && selectedStudent.resumeUrl !== "#" && (
+                          <a href={selectedStudent.resumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
+                            <i className="bi bi-file-earmark-pdf me-1"></i>View Resume
+                          </a>
+                        )}
+                        {!selectedStudent.createdResumeUrl && !selectedStudent.uploadedResumeUrl && (!selectedStudent.resumeUrl || selectedStudent.resumeUrl === "#") && (
                           <span className="text-muted small">No resume uploaded</span>
                         )}
                       </div>

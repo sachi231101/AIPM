@@ -94,10 +94,103 @@ export function createDefaultResume(profileData = {}) {
   };
 }
 
-// ─── STORAGE MANAGERS ────────────────────────────────────────────────────────
+// Merge/pre-fill latest student profile information into a resume object
+export function mergeProfileIntoResume(resumeObj, profileData = {}) {
+  if (!resumeObj) return createDefaultResume(profileData);
 
-export function getAllResumes(profileData = {}) {
+  const name = profileData.name || profileData.fullName || "";
+  const email = profileData.email || "";
+  const phone = profileData.mobile || profileData.phone || "";
+  const location = profileData.address || "";
+  const course = profileData.course || "";
+  const branch = profileData.branch || "";
+  const institute = profileData.institute?.name || profileData.other_institute_name || (typeof profileData.institute === "string" ? profileData.institute : "");
+  const cgpa = profileData.cgpa ? String(profileData.cgpa) : "";
+  const photo = profileData.profile_photo || profileData.profilePhoto || "";
+  const profileSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
+
+  const existingPersonal = resumeObj.personal || {};
+  const existingEducation = Array.isArray(resumeObj.education) ? resumeObj.education : [];
+  const existingSkills = resumeObj.skills || {};
+
+  const mergedPersonal = {
+    ...existingPersonal,
+    fullName: existingPersonal.fullName || name,
+    email: existingPersonal.email || email,
+    phone: existingPersonal.phone || phone,
+    location: existingPersonal.location || location,
+    linkedin: existingPersonal.linkedin || profileData.linkedin || "",
+    github: existingPersonal.github || profileData.github || "",
+    portfolio: existingPersonal.portfolio || profileData.portfolio || "",
+    gender: existingPersonal.gender || profileData.gender || "",
+    dob: existingPersonal.dob || profileData.dob || "",
+    photo: existingPersonal.photo || photo,
+    professionalTitle: existingPersonal.professionalTitle || (course ? `${course}${branch ? ` - ${branch}` : ""} Student` : ""),
+    showPhoto: existingPersonal.showPhoto ?? !!photo,
+    showLinkedin: existingPersonal.showLinkedin ?? !!profileData.linkedin,
+    showGithub: existingPersonal.showGithub ?? !!profileData.github,
+    showPortfolio: existingPersonal.showPortfolio ?? !!profileData.portfolio,
+  };
+
+  const mergedEducation = existingEducation.length > 0 ? existingEducation : [
+    {
+      id: "edu_1",
+      degree: course,
+      specialization: branch,
+      college: institute,
+      university: "",
+      location: location,
+      startYear: "",
+      endYear: profileData.passing_year || profileData.batch || "",
+      cgpa: cgpa,
+      percentage: "",
+      currentlyStudying: true,
+    }
+  ];
+
+  const mergedSkills = {
+    ...existingSkills,
+    technical: (existingSkills.technical && existingSkills.technical.length > 0) ? existingSkills.technical : profileSkills,
+  };
+
+  return {
+    ...resumeObj,
+    personal: mergedPersonal,
+    education: mergedEducation,
+    skills: mergedSkills,
+  };
+}
+
+// ─── STORAGE MANAGERS (SCOPED PER LOGGED-IN STUDENT USER) ───────────────────
+
+function getCurrentUserId() {
   try {
+    const rawUser = localStorage.getItem("apms_user");
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      return u.id || u.student_id || "guest";
+    }
+  } catch (e) {}
+  return "guest";
+}
+
+function getStorageKeys(userId) {
+  const uid = userId || getCurrentUserId();
+  return {
+    STORAGE_KEY: `apms_student_resumes_${uid}`,
+    ACTIVE_RESUME_KEY: `apms_active_resume_id_${uid}`,
+  };
+}
+
+// Purge old un-scoped global key if present to prevent cross-account leaks
+try {
+  localStorage.removeItem("apms_student_resumes");
+  localStorage.removeItem("apms_active_resume_id");
+} catch (e) {}
+
+export function getAllResumes(profileData = {}, userId = "") {
+  try {
+    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       const defaultRes = createDefaultResume(profileData);
@@ -122,13 +215,27 @@ export function getAllResumes(profileData = {}) {
   }
 }
 
-export function getActiveResumeId() {
+export function saveAllResumes(resumeList, userId = "") {
+  try {
+    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(resumeList));
+    if (resumeList.length > 0) {
+      localStorage.setItem(ACTIVE_RESUME_KEY, resumeList[0].id);
+    }
+  } catch (err) {
+    console.error("Failed to save resume list", err);
+  }
+}
+
+export function getActiveResumeId(userId = "") {
+  const { ACTIVE_RESUME_KEY } = getStorageKeys(userId);
   return localStorage.getItem(ACTIVE_RESUME_KEY) || "";
 }
 
-export function saveResume(resumeObj) {
+export function saveResume(resumeObj, userId = "") {
   try {
-    const list = getAllResumes();
+    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
+    const list = getAllResumes({}, userId);
     const idx = list.findIndex((r) => r.id === resumeObj.id);
     const updatedObj = { ...resumeObj, updatedAt: new Date().toISOString() };
     if (idx >= 0) {
@@ -145,28 +252,29 @@ export function saveResume(resumeObj) {
   }
 }
 
-export function createNewResume(title = "New Resume", profileData = {}) {
+export function createNewResume(title = "New Resume", profileData = {}, userId = "") {
   const newRes = createDefaultResume(profileData);
   newRes.id = "resume_" + Date.now();
   newRes.title = title;
-  saveResume(newRes);
+  saveResume(newRes, userId);
   return newRes;
 }
 
-export function duplicateResume(id) {
-  const list = getAllResumes();
+export function duplicateResume(id, userId = "") {
+  const list = getAllResumes({}, userId);
   const target = list.find((r) => r.id === id);
   if (!target) return null;
   const clone = JSON.parse(JSON.stringify(target));
   clone.id = "resume_" + Date.now();
   clone.title = `${target.title} (Copy)`;
   clone.updatedAt = new Date().toISOString();
-  saveResume(clone);
+  saveResume(clone, userId);
   return clone;
 }
 
-export function deleteResume(id) {
-  let list = getAllResumes();
+export function deleteResume(id, userId = "") {
+  const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
+  let list = getAllResumes({}, userId);
   list = list.filter((r) => r.id !== id);
   if (list.length === 0) {
     const defaultRes = createDefaultResume();

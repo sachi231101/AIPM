@@ -22,7 +22,7 @@ export default function AppliedJobs() {
           company: app.job?.company || "Unknown Company",
           jobTitle: app.job?.title || "Unknown Job",
           appliedDate: app.applied_at,
-          status: app.status === "pending" ? "Pending" : (app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Under Review")),
+          status: app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Applied"),
           jobId: app.job?.id,
         }));
         setMyApplications(mappedApps);

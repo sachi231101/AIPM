@@ -76,6 +76,7 @@ export const resumeService = {
 export const applicationService = {
   apply: (data) => api.post("/apply", data),
   getMyApplications: () => api.get("/student/applications"),
+  getAllAdmin: (params) => api.get("/admin/applications", { params }),
   getByJob: (jobId) => api.get(`/admin/jobs/${jobId}/applications`),
   sendToCompany: (jobId) => api.post("/admin/send-to-company", { job_id: jobId }),
 };
@@ -90,6 +91,7 @@ export const instituteService = {
 
 // ─── COMPANIES ───────────────────────────────────────────────────────────────
 export const companyService = {
+  getPublic: () => api.get("/companies"),
   getAll: (params) => api.get("/admin/companies", { params }),
   submitJob: (formData) => api.post("/company/job-request", formData, {
     headers: { "Content-Type": "multipart/form-data" },

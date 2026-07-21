@@ -6,7 +6,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { getStudents, updateStudentProfile } from "../../../utils/studentStorage";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import ResumeUpload from "../../../components/ResumeUpload/ResumeUpload";
-import { studentService } from "../../../services/api";
+import { studentService, resumeService } from "../../../services/api";
 
 export default function Profile() {
   const { user, login } = useAuth();
@@ -14,16 +14,24 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [resumeFile, setResumeFile] = useState(null);
   const [photoBase64, setPhotoBase64] = useState("");
+  const [builderResumes, setBuilderResumes] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [imgError, setImgError] = useState(false);
 
   // Load latest student data from backend API
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await studentService.getProfile();
-      const current = response.data.data;
+      const [profileRes, resumesRes] = await Promise.all([
+        studentService.getProfile(),
+        resumeService.getAll().catch(() => ({ data: { data: [] } })),
+      ]);
+      const current = profileRes.data.data;
       setStudent(current);
-      setPhotoBase64(current.profile_photo || "");
+      setImgError(false);
+      setPhotoBase64(current.profile_photo || current.profilePhoto || "");
+      setBuilderResumes(resumesRes.data?.data || []);
     } catch (err) {
       console.error("Failed to load profile from database, using fallback", err);
       // Fallback
@@ -75,12 +83,13 @@ export default function Profile() {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 1024 * 1024 * 2) {
-        toast.error("Profile photo must be smaller than 2MB.");
+      if (file.size > 1024 * 1024 * 5) {
+        toast.error("Profile photo must be smaller than 5MB.");
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
+        setImgError(false);
         setPhotoBase64(reader.result);
       };
       reader.readAsDataURL(file);
@@ -119,6 +128,7 @@ export default function Profile() {
         linkedin: data.linkedin.trim() || null,
         github: data.github.trim() || null,
         portfolio: data.portfolio.trim() || null,
+        profile_photo: photoBase64 || null,
       };
 
       // 3. Save to backend database
@@ -156,6 +166,10 @@ export default function Profile() {
       const token = localStorage.getItem("apms_token");
       login(updatedUser, "student", token);
       setStudent(updatedUser);
+      setImgError(false);
+      if (updatedUser.profile_photo) {
+        setPhotoBase64(updatedUser.profile_photo);
+      }
 
       toast.success("Profile Updated Successfully 🎉");
       setEditing(false);
@@ -203,12 +217,13 @@ export default function Profile() {
         <div className="col-lg-3">
           <div className="card border-0 shadow-sm text-center p-4 mb-4">
             <div className="position-relative d-inline-block mx-auto mb-3">
-              {photoBase64 ? (
+              {photoBase64 && !imgError ? (
                 <img
                   src={photoBase64}
                   alt={student.name}
                   className="rounded-circle border border-primary border-2 p-1"
                   style={{ width: 100, height: 100, objectFit: "cover" }}
+                  onError={() => setImgError(true)}
                 />
               ) : (
                 <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: 100, height: 100, fontSize: 32 }}>
@@ -451,33 +466,84 @@ export default function Profile() {
 
                 <hr className="my-4" />
 
-                {/* 4. RESUME UPLOAD & BUILDER */}
+                {/* 4. RESUME & DOCUMENTS */}
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <i className="bi bi-file-earmark-arrow-up-fill text-danger"></i>
-                    <h6 className="fw-bold mb-0">Resume & Documents <span className="text-danger">*</span></h6>
+                    <i className="bi bi-file-earmark-person-fill text-primary"></i>
+                    <h6 className="fw-bold mb-0">My Resumes & Documents <span className="text-danger">*</span></h6>
                   </div>
                   <Link to="/student/resume-builder" className="btn btn-warning btn-sm fw-bold text-dark">
-                    <i className="bi bi-file-earmark-person me-1"></i> Generate Resume
+                    <i className="bi bi-plus-lg me-1"></i> Build Resume
                   </Link>
                 </div>
-                <div className="mb-4">
-                  {editing ? (
-                    <ResumeUpload onFileSelect={setResumeFile} currentFile={resumeFileName} />
-                  ) : (
-                    hasResume ? (
-                      <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-3">
-                        <i className="bi bi-file-earmark-pdf-fill text-danger fs-4"></i>
-                        <div className="flex-grow-1">
-                          <p className="fw-medium mb-0 small">{resumeFileName}</p>
-                          <small className="text-muted">Uploaded and active</small>
-                        </div>
-                        <a href={resumeUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary"><i className="bi bi-eye me-1"></i>View Resume</a>
-                      </div>
+
+                <div className="mb-4 d-flex flex-column gap-3">
+                  {/* Uploaded PDF Section */}
+                  <div className="card border-0 bg-light p-3 rounded-3">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="fw-bold small text-dark">
+                        <i className="bi bi-file-earmark-pdf-fill text-danger me-2"></i>
+                        Uploaded PDF Resume
+                      </span>
+                      {hasResume && !editing && (
+                        <a href={resumeUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary py-1 px-3" style={{ fontSize: "0.75rem" }}>
+                          <i className="bi bi-eye me-1"></i>View PDF
+                        </a>
+                      )}
+                    </div>
+                    {editing ? (
+                      <ResumeUpload onFileSelect={setResumeFile} currentFile={resumeFileName} />
                     ) : (
-                      <div className="alert alert-warning small py-2 mb-0"><i className="bi bi-exclamation-triangle-fill me-2"></i>No resume uploaded. Please edit your profile to upload one.</div>
-                    )
-                  )}
+                      hasResume ? (
+                        <p className="text-muted small mb-0">{resumeFileName}</p>
+                      ) : (
+                        <p className="text-warning small mb-0"><i className="bi bi-exclamation-circle me-1"></i>No PDF file uploaded. Edit profile to upload a file.</p>
+                      )
+                    )}
+                  </div>
+
+                  {/* Created Resume Section */}
+                  <div className="card border-0 bg-light p-3 rounded-3">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="fw-bold small text-dark">
+                        <i className="bi bi-pencil-square text-success me-2"></i>
+                        Created Master Resume
+                      </span>
+                      <Link to="/student/resume-builder" className="btn btn-sm btn-outline-success py-1 px-3" style={{ fontSize: "0.75rem" }}>
+                        <i className="bi bi-pencil me-1"></i>Edit Resume
+                      </Link>
+                    </div>
+
+                    <div className="d-flex align-items-center justify-content-between bg-white p-2 px-3 rounded border mt-1">
+                      <div>
+                        <span className="fw-semibold small d-block text-dark">
+                          Master Resume
+                          <span className="badge bg-success ms-2" style={{ fontSize: "0.65rem" }}>Active</span>
+                        </span>
+                        <small className="text-muted" style={{ fontSize: "0.75rem" }}>
+                          Auto-synced with placement applications
+                        </small>
+                      </div>
+                      <div className="d-flex gap-2">
+                        <a
+                          href={`http://localhost:8000/created-resume/${student?.student_id || student?.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-xs btn-outline-primary"
+                          style={{ fontSize: "0.75rem" }}
+                        >
+                          <i className="bi bi-eye me-1"></i>View Resume
+                        </a>
+                        <Link
+                          to="/student/resume-builder"
+                          className="btn btn-xs btn-outline-secondary"
+                          style={{ fontSize: "0.75rem" }}
+                        >
+                          <i className="bi bi-pencil me-1"></i>Edit
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <hr className="my-4" />

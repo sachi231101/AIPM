@@ -14,17 +14,25 @@ class ApplicantsExport implements FromCollection, WithHeadings, WithStyles
 
     public function collection(): Collection
     {
-        return $this->applications->map(fn ($app) => [
-            $app->student->user->name,
-            $app->student->institute?->name ?? $app->student->other_institute_name ?? 'N/A',
-            $app->student->course ?? '-',
-            $app->student->mobile,
-            $app->student->user->email ?? '-',
-            $app->resume_path
-                ? url('storage/' . $app->resume_path)
-                : 'No resume',
-            $app->applied_at?->format('d M Y'),
-        ]);
+        return $this->applications->map(function ($app) {
+            $hasUploaded = filled($app->resume_path);
+            $hasCreated  = \App\Models\StudentResume::where('student_id', $app->student_id)->exists();
+
+            $createdUrl = $hasCreated
+                ? url('created-resume/' . $app->student_id . ($app->resume_key ? '?key=' . $app->resume_key : ''))
+                : 'N/A';
+
+            return [
+                $app->student->user->name,
+                $app->student->institute?->name ?? $app->student->other_institute_name ?? 'N/A',
+                $app->student->course ?? '-',
+                $app->student->mobile,
+                $app->student->user->email ?? '-',
+                $hasUploaded ? url('storage/' . $app->resume_path) : 'N/A',
+                $createdUrl,
+                $app->applied_at?->format('d M Y'),
+            ];
+        });
     }
 
     public function headings(): array
@@ -35,7 +43,8 @@ class ApplicantsExport implements FromCollection, WithHeadings, WithStyles
             'Course',
             'Phone',
             'Email',
-            'Resume Link',
+            'Uploaded Resume Link',
+            'App Created Resume Link',
             'Applied Date',
         ];
     }

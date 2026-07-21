@@ -1,28 +1,35 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import {companies, testimonials, institutes } from "../../utils/mockData";
+import { companies as mockCompanies, testimonials, institutes } from "../../utils/mockData";
 import JobCard from "../../components/JobCard/JobCard";
 import CompanyCard from "../../components/CompanyCard/CompanyCard";
-import { jobService } from "../../services/api";
+import { jobService, companyService } from "../../services/api";
+
+import { getCompanyLogo, handleLogoError } from "../../utils/logoHelper";
 
 export default function Home() {
   const [latestJobs, setLatestJobs] = useState([]);
+  const [realCompanies, setRealCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await jobService.getAll();
-        const rawJobs = res.data.data || [];
-        const mapped = rawJobs.map((job) => ({
+        const [jobsRes, compRes] = await Promise.all([
+          jobService.getAll().catch(() => ({ data: { data: [] } })),
+          companyService.getPublic().catch(() => ({ data: { data: [] } })),
+        ]);
+
+        const rawJobs = jobsRes.data?.data || [];
+        const rawComps = compRes.data?.data || [];
+
+        const mappedJobs = rawJobs.map((job) => ({
           id: job.id,
           title: job.title,
           company: job.company?.name || "Unknown Company",
-          companyLogo: job.company?.logo_path
-            ? `http://localhost:8000/storage/${job.company.logo_path}`
-            : "https://placehold.co/100x100?text=" + encodeURIComponent(job.company?.name || "Job"),
+          companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
           location: job.location,
           salary: job.salary,
           experience: job.experience,
@@ -30,14 +37,29 @@ export default function Home() {
           status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
           lastDate: job.last_date,
         }));
-        setLatestJobs(mapped.slice(0, 3));
+        setLatestJobs(mappedJobs.slice(0, 3));
+
+        if (rawComps && rawComps.length > 0) {
+          const mappedComps = rawComps.map((c) => ({
+            id: c.id,
+            name: c.name,
+            logo: getCompanyLogo(c.logo_url || c.logo, c.name),
+            industry: c.industry || "Technology",
+            location: c.location || "India",
+            openJobs: c.open_jobs || 0,
+          }));
+          setRealCompanies(mappedComps);
+        } else {
+          setRealCompanies(mockCompanies);
+        }
       } catch (err) {
-        console.error("Failed to load jobs for home page", err);
+        console.error("Failed to load home page data", err);
+        setRealCompanies(mockCompanies);
       } finally {
         setLoading(false);
       }
     };
-    fetchJobs();
+    fetchData();
   }, []);
 
   const handleCourseRegister = (e) => {
@@ -84,7 +106,15 @@ export default function Home() {
                     style={{ transform: `rotate(${i === 0 ? "-3deg" : "3deg"}) translateY(${i === 0 ? "0" : "60px"})` }}
                   >
                     <div className="card-body p-3 d-flex align-items-center gap-3">
-                      <img src={job.companyLogo} alt={job.company} width={44} height={44} className="rounded-2" />
+                      <img
+                        src={job.companyLogo}
+                        alt={job.company}
+                        width={44}
+                        height={44}
+                        className="rounded-2"
+                        style={{ objectFit: "cover" }}
+                        onError={(e) => handleLogoError(e, job.company)}
+                      />
                       <div>
                         <p className="fw-bold mb-0 small">{job.title}</p>
                         <p className="text-muted mb-0" style={{ fontSize: "0.75rem" }}>{job.company} • {job.location}</p>
@@ -187,76 +217,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── GOOGLE REVIEWS ──────────────────────────────────────────────── */}
-      <section className="py-5 bg-light border-top border-bottom">
-        <div className="container">
-          <div className="row align-items-center g-5">
-            <div className="col-lg-4 text-center text-lg-start">
-              <span className="badge bg-success bg-opacity-10 text-success fw-semibold px-3 py-2 mb-3 rounded-pill">
-                Google Reviews
-              </span>
-              <h2 className="fw-bold mb-3">A Great Place to Grow</h2>
-              <div className="d-flex align-items-center justify-content-center justify-content-lg-start gap-2 mb-3">
-                <span className="display-4 fw-bold text-dark">5.0</span>
-                <div>
-                  <div className="text-warning">
-                    <i className="bi bi-star-fill"></i>
-                    <i className="bi bi-star-fill ms-1"></i>
-                    <i className="bi bi-star-fill ms-1"></i>
-                    <i className="bi bi-star-fill ms-1"></i>
-                    <i className="bi bi-star-fill ms-1"></i>
-                  </div>
-                  <small className="text-muted">Based on 572 reviews</small>
-                </div>
-              </div>
-              <p className="text-muted">
-                Our students consistently rate us as excellent for our teaching quality, learning environment, and supportive trainers.
-              </p>
-              <div className="d-flex align-items-center justify-content-center justify-content-lg-start gap-2 mt-4">
-                <i className="bi bi-google text-primary fs-3"></i>
-                <span className="fw-bold text-muted">Google Rating</span>
-              </div>
-            </div>
-            <div className="col-lg-8">
-              <div className="row g-3" style={{ maxHeight: "350px", overflowY: "auto", paddingRight: "10px" }}>
-                {[
-                  { name: "Gayathri", review: "Best institute for learning coding", time: "1 year ago" },
-                  { name: "Ashwini AN", review: "It's a very good institute...Teaching excellently", time: "1 year ago" },
-                  { name: "Suvarna Singh", review: "We are gaining good knowledge in aadya institute thankyou shreyas sir for suggesting a course", time: "1 year ago" },
-                  { name: "Keerthana", review: "Aadya institute offers a great learning environment with excellent facilities. The training teacher sharddha mam was highly skilled, supportive, and made learning easy and engaging. I truly enjoyed my experience here.", time: "1 year ago" },
-                  { name: "Shanmugam Sha", review: "it was very good experience.. i learnt about excel the way of teaching was so good especially our trainer shraddha mam teaching", time: "1 year ago" },
-                  { name: "Akshay Upadhya", review: "I learnt excel and many skills provided by this institution and I was able to learn very soon these skills because there teaching was excellent.", time: "1 year ago" },
-                  { name: "Krishnasamy N", review: "Sir I want to spoken english course I want to know about yourgood fees", time: "1 year ago" },
-                ].map((item, i) => (
-                  <div key={i} className="col-12">
-                    <div className="card border-0 shadow-sm p-3">
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <div className="d-flex align-items-center gap-2">
-                          <div className="rounded-circle bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center fw-bold" style={{ width: 36, height: 36, fontSize: "0.85rem" }}>
-                            {item.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="fw-bold mb-0 small">{item.name}</p>
-                            <small className="text-muted" style={{ fontSize: "0.75rem" }}>{item.time}</small>
-                          </div>
-                        </div>
-                        <div className="text-warning small">
-                          <i className="bi bi-star-fill"></i>
-                          <i className="bi bi-star-fill ms-1"></i>
-                          <i className="bi bi-star-fill ms-1"></i>
-                          <i className="bi bi-star-fill ms-1"></i>
-                          <i className="bi bi-star-fill ms-1"></i>
-                        </div>
-                      </div>
-                      <p className="text-muted mb-0 small">"{item.review}"</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── PARTNER INSTITUTES ───────────────────────────────────────────── */}
       <section className="py-5">
@@ -288,7 +248,7 @@ export default function Home() {
             <p className="text-muted">Companies that trust Aadya Placements for campus hiring</p>
           </div>
           <div className="row g-4">
-            {companies.map((company) => (
+            {(realCompanies.length > 0 ? realCompanies : mockCompanies).map((company) => (
               <div key={company.id} className="col-6 col-md-4 col-lg-2-4">
                 <CompanyCard company={company} />
               </div>

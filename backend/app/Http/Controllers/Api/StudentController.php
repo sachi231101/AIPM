@@ -36,7 +36,36 @@ class StudentController extends Controller
         }
 
         // Update student profile
-        $student->update($request->safe()->except('email'));
+        $updateData = $request->safe()->except('email');
+        if ($request->filled('profile_photo')) {
+            $photoData = $request->input('profile_photo');
+            if (str_starts_with($photoData, 'data:image')) {
+                @list($type, $fileData) = explode(';', $photoData);
+                @list(, $fileData) = explode(',', $fileData);
+                if ($fileData) {
+                    $decoded = base64_decode($fileData);
+                    $dir = public_path('profile_photos');
+                    if (!file_exists($dir)) {
+                        mkdir($dir, 0777, true);
+                    }
+                    $relPath = 'profile_photos/student_' . $student->id . '_' . time() . '.png';
+                    $fullPath = public_path($relPath);
+
+                    if ($student->profile_photo && !str_starts_with($student->profile_photo, 'http') && file_exists(public_path($student->profile_photo))) {
+                        @unlink(public_path($student->profile_photo));
+                    }
+
+                    file_put_contents($fullPath, $decoded);
+                    $updateData['profile_photo'] = $relPath;
+                }
+            } elseif (str_starts_with($photoData, 'http://') || str_starts_with($photoData, 'https://')) {
+                $parsedPath = parse_url($photoData, PHP_URL_PATH);
+                $updateData['profile_photo'] = ltrim($parsedPath, '/');
+            } else {
+                $updateData['profile_photo'] = $photoData;
+            }
+        }
+        $student->update($updateData);
 
         // Recalculate completion
         $student->refresh();
@@ -108,8 +137,14 @@ class StudentController extends Controller
             'linkedin'            => $student->linkedin,
             'github'              => $student->github,
             'portfolio'           => $student->portfolio,
-            'profile_photo'       => $student->profile_photo ? Storage::url($student->profile_photo) : null,
-            'resume_url'          => $student->resume_path ? Storage::url($student->resume_path) : null,
+            'profile_photo'       => $student->profile_photo ? (str_starts_with($student->profile_photo, 'http') || str_starts_with($student->profile_photo, 'data:') ? $student->profile_photo : url('/' . ltrim($student->profile_photo, '/'))) : null,
+            'resume_path'         => $student->resume_path,
+            'resume_url'          => $student->resume_path ? url('/storage/' . $student->resume_path) : null,
+            'has_uploaded_resume' => filled($student->resume_path),
+            'has_created_resume'  => \App\Models\StudentResume::where('student_id', $student->id)->exists(),
+            'created_resume_url'  => \App\Models\StudentResume::where('student_id', $student->id)->exists()
+                                     ? url('/created-resume/' . $student->id)
+                                     : null,
             'profile_completion'  => $student->profile_completion,
         ];
     }
