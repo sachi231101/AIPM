@@ -91,7 +91,9 @@ export const instituteService = {
 // ─── COMPANIES ───────────────────────────────────────────────────────────────
 export const companyService = {
   getAll: (params) => api.get("/admin/companies", { params }),
-  submitJob: (data) => api.post("/company/job-request", data),
+  submitJob: (formData) => api.post("/company/job-request", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }),
 };
 
 // ─── EMAIL LOGS ──────────────────────────────────────────────────────────────

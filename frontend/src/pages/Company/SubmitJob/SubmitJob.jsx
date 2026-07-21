@@ -1,34 +1,76 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { companyService } from "../../../services/api";
 
 export default function SubmitJob() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [logoError, setLogoError] = useState("");
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/svg+xml", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      setLogoError("Please upload a valid image file (JPG, PNG, WEBP, SVG).");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError("File size must be less than 2MB.");
+      return;
+    }
+
+    setLogoError("");
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setLogoError("");
+  };
 
   const onSubmit = async (data) => {
+    if (logoError) return;
+
     try {
       const skillsArray = data.skills ? data.skills.split(",").map(s => s.trim()).filter(Boolean) : [];
-      const payload = {
-        company_name: data.companyName.trim(),
-        hr_name: data.hrName.trim(),
-        hr_email: data.hrEmail.trim(),
-        phone: data.phone.trim(),
-        website: data.website?.trim() || null,
-        industry: "Technology",
-        title: data.jobTitle.trim(),
-        description: data.jobDescription.trim(),
-        eligibility: data.eligibility.trim(),
-        skills: skillsArray,
-        experience: data.experience,
-        salary: data.salary.trim(),
-        location: data.jobLocation.trim(),
-        openings: parseInt(data.openings) || 1,
-        last_date: data.lastDate,
-      };
+      
+      const formData = new FormData();
+      formData.append("company_name", data.companyName.trim());
+      formData.append("hr_name", data.hrName.trim());
+      formData.append("hr_email", data.hrEmail.trim());
+      formData.append("phone", data.phone.trim());
+      if (data.website?.trim()) {
+        formData.append("website", data.website.trim());
+      }
+      formData.append("industry", "Technology");
+      formData.append("title", data.jobTitle.trim());
+      formData.append("description", data.jobDescription.trim());
+      formData.append("eligibility", data.eligibility.trim());
+      formData.append("experience", data.experience);
+      formData.append("salary", data.salary.trim());
+      formData.append("location", data.jobLocation.trim());
+      formData.append("openings", parseInt(data.openings) || 1);
+      formData.append("last_date", data.lastDate);
 
-      await companyService.submitJob(payload);
+      skillsArray.forEach((skill) => {
+        formData.append("skills[]", skill);
+      });
+
+      if (logoFile) {
+        formData.append("logo", logoFile);
+      }
+
+      await companyService.submitJob(formData);
       toast.success("Job submitted successfully! Our team will review it shortly.");
       reset();
+      handleRemoveLogo();
     } catch (err) {
       console.error(err);
       const errMsg = err.response?.data?.message || "Failed to submit job request. Verify all inputs.";
@@ -112,9 +154,32 @@ export default function SubmitJob() {
                         <input {...register("website")} className="form-control" placeholder="https://company.com" />
                       </div>
                       <div className="col-md-6">
-                        <label className="form-label small fw-medium">Company Logo URL</label>
-                        <input {...register("logoUrl")} className="form-control" placeholder="https://..." />
-                        <small className="text-muted">Paste a publicly accessible logo URL</small>
+                        <label className="form-label small fw-medium">Company Logo Image</label>
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
+                          className={`form-control ${logoError ? "is-invalid" : ""}`}
+                          onChange={handleLogoChange}
+                        />
+                        <small className="text-muted d-block mt-1">Upload logo image (JPG, PNG, WEBP, SVG - Max 2MB)</small>
+                        {logoError && <div className="text-danger small mt-1">{logoError}</div>}
+                        {logoPreview && (
+                          <div className="mt-2 d-flex align-items-center gap-3 p-2 bg-light border rounded">
+                            <img
+                              src={logoPreview}
+                              alt="Logo preview"
+                              style={{ height: "48px", width: "48px", objectFit: "contain", borderRadius: "6px", backgroundColor: "#fff" }}
+                            />
+                            <span className="small text-muted text-truncate" style={{ maxWidth: "180px" }}>{logoFile?.name}</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger ms-auto"
+                              onClick={handleRemoveLogo}
+                            >
+                              <i className="bi bi-trash me-1"></i>Remove
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -197,7 +262,7 @@ export default function SubmitJob() {
                       <button type="submit" className="btn btn-primary btn-lg px-5 fw-semibold" disabled={isSubmitting}>
                         {isSubmitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</> : <><i className="bi bi-send-fill me-2"></i>Submit Job Drive</>}
                       </button>
-                      <button type="reset" className="btn btn-outline-secondary btn-lg" onClick={() => reset()}>
+                      <button type="reset" className="btn btn-outline-secondary btn-lg" onClick={() => { reset(); handleRemoveLogo(); }}>
                         <i className="bi bi-arrow-counterclockwise me-2"></i>Reset Form
                       </button>
                     </div>
