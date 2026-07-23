@@ -71,7 +71,7 @@ export default function Settings() {
       const res = await settingsService.uploadLogo(formData);
       const newLogoUrl = res.data.logo_url.startsWith("http")
         ? res.data.logo_url
-        : `http://localhost:8000${res.data.logo_url}`;
+        : `http://${window.location.hostname}:8000${res.data.logo_url}`;
       setLogoUrl(newLogoUrl);
       toast.success("Institute logo updated successfully! 🎉");
       refreshSettings();

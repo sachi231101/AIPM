@@ -198,7 +198,7 @@ export default function Profile() {
   const profileCompletion = student.profile_completion ?? student.profileCompletion ?? 0;
   const hasResume = !!(student.resume_url || student.resumeUrl);
   const resumeFileName = hasResume ? (student.resume_url?.split("/").pop() || student.resumeUrl?.split("/").pop() || student.resumeName || "resume.pdf") : null;
-  const resumeUrl = student.resume_url ? `http://localhost:8000${student.resume_url}` : (student.resumeUrl ? `http://localhost:8000${student.resumeUrl}` : "#");
+  const resumeUrl = student.resume_url ? `http://${window.location.hostname}:8000${student.resume_url}` : (student.resumeUrl ? `http://${window.location.hostname}:8000${student.resumeUrl}` : "#");
 
   return (
     <div className="container-lg">
@@ -526,7 +526,7 @@ export default function Profile() {
                       </div>
                       <div className="d-flex gap-2">
                         <a
-                          href={`http://localhost:8000/created-resume/${student?.student_id || student?.id}`}
+                          href={`http://${window.location.hostname}:8000/created-resume/${student?.student_id || student?.id}`}
                           target="_blank"
                           rel="noreferrer"
                           className="btn btn-xs btn-outline-primary"

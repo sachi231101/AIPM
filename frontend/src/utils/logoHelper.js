@@ -6,7 +6,7 @@ export const getCompanyLogo = (logoPath, companyName = "Company") => {
     return logoPath;
   }
   const cleanPath = logoPath.startsWith("/") ? logoPath.slice(1) : logoPath;
-  return `http://localhost:8000/storage/${cleanPath}`;
+  return `http://${window.location.hostname}:8000/storage/${cleanPath}`;
 };
 
 export const handleLogoError = (e, companyName = "Company") => {

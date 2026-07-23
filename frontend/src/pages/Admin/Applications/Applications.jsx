@@ -34,11 +34,11 @@ export default function Applications() {
   const applicationsList = rawApps.map((app) => {
     let uploadedUrl = app.uploaded_resume_url;
     if (uploadedUrl && !uploadedUrl.startsWith("http")) {
-      uploadedUrl = `http://localhost:8000${uploadedUrl.startsWith('/') ? '' : '/'}${uploadedUrl}`;
+      uploadedUrl = `http://${window.location.hostname}:8000${uploadedUrl.startsWith('/') ? '' : '/'}${uploadedUrl}`;
     }
     let createdUrl = app.created_resume_url;
     if (createdUrl && !createdUrl.startsWith("http")) {
-      createdUrl = `http://localhost:8000${createdUrl.startsWith('/') ? '' : '/'}${createdUrl}`;
+      createdUrl = `http://${window.location.hostname}:8000${createdUrl.startsWith('/') ? '' : '/'}${createdUrl}`;
     }
 
     return {
