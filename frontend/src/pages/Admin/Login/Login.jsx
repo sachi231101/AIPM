@@ -40,7 +40,7 @@ export default function AdminLogin() {
                 <i className="bi bi-shield-lock-fill text-warning fs-2"></i>
               </div>
               <h4 className="text-white fw-bold">Admin Portal</h4>
-              <p className="text-white-50 small">Secure access for Aadya administrators</p>
+              <p className="text-white-50 small">Secure access for Aadya Institution Placement Cell administrators</p>
             </div>
 
             <div className="card border-0 shadow-lg rounded-4">

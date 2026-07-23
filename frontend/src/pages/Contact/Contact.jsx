@@ -42,19 +42,19 @@ export default function Contact() {
                   icon: "bi-geo-alt-fill", 
                   color: "#0F4C81", 
                   title: "Branch 1 – Ramamurthy Nagar", 
-                  lines: ["183, 2nd Floor, 1st Main Road", "Opp, Old Police Station, Next to Uttam Sagar Hotel", "Above Nilgiris, Ramamurthy Nagar, Bengaluru – 560016", "Phone: +91 99641 94324"] 
+                  lines: ["183, 2nd Floor, 1st Main Road", "Opp, Old Police Station, Next to Uttam Sagar Hotel", "Above Nilgiris, Ramamurthy Nagar, Bengaluru – 560016", "Phone: +91 96202 22392"] 
                 },
                 { 
                   icon: "bi-geo-alt-fill", 
                   color: "#1E88E5", 
                   title: "Branch 2 – Malleshwaram", 
-                  lines: ["235, Sampige Rd", "Malleshwaram 15 & 16th cross", "Sampige Main Road, Bengaluru – 560003", "Phone: +91 96202 22392"] 
+                  lines: ["235, Sampige Rd", "Malleshwaram 15 & 16th cross", "Sampige Main Road, Bengaluru – 560003", "Phone: +91 99641 94324"] 
                 },
                 { 
                   icon: "bi-envelope-fill", 
                   color: "#2E7D32", 
                   title: "Email", 
-                  lines: ["aadyainstitute2016@gmail.com"] 
+                  lines: ["rakshith@edifyinstitution.com"] 
                 },
                 { 
                   icon: "bi-clock-fill", 
@@ -122,7 +122,7 @@ export default function Contact() {
                         type="tel"
                         {...register("phone")}
                         className="form-control"
-                        placeholder="+91 98765 43210"
+                        placeholder="Number"
                       />
                     </div>
                     <div className="col-md-6">

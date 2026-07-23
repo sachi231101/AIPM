@@ -129,7 +129,7 @@ export default function Home() {
         </div>
         {/* Wave */}
         <div className="hero-wave">
-          <svg viewBox="0 0 1440 80" preserveAspectRatio="none"><path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f8f9fa"/></svg>
+          <svg viewBox="0 0 1440 80" preserveAspectRatio="none"><path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#ffffff"/></svg>
         </div>
       </section>
 
@@ -261,8 +261,8 @@ export default function Home() {
       <section className="py-5">
         <div className="container">
           <div className="text-center mb-5">
-            <h2 className="fw-bold mb-2">Student Success Stories</h2>
-            <p className="text-muted">Hear from students who landed their dream jobs through Aadya Placements</p>
+            <h2 className="fw-bold mb-2">Student Reviews & Feedback</h2>
+            <p className="text-muted">Real Google reviews from students trained at Aadya Institution</p>
           </div>
           <div className="row g-4">
             {testimonials.map((t) => (
@@ -307,7 +307,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h6 className="fw-bold mb-0">Have Questions?</h6>
-                  <p className="text-muted mb-0 small">Email us at aadyainstitute2016@gmail.com</p>
+                  <p className="text-muted mb-0 small">Email us at rakshith@edifyinstitution.com</p>
                 </div>
               </div>
             </div>
@@ -353,6 +353,94 @@ export default function Home() {
             <Link to="/contact" className="btn btn-outline-light btn-lg">
               <i className="bi bi-chat-dots me-2"></i>Contact Us
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── ACADEMY HUNT EDUCATION DIRECTORY SECTION ─────────────────────── */}
+      <section className="py-5 border-top" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0f6ff 100%)" }}>
+        <div className="container py-4">
+          <div className="text-center max-w-3xl mx-auto mb-5">
+            <span className="badge bg-primary bg-opacity-10 text-primary fw-bold px-3 py-2 rounded-pill mb-3 d-inline-flex align-items-center gap-2">
+              <img src="/academyhunt-logo.png" alt="Academy Hunt Icon" style={{ height: "22px", objectFit: "contain" }} />
+              <span>India's Premier Education Directory</span>
+            </span>
+            <h2 className="display-6 fw-bold text-dark mb-3 d-flex align-items-center justify-content-center gap-2 flex-wrap">
+              Find Your Perfect Academy with <img src="/academyhunt-full-logo.png" alt="Academy Hunt" style={{ height: "46px", objectFit: "contain" }} />
+            </h2>
+            <p className="text-muted lead fs-6 mb-0">
+              Discover and compare the best coaching centers, academies, and professional courses across India to boost your skills and placement readiness.
+            </p>
+          </div>
+
+          {/* Directory Card */}
+          <div className="card border-0 shadow-lg rounded-4 overflow-hidden mb-4 bg-white p-4 p-md-5">
+            <div className="row align-items-center g-4">
+              <div className="col-lg-8">
+                <div className="d-flex align-items-center gap-3 mb-3">
+                  <div className="bg-white p-1 rounded-3 border shadow-sm d-flex align-items-center justify-content-center flex-shrink-0" style={{ height: 48, padding: "4px 12px" }}>
+                    <img src="/academyhunt-logo.png" alt="Academy Hunt Logo" style={{ height: "36px", objectFit: "contain" }} />
+                  </div>
+                  <div>
+                    <h5 className="fw-bold mb-0 text-dark">Explore Academies & Courses Across India</h5>
+                    <small className="text-muted">Compare top coaching centers and specialized training institutes in one place</small>
+                  </div>
+                </div>
+
+                {/* Categories Bar matching Academy Hunt */}
+                <div className="d-flex flex-wrap gap-2 my-3">
+                  {[
+                    { label: "Technology & Software", icon: "bi-laptop" },
+                    { label: "Health", icon: "bi-activity" },
+                    { label: "Engineering", icon: "bi-gear-wide-connected" },
+                    { label: "Government", icon: "bi-bank" },
+                    { label: "Commerce", icon: "bi-graph-up-arrow" },
+                    { label: "Skill Development", icon: "bi-award" },
+                  ].map((cat, idx) => (
+                    <span key={idx} className="badge bg-light text-dark border px-3 py-2 rounded-pill font-weight-normal small">
+                      <i className={`bi ${cat.icon} me-1 text-primary`}></i>{cat.label}
+                    </span>
+                  ))}
+                </div>
+
+                <p className="text-muted small mt-3 mb-4">
+                  Whether you're looking for tech bootcamps, exam coaching, or skill certification programs, Academy Hunt helps you browse verified academies, check course syllabi, compare fee structures, and claim exclusive discounts.
+                </p>
+
+                <div className="d-flex flex-wrap gap-3">
+                  <a
+                    href="https://academyhunt.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary btn-lg fw-semibold px-4"
+                  >
+                    Explore Academies on Academy Hunt <i className="bi bi-arrow-up-right ms-1"></i>
+                  </a>
+            
+                </div>
+              </div>
+
+              {/* Right Highlight Box */}
+              <div className="col-lg-4">
+                <div className="bg-primary text-white p-4 rounded-4 shadow h-100 d-flex flex-column justify-content-between">
+                  <div>
+                    <span className="badge bg-warning text-dark fw-bold px-3 py-1 rounded-pill mb-3">EXCLUSIVES & OFFERS</span>
+                    <h4 className="fw-bold mb-2">Compare & Choose Best Institutes</h4>
+                    <p className="small text-white-75 mb-4">
+                      Check course syllabi, student ratings, fee structures, and special bootcamp offers to find the right institute for your career goals.
+                    </p>
+                  </div>
+                  <a
+                    href="https://academyhunt.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-warning text-dark fw-bold w-100 py-2.5 shadow-sm"
+                  >
+                    <i className="bi bi-globe me-2"></i>Visit Academy Hunt
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
