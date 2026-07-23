@@ -1061,13 +1061,24 @@ export default function ResumeBuilder() {
                   <i className="bi bi-arrow-left me-1"></i> Previous
                 </button>
                 <span className="small text-muted">Step {currentStep + 1} of {STEP_NAMES.length}</span>
-                <button
-                  className="btn btn-primary"
-                  disabled={currentStep === STEP_NAMES.length - 1}
-                  onClick={() => setCurrentStep((s) => Math.min(STEP_NAMES.length - 1, s + 1))}
-                >
-                  Next <i className="bi bi-arrow-right ms-1"></i>
-                </button>
+                {currentStep === STEP_NAMES.length - 1 ? (
+                  <button
+                    className="btn btn-success fw-bold px-4"
+                    onClick={() => {
+                      toast.success("Resume submitted successfully!");
+                      setShowPreviewModal(true);
+                    }}
+                  >
+                    <i className="bi bi-check-circle me-1"></i> Submit
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setCurrentStep((s) => Math.min(STEP_NAMES.length - 1, s + 1))}
+                  >
+                    Next <i className="bi bi-arrow-right ms-1"></i>
+                  </button>
+                )}
               </div>
             </div>
           </div>

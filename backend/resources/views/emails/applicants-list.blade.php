@@ -35,7 +35,7 @@
     <p>Best regards,<br><strong>Aadya Placements Team</strong></p>
   </div>
   <div class="footer">
-    © {{ date('Y') }} Aadya Placements | aadyainstitute2016@gmail.com<br>
+    © {{ date('Y') }} Aadya Institution Placement Cell | rakshith@edifyinstitution.com<br>
     183, 2nd Floor, 1st Main Road, Ramamurthy Nagar, Bengaluru – 560016
   </div>
 </body>

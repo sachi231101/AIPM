@@ -16,7 +16,7 @@ class SettingsController extends Controller
         return response()->json([
             'data' => [
                 'instituteName'              => $settings->get('institute_name', 'Aadya Institute'),
-                'email'                      => $settings->get('contact_email', 'aadyainstitute2016@gmail.com'),
+                'email'                      => $settings->get('contact_email', 'rakshith@edifyinstitution.com'),
                 'phone'                      => $settings->get('contact_phone', '+91 99641 94324'),
                 'address'                    => $settings->get('address', '183, 2nd Floor, 1st Main Road, Ramamurthy Nagar, Bengaluru – 560016'),
                 'website'                    => $settings->get('website', 'https://aadyainstitute.com'),

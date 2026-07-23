@@ -5,15 +5,32 @@ export default function Navbar() {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = (e) => {
+    closeNavbar(e);
     logout();
     navigate("/");
+  };
+
+  const closeNavbar = (e) => {
+    if (e?.target?.closest('.dropdown-toggle')) return;
+
+    const navbarCollapse = document.getElementById("navbarMain");
+    if (navbarCollapse && navbarCollapse.classList.contains("show")) {
+      const bsCollapse = window.bootstrap?.Collapse?.getInstance(navbarCollapse);
+      if (bsCollapse) {
+        bsCollapse.hide();
+      } else if (window.bootstrap?.Collapse) {
+        new window.bootstrap.Collapse(navbarCollapse).hide();
+      } else {
+        navbarCollapse.classList.remove("show");
+      }
+    }
   };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light apms-navbar sticky-top">
       <div className="container">
-        <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
+        <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/" onClick={closeNavbar}>
           <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
         </Link>
 
@@ -29,7 +46,7 @@ export default function Navbar() {
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        <div className="collapse navbar-collapse" id="navbarMain">
+        <div className="collapse navbar-collapse" id="navbarMain" onClick={closeNavbar}>
           <ul className="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-lg-2">
             <li className="nav-item">
               <NavLink className="nav-link" to="/" end>Home</NavLink>
@@ -48,7 +65,7 @@ export default function Navbar() {
             </li>
           </ul>
 
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 mt-2 mt-lg-0 pb-2 pb-lg-0">
             {user && role === "student" ? (
               <div className="dropdown">
                 <button
@@ -59,7 +76,7 @@ export default function Navbar() {
                   <i className="bi bi-person-circle"></i>
                   {user.name?.split(" ")[0]}
                 </button>
-                <ul className="dropdown-menu dropdown-menu-end shadow">
+                <ul className="dropdown-menu dropdown-menu-start dropdown-menu-lg-end shadow">
                   <li><Link className="dropdown-item" to="/student/dashboard"><i className="bi bi-speedometer2 me-2"></i>Dashboard</Link></li>
                   <li><Link className="dropdown-item" to="/student/profile"><i className="bi bi-person me-2"></i>My Profile</Link></li>
                   <li><Link className="dropdown-item" to="/student/resume-builder"><i className="bi bi-file-earmark-person me-2 text-primary"></i>Resume Builder</Link></li>
@@ -78,7 +95,7 @@ export default function Navbar() {
                 >
                   <i className="bi bi-shield-exclamation me-1"></i>Admin
                 </button>
-                <ul className="dropdown-menu dropdown-menu-end shadow">
+                <ul className="dropdown-menu dropdown-menu-start dropdown-menu-lg-end shadow">
                   <li><Link className="dropdown-item" to="/admin/dashboard"><i className="bi bi-speedometer2 me-2"></i>Dashboard</Link></li>
                   <li><hr className="dropdown-divider" /></li>
                   <li><button className="dropdown-item text-danger" onClick={handleLogout}><i className="bi bi-box-arrow-right me-2"></i>Logout</button></li>

@@ -11,7 +11,7 @@ class SettingsSeeder extends Seeder
     {
         $settings = [
             ['key' => 'institute_name',  'value' => 'Aadya Institute'],
-            ['key' => 'contact_email',   'value' => 'aadyainstitute2016@gmail.com'],
+            ['key' => 'contact_email',   'value' => 'rakshith@edifyinstitution.com'],
             ['key' => 'contact_phone',   'value' => '+91 99641 94324'],
             ['key' => 'address',         'value' => '183, 2nd Floor, 1st Main Road, Ramamurthy Nagar, Bengaluru – 560016'],
             ['key' => 'website',         'value' => 'https://aadyainstitute.com'],

@@ -109,9 +109,9 @@ export default function Register() {
         <div className="row justify-content-center">
           <div className="col-lg-6 col-md-8">
             <div className="text-center mb-4">
-              <Link to="/" className="d-inline-flex align-items-center gap-2 text-decoration-none">
-                <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "48px", objectFit: "contain" }} />
-                <span className="fw-bold fs-4 text-dark ms-1">Aadya Placement Cell</span>
+              <Link to="/" className="d-flex flex-column align-items-center gap-2 text-decoration-none">
+                <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "52px", objectFit: "contain" }} />
+                <span className="fw-bold fs-4 text-dark text-center">Aadya Institution Placement Cell</span>
               </Link>
             </div>
 
