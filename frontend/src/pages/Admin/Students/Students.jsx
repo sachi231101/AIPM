@@ -30,7 +30,7 @@ export default function Students() {
     skills: s.skills || [],
     softSkills: s.softSkills || s.soft_skills || [],
     profileCompletion: s.profile_completion || 0,
-    resumeUrl: s.resume_url ? `http://localhost:8000${s.resume_url}` : "#"
+    resumeUrl: s.resume_url ? `http://${window.location.hostname}:8000${s.resume_url}` : "#"
   }));
 
   const institutes = [...new Set(studentsList.map(s => s.institute).filter(Boolean))];

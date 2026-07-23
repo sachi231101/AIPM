@@ -45,7 +45,7 @@ export default function AdminJobDetails() {
           title: backendJob.title,
           company: backendJob.company?.name || "Unknown Company",
           companyLogo: backendJob.company?.logo_path
-            ? `http://localhost:8000/storage/${backendJob.company.logo_path}`
+            ? `http://${window.location.hostname}:8000/storage/${backendJob.company.logo_path}`
             : "https://placehold.co/100x100?text=" + encodeURIComponent(backendJob.company?.name || "Job"),
           location: backendJob.location,
           salary: backendJob.salary,

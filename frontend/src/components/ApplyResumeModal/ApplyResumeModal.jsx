@@ -103,7 +103,7 @@ export default function ApplyResumeModal({ job, student, onConfirm, onClose, loa
                         </div>
                         {student?.resume_url && (
                           <a
-                            href={student.resume_url.startsWith("http") ? student.resume_url : `http://localhost:8000${student.resume_url}`}
+                            href={student.resume_url.startsWith("http") ? student.resume_url : `http://${window.location.hostname}:8000${student.resume_url}`}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-xs btn-outline-secondary"
@@ -150,7 +150,7 @@ export default function ApplyResumeModal({ job, student, onConfirm, onClose, loa
                             </div>
                           </div>
                           <a
-                            href={`http://localhost:8000/created-resume/${student?.student_id || student?.id}?key=${res.resume_key}`}
+                            href={`http://${window.location.hostname}:8000/created-resume/${student?.student_id || student?.id}?key=${res.resume_key}`}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-xs btn-outline-success"
