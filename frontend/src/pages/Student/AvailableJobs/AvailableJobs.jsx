@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { studentService, jobService, applicationService } from "../../../services/api";
 import { getCompanyLogo } from "../../../utils/logoHelper";
+import ConfirmApplicationModal from "../../../components/ConfirmApplicationModal/ConfirmApplicationModal";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -19,6 +20,7 @@ export default function AvailableJobs() {
   const [jobsList, setJobsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [applyingJobId, setApplyingJobId] = useState(null);
+  const [selectedJobForConfirm, setSelectedJobForConfirm] = useState(null);
 
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
@@ -52,8 +54,6 @@ export default function AvailableJobs() {
           skills: job.skills || [],
           status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
           lastDate: job.last_date,
-          eligibleInstitutes: job.institutes?.map((i) => i.id) || [],
-          instituteId: job.institutes?.map((i) => i.id) || [],
           isApplied: appliedJobIds.has(job.id),
         }));
         setJobsList(mappedJobs);
@@ -75,6 +75,8 @@ export default function AvailableJobs() {
     );
   }
 
+  const approvalStatus = student?.approval_status || user?.approval_status || "approved";
+
   // Check if student has a resume uploaded or created
   const hasUploadedResume = !!(student?.resume_path || student?.resume_url || student?.resumeUrl);
   const hasCreatedResume = !!(student?.has_created_resume);
@@ -93,13 +95,23 @@ export default function AvailableJobs() {
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const handleApply = async (job) => {
-    if (!hasAnyResume) {
-      toast.error("Please create a resume in Resume Builder or upload a PDF first before applying.", {
-        autoClose: 4000,
-      });
+  const handleOpenConfirm = (job) => {
+    if (approvalStatus !== "approved") {
+      if (approvalStatus === "rejected") {
+        toast.error("Your account status is rejected. You cannot apply for placement drives.");
+      } else {
+        toast.info("Your account is currently on hold. You can apply for jobs once the Placement Team releases the hold on your account.");
+      }
       return;
     }
+
+    setSelectedJobForConfirm(job);
+  };
+
+  const handleConfirmApply = async () => {
+    if (!selectedJobForConfirm) return;
+    const job = selectedJobForConfirm;
+
     try {
       setApplyingJobId(job.id);
       await applicationService.apply({ job_id: job.id });
@@ -107,6 +119,7 @@ export default function AvailableJobs() {
       setJobsList((prev) =>
         prev.map((j) => (j.id === job.id ? { ...j, isApplied: true } : j))
       );
+      setSelectedJobForConfirm(null);
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.message || "Failed to submit application.";
@@ -120,12 +133,23 @@ export default function AvailableJobs() {
     <div className="container-lg">
       <PageHeader
         title="Available Jobs"
-        subtitle="Placement drives available for your institute"
+        subtitle="Explore active placement drives"
         breadcrumbs={[{ label: "Dashboard", to: "/student/dashboard" }, { label: "Available Jobs" }]}
       />
 
+      {/* ── On Hold Banner ── */}
+      {(approvalStatus === "hold" || approvalStatus === "pending") && (
+        <div className="alert alert-warning border-0 mb-4 rounded-3 p-3 d-flex align-items-center gap-3">
+          <i className="bi bi-pause-circle-fill fs-4 text-warning"></i>
+          <div>
+            <p className="fw-semibold mb-0" style={{ fontSize: "0.95rem" }}>Account On Hold</p>
+            <small className="text-dark opacity-75">Your account is currently placed on hold. You can view all jobs but applications are temporarily locked.</small>
+          </div>
+        </div>
+      )}
+
       {/* ── No-Resume Banner ── */}
-      {!hasResume && (
+      {!hasAnyResume && (
         <div
           className="alert border-0 mb-4 rounded-3 p-4"
           style={{
@@ -147,8 +171,7 @@ export default function AvailableJobs() {
               </h6>
               <p className="mb-3 small" style={{ color: "#533f03" }}>
                 You haven't uploaded a resume yet. To apply for placement drives, you need to
-                upload your resume first. Your resume will be automatically submitted with every
-                job application.
+                upload your resume first or build one using our Resume Builder.
               </p>
               <div className="d-flex gap-2 flex-wrap">
                 <Link
@@ -172,7 +195,7 @@ export default function AvailableJobs() {
       )}
 
       {/* ── Resume Active Banner ── */}
-      {hasResume && (
+      {hasAnyResume && (
         <div
           className="alert border-0 mb-4 rounded-3 py-2 px-3 d-flex align-items-center gap-2"
           style={{ background: "#d1fae5", color: "#065f46" }}
@@ -223,7 +246,7 @@ export default function AvailableJobs() {
       </div>
 
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <p className="text-muted small mb-0"><strong>{filtered.length}</strong> jobs available for your institute</p>
+        <p className="text-muted small mb-0"><strong>{filtered.length}</strong> placement drives available</p>
       </div>
 
       {paginated.length > 0 ? (
@@ -235,8 +258,8 @@ export default function AvailableJobs() {
                   <JobCard
                     job={job}
                     showApply
-                    onApply={() => handleApply(job)}
-                    applyDisabled={!hasAnyResume || applyingJobId === job.id}
+                    onApply={() => handleOpenConfirm(job)}
+                    applyDisabled={!hasAnyResume || approvalStatus !== "approved" || applyingJobId === job.id}
                     applyLoading={applyingJobId === job.id}
                   />
                   {/* Lock overlay when no resume */}
@@ -266,6 +289,17 @@ export default function AvailableJobs() {
         </>
       ) : (
         <EmptyState icon="bi-briefcase" title="No Jobs Found" description="No placement drives match your current filters." />
+      )}
+
+      {/* Confirmation Modal */}
+      {selectedJobForConfirm && (
+        <ConfirmApplicationModal
+          job={selectedJobForConfirm}
+          student={student}
+          onConfirm={handleConfirmApply}
+          onClose={() => setSelectedJobForConfirm(null)}
+          submitting={applyingJobId === selectedJobForConfirm.id}
+        />
       )}
     </div>
   );

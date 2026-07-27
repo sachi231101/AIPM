@@ -1,47 +1,97 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { studentService } from "../../../services/api";
 import { useCachedData } from "../../../hooks/useCachedData";
 
 export default function Students() {
   const [search, setSearch] = useState("");
-  const [instituteFilter, setInstituteFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // "all" | "approved" | "hold" | "rejected" | "pending"
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  const { data: rawStudentsResponse, loading } = useCachedData(
+  const { data: rawStudentsResponse, loading, refetch } = useCachedData(
     "admin_students",
     studentService.getAll
   );
 
   const rawList = rawStudentsResponse?.data || [];
-  const studentsList = rawList.map((s) => ({
-    id: s.id,
-    name: s.name,
-    email: s.email,
-    phone: s.mobile || "N/A",
-    gender: s.gender || "N/A",
-    dob: s.dob || "N/A",
-    address: s.address || "N/A",
-    institute: s.institute || "Unknown Institute",
-    course: s.course || "N/A",
-    branch: s.branch || "N/A",
-    batch: s.batch || "N/A",
-    cgpa: s.cgpa || 0,
-    skills: s.skills || [],
-    softSkills: s.softSkills || s.soft_skills || [],
-    profileCompletion: s.profile_completion || 0,
-    resumeUrl: s.resume_url ? `http://${window.location.hostname}:8000${s.resume_url}` : "#"
-  }));
+  const [studentsList, setStudentsList] = useState([]);
 
-  const institutes = [...new Set(studentsList.map(s => s.institute).filter(Boolean))];
-
-  const filtered = studentsList.filter(s => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase());
-    const matchInstitute = instituteFilter ? s.institute === instituteFilter : true;
-    return matchSearch && matchInstitute;
+  // Sync state with fetched cached data
+  useState(() => {
+    if (rawList.length > 0) {
+      setStudentsList(rawList);
+    }
   });
 
-  if (loading) {
+  const listToDisplay = studentsList.length > 0 ? studentsList : rawList;
+
+  const handleApprove = async (id) => {
+    setActionLoadingId(id);
+    try {
+      await studentService.approve(id);
+      toast.success("Student account approved successfully! 🎉");
+      refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to approve student.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleHold = async (id) => {
+    setActionLoadingId(id);
+    try {
+      await studentService.hold(id);
+      toast.warning("Student account placed on hold.");
+      refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to hold student.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleReject = async (id) => {
+    setActionLoadingId(id);
+    try {
+      await studentService.reject(id);
+      toast.info("Student status set to Rejected.");
+      refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to reject student.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const filtered = listToDisplay.filter((s) => {
+    const sName = s.name || "";
+    const sEmail = s.email || "";
+    const sPhone = s.mobile || s.phone || "";
+    const matchSearch =
+      sName.toLowerCase().includes(search.toLowerCase()) ||
+      sEmail.toLowerCase().includes(search.toLowerCase()) ||
+      sPhone.includes(search);
+
+    const sStatus = s.approval_status || s.approvalStatus || "approved";
+    const matchStatus = statusFilter === "all" ? true : sStatus === statusFilter;
+
+    return matchSearch && matchStatus;
+  });
+
+  const counts = {
+    all: listToDisplay.length,
+    approved: listToDisplay.filter(s => (s.approval_status || s.approvalStatus || "approved") === "approved").length,
+    hold: listToDisplay.filter(s => (s.approval_status || s.approvalStatus) === "hold" || (s.approval_status || s.approvalStatus) === "pending").length,
+    rejected: listToDisplay.filter(s => (s.approval_status || s.approvalStatus) === "rejected").length,
+  };
+
+  if (loading && listToDisplay.length === 0) {
     return (
       <div className="text-center py-5" style={{ height: "400px" }}>
         <span className="spinner-border spinner-border-sm me-2"></span>
@@ -52,83 +102,181 @@ export default function Students() {
 
   return (
     <div>
-      <PageHeader title="Students" subtitle="View and manage registered students" breadcrumbs={[{ label: "Dashboard", to: "/admin/dashboard" }, { label: "Students" }]} />
+      <PageHeader
+        title="Student Management"
+        subtitle="Manage student access and hold statuses"
+        breadcrumbs={[{ label: "Dashboard", to: "/admin/dashboard" }, { label: "Students" }]}
+      />
 
-      <div className="card border-0 shadow-sm">
-        <div className="card-header bg-white border-0 pt-4 pb-0 px-4">
-          <div className="row g-3 align-items-center">
-            <div className="col-md-5">
-              <div className="input-group">
-                <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
-                <input className="form-control border-start-0" placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} />
-              </div>
-            </div>
-            <div className="col-md-4">
-              <select className="form-select" value={instituteFilter} onChange={e => setInstituteFilter(e.target.value)}>
-                <option value="">All Institutes</option>
-                {institutes.map(i => <option key={i}>{i}</option>)}
-              </select>
-            </div>
-            <div className="col-md-3 text-end">
-              <span className="badge bg-primary px-3 py-2">{filtered.length} Students</span>
-            </div>
+      {/* Filter Tabs */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div className="nav nav-pills bg-white p-1.5 rounded-3 shadow-sm border">
+          <button
+            className={`nav-link py-2 px-3 small fw-medium border-0 ${statusFilter === "all" ? "active bg-primary text-white" : "text-dark"}`}
+            onClick={() => setStatusFilter("all")}
+          >
+            All Students <span className="badge bg-secondary ms-1">{counts.all}</span>
+          </button>
+          <button
+            className={`nav-link py-2 px-3 small fw-medium border-0 ${statusFilter === "approved" ? "active bg-success text-white" : "text-dark"}`}
+            onClick={() => setStatusFilter("approved")}
+          >
+            Approved (Default) <span className="badge bg-success ms-1">{counts.approved}</span>
+          </button>
+          <button
+            className={`nav-link py-2 px-3 small fw-medium border-0 ${statusFilter === "hold" ? "active bg-warning text-dark" : "text-dark"}`}
+            onClick={() => setStatusFilter("hold")}
+          >
+            On Hold <span className="badge bg-warning text-dark ms-1">{counts.hold}</span>
+          </button>
+          <button
+            className={`nav-link py-2 px-3 small fw-medium border-0 ${statusFilter === "rejected" ? "active bg-danger text-white" : "text-dark"}`}
+            onClick={() => setStatusFilter("rejected")}
+          >
+            Rejected <span className="badge bg-danger ms-1">{counts.rejected}</span>
+          </button>
+        </div>
+
+        <div className="d-flex align-items-center gap-2">
+          <div className="input-group style-search" style={{ minWidth: "260px" }}>
+            <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
+            <input
+              type="text"
+              className="form-control border-start-0"
+              placeholder="Search student..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </div>
+      </div>
+
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div className="card-body p-0">
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
                   <th className="px-4 py-3">#</th>
-                  <th className="py-3">Student</th>
-                  <th className="py-3">Institute</th>
+                  <th className="py-3">Name</th>
+                  <th className="py-3">Mobile Number</th>
+                  <th className="py-3">Email</th>
                   <th className="py-3">Course</th>
-                  <th className="py-3">CGPA</th>
-                  <th className="py-3">Profile</th>
+                  <th className="py-3">Profile Completion</th>
+                  <th className="py-3">Resume Status</th>
+                  <th className="py-3">Status</th>
                   <th className="py-3 text-end px-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length > 0 ? (
-                  filtered.map((student, i) => (
-                    <tr key={student.id}>
-                      <td className="px-4 text-muted">{i + 1}</td>
-                      <td>
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 36, height: 36, fontSize: 14 }}>
-                            {student.name[0]}
+                  filtered.map((student, i) => {
+                    const status = student.approval_status || student.approvalStatus || "approved";
+                    const hasResume = student.hasCreated || student.hasUploaded || (student.resumeUrl && student.resumeUrl !== "#");
+
+                    return (
+                      <tr key={student.id || i}>
+                        <td className="px-4 text-muted">{i + 1}</td>
+                        <td>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 36, height: 36, fontSize: 14 }}>
+                              {(student.name || "S")[0]}
+                            </div>
+                            <span className="fw-semibold text-dark">{student.name || "N/A"}</span>
                           </div>
-                          <div>
-                            <p className="fw-medium mb-0 small">{student.name}</p>
-                            <small className="text-muted">{student.email}</small>
+                        </td>
+                        <td className="fw-medium text-dark">{student.mobile || student.phone || "N/A"}</td>
+                        <td className="text-muted small">{student.email || "N/A"}</td>
+                        <td className="small">{student.course || "N/A"}</td>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="progress flex-grow-1" style={{ height: 6, width: 60 }}>
+                              <div
+                                className={`progress-bar ${student.profileCompletion >= 75 ? "bg-success" : "bg-primary"}`}
+                                style={{ width: `${student.profileCompletion || student.profile_completion || 0}%` }}
+                              ></div>
+                            </div>
+                            <small className="fw-semibold text-muted">{student.profileCompletion || student.profile_completion || 0}%</small>
                           </div>
-                        </div>
-                      </td>
-                      <td className="small text-muted">{student.institute}</td>
-                      <td className="small">{student.course}</td>
-                      <td>
-                        <span className={`fw-bold text-${student.cgpa >= 8 ? "success" : student.cgpa >= 7 ? "warning" : "danger"}`}>{student.cgpa || "N/A"}</span>
-                      </td>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <div className="progress flex-grow-1" style={{ height: 6, width: 60 }}>
-                            <div className="progress-bar bg-primary" style={{ width: `${student.profileCompletion}%` }}></div>
+                        </td>
+                        <td>
+                          {hasResume ? (
+                            <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1">
+                              <i className="bi bi-file-earmark-check me-1"></i>Available
+                            </span>
+                          ) : (
+                            <span className="badge bg-light text-muted border px-2 py-1">
+                              Not Added
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {status === "approved" && (
+                            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1.5 fw-semibold">
+                              <i className="bi bi-check-circle-fill me-1"></i>Approved
+                            </span>
+                          )}
+                          {(status === "hold" || status === "pending") && (
+                            <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2.5 py-1.5 fw-semibold">
+                              <i className="bi bi-pause-circle-fill me-1"></i>On Hold
+                            </span>
+                          )}
+                          {status === "rejected" && (
+                            <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1.5 fw-semibold">
+                              <i className="bi bi-x-circle-fill me-1"></i>Rejected
+                            </span>
+                          )}
+                        </td>
+                        <td className="text-end px-4">
+                          <div className="d-flex gap-1.5 justify-content-end">
+                            {status !== "approved" && (
+                              <button
+                                className="btn btn-sm btn-success px-2.5 py-1"
+                                title="Approve Student"
+                                onClick={() => handleApprove(student.id || student.student_id)}
+                                disabled={actionLoadingId === (student.id || student.student_id)}
+                              >
+                                <i className="bi bi-check-lg me-1"></i>Approve
+                              </button>
+                            )}
+                            {status !== "hold" && status !== "pending" && (
+                              <button
+                                className="btn btn-sm btn-warning text-dark px-2.5 py-1"
+                                title="Put Student On Hold"
+                                onClick={() => handleHold(student.id || student.student_id)}
+                                disabled={actionLoadingId === (student.id || student.student_id)}
+                              >
+                                <i className="bi bi-pause-fill me-1"></i>Put On Hold
+                              </button>
+                            )}
+                            {status !== "rejected" && (
+                              <button
+                                className="btn btn-sm btn-outline-danger px-2.5 py-1"
+                                title="Reject Student"
+                                onClick={() => handleReject(student.id || student.student_id)}
+                                disabled={actionLoadingId === (student.id || student.student_id)}
+                              >
+                                <i className="bi bi-x-lg me-1"></i>Reject
+                              </button>
+                            )}
+                            <button
+                              className="btn btn-sm btn-light border px-2 py-1"
+                              title="View Profile Details"
+                              onClick={() => setSelectedStudent(student)}
+                            >
+                              <i className="bi bi-eye"></i>
+                            </button>
                           </div>
-                          <small className="text-muted">{student.profileCompletion}%</small>
-                        </div>
-                      </td>
-                      <td className="text-end px-4">
-                        <div className="d-flex gap-2 justify-content-end">
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedStudent(student)}>
-                            <i className="bi bi-eye me-1"></i>View Details
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="text-center py-4 text-muted small">No students registered yet matching filters</td>
+                    <td colSpan={9} className="text-center py-5 text-muted">
+                      <i className="bi bi-people fs-2 d-block mb-2 text-muted opacity-50"></i>
+                      No students found matching your criteria.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -141,85 +289,119 @@ export default function Students() {
       {selectedStudent && (
         <div className="modal show d-block" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg">
-              <div className="modal-header border-0 bg-primary text-white">
-                <h6 className="modal-title fw-bold">Student Profile</h6>
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-header border-0 bg-primary text-white py-3">
+                <h6 className="modal-title fw-bold d-flex align-items-center gap-2">
+                  <i className="bi bi-person-badge"></i> Student Profile Details
+                </h6>
                 <button className="btn-close btn-close-white" onClick={() => setSelectedStudent(null)}></button>
               </div>
               <div className="modal-body p-4">
                 <div className="row g-4">
-                  <div className="col-md-4 text-center">
+                  <div className="col-md-4 text-center border-end pe-md-4">
                     <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold mx-auto mb-3" style={{ width: 72, height: 72, fontSize: 24 }}>
-                      {selectedStudent.name[0]}
+                      {(selectedStudent.name || "S")[0]}
                     </div>
-                    <h6 className="fw-bold">{selectedStudent.name}</h6>
-                    <p className="text-muted small">{selectedStudent.course}</p>
-                    <div className="progress mb-2" style={{ height: 8 }}>
-                      <div className="progress-bar bg-primary" style={{ width: `${selectedStudent.profileCompletion || selectedStudent.profile_completion || 100}%` }}></div>
+                    <h6 className="fw-bold mb-1">{selectedStudent.name || "N/A"}</h6>
+                    <p className="text-muted small mb-2">{selectedStudent.course || "Course N/A"}</p>
+                    
+                    <div className="mb-3">
+                      {(selectedStudent.approval_status || selectedStudent.approvalStatus || "approved") === "approved" && (
+                        <span className="badge bg-success px-3 py-1.5"><i className="bi bi-check-circle me-1"></i>Approved Student</span>
+                      )}
+                      {((selectedStudent.approval_status || selectedStudent.approvalStatus) === "hold" || (selectedStudent.approval_status || selectedStudent.approvalStatus) === "pending") && (
+                        <span className="badge bg-warning text-dark px-3 py-1.5"><i className="bi bi-pause-circle me-1"></i>Account On Hold</span>
+                      )}
+                      {(selectedStudent.approval_status || selectedStudent.approvalStatus) === "rejected" && (
+                        <span className="badge bg-danger px-3 py-1.5"><i className="bi bi-x-circle me-1"></i>Rejected</span>
+                      )}
                     </div>
-                    <small className="text-muted">{selectedStudent.profileCompletion || selectedStudent.profile_completion || 100}% Profile Complete</small>
+
+                    <div className="progress mb-1" style={{ height: 8 }}>
+                      <div className="progress-bar bg-primary" style={{ width: `${selectedStudent.profileCompletion || selectedStudent.profile_completion || 0}%` }}></div>
+                    </div>
+                    <small className="text-muted">{selectedStudent.profileCompletion || selectedStudent.profile_completion || 0}% Complete</small>
                   </div>
+
                   <div className="col-md-8">
-                    <div className="row g-3">
-                      {[
-                        { label: "Email", value: selectedStudent.email || "N/A", icon: "bi-envelope" },
-                        { label: "Phone", value: selectedStudent.phone || selectedStudent.mobile || "N/A", icon: "bi-telephone" },
-                        { label: "Institute", value: selectedStudent.institute || "N/A", icon: "bi-bank2" },
-                        { label: "Batch/Passing Year", value: selectedStudent.batch || selectedStudent.passing_year || "N/A", icon: "bi-calendar" },
-                        { label: "CGPA / Percentage", value: selectedStudent.cgpa || "N/A", icon: "bi-star" },
-                        { label: "Gender", value: selectedStudent.gender || "N/A", icon: "bi-gender-ambiguous" },
-                        { label: "Date of Birth", value: selectedStudent.dob || "N/A", icon: "bi-calendar-event" },
-                      ].map((item, i) => (
-                        <div key={i} className="col-6">
-                          <small className="text-muted d-block"><i className={`bi ${item.icon} me-1`}></i>{item.label}</small>
-                          <span className="fw-medium small">{item.value}</span>
-                        </div>
-                      ))}
-                      <div className="col-12">
-                        <small className="text-muted d-block mb-2"><i className="bi bi-tools me-1"></i>Technical Skills</small>
-                        <div className="d-flex flex-wrap gap-1 mb-2">
-                          {(selectedStudent.skills && selectedStudent.skills.length > 0) ? (
-                            selectedStudent.skills.map((s, i) => <span key={i} className="badge bg-primary bg-opacity-10 text-primary">{s}</span>)
-                          ) : (
-                            <span className="text-muted small">No technical skills added</span>
-                          )}
-                        </div>
+                    <div className="row g-3 mb-3">
+                      <div className="col-6">
+                        <small className="text-muted d-block"><i className="bi bi-telephone me-1"></i>Mobile Number</small>
+                        <span className="fw-medium small text-dark">{selectedStudent.mobile || selectedStudent.phone || "N/A"}</span>
                       </div>
-                      <div className="col-12">
-                        <small className="text-muted d-block mb-2"><i className="bi bi-person-heart me-1"></i>Soft Skills</small>
-                        <div className="d-flex flex-wrap gap-1">
-                          {(selectedStudent.softSkills && selectedStudent.softSkills.length > 0) ? (
-                            selectedStudent.softSkills.map((s, i) => <span key={i} className="badge bg-success bg-opacity-10 text-success">{s}</span>)
-                          ) : (selectedStudent.soft_skills && selectedStudent.soft_skills.length > 0) ? (
-                            selectedStudent.soft_skills.map((s, i) => <span key={i} className="badge bg-success bg-opacity-10 text-success">{s}</span>)
-                          ) : (
-                            <span className="text-muted small">No soft skills added</span>
-                          )}
-                        </div>
+                      <div className="col-6">
+                        <small className="text-muted d-block"><i className="bi bi-envelope me-1"></i>Email Address</small>
+                        <span className="fw-medium small text-dark">{selectedStudent.email || "N/A"}</span>
                       </div>
-                      <div className="col-12 d-flex flex-wrap gap-2">
-                        {selectedStudent.createdResumeUrl && (
-                          <a href={selectedStudent.createdResumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
-                            <i className="bi bi-file-earmark-person me-1"></i>View Master Resume
-                          </a>
-                        )}
-                        {selectedStudent.uploadedResumeUrl && (
-                          <a href={selectedStudent.uploadedResumeUrl} className="btn btn-sm btn-outline-secondary" target="_blank" rel="noreferrer">
-                            <i className="bi bi-file-earmark-pdf me-1"></i>Uploaded PDF
-                          </a>
-                        )}
-                        {!selectedStudent.createdResumeUrl && !selectedStudent.uploadedResumeUrl && selectedStudent.resumeUrl && selectedStudent.resumeUrl !== "#" && (
-                          <a href={selectedStudent.resumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
-                            <i className="bi bi-file-earmark-pdf me-1"></i>View Resume
-                          </a>
-                        )}
-                        {!selectedStudent.createdResumeUrl && !selectedStudent.uploadedResumeUrl && (!selectedStudent.resumeUrl || selectedStudent.resumeUrl === "#") && (
-                          <span className="text-muted small">No resume uploaded</span>
-                        )}
+                      <div className="col-6">
+                        <small className="text-muted d-block"><i className="bi bi-journal-bookmark me-1"></i>Course / Branch</small>
+                        <span className="fw-medium small text-dark">{selectedStudent.course ? `${selectedStudent.course} (${selectedStudent.branch || "N/A"})` : "N/A"}</span>
                       </div>
+                      <div className="col-6">
+                        <small className="text-muted d-block"><i className="bi bi-calendar-check me-1"></i>Passing Batch</small>
+                        <span className="fw-medium small text-dark">{selectedStudent.batch || selectedStudent.passing_year || "N/A"}</span>
+                      </div>
+                    </div>
+
+                    <hr className="my-3" />
+
+                    <div className="d-flex flex-wrap gap-2">
+                      {selectedStudent.createdResumeUrl && (
+                        <a href={selectedStudent.createdResumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
+                          <i className="bi bi-file-earmark-person me-1"></i>View Master Resume
+                        </a>
+                      )}
+                      {selectedStudent.uploadedResumeUrl && (
+                        <a href={selectedStudent.uploadedResumeUrl} className="btn btn-sm btn-outline-secondary" target="_blank" rel="noreferrer">
+                          <i className="bi bi-file-earmark-pdf me-1"></i>Uploaded Resume PDF
+                        </a>
+                      )}
+                      {!selectedStudent.createdResumeUrl && !selectedStudent.uploadedResumeUrl && selectedStudent.resumeUrl && selectedStudent.resumeUrl !== "#" && (
+                        <a href={selectedStudent.resumeUrl} className="btn btn-sm btn-outline-primary" target="_blank" rel="noreferrer">
+                          <i className="bi bi-file-earmark-pdf me-1"></i>View Resume
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
+              </div>
+              <div className="modal-footer bg-light border-0 py-2.5">
+                {(selectedStudent.approval_status || selectedStudent.approvalStatus || "approved") !== "approved" && (
+                  <button
+                    className="btn btn-sm btn-success fw-semibold px-3"
+                    onClick={() => {
+                      handleApprove(selectedStudent.id || selectedStudent.student_id);
+                      setSelectedStudent(null);
+                    }}
+                  >
+                    <i className="bi bi-check-lg me-1"></i>Approve Account
+                  </button>
+                )}
+                {(selectedStudent.approval_status || selectedStudent.approvalStatus) !== "hold" && (selectedStudent.approval_status || selectedStudent.approvalStatus) !== "pending" && (
+                  <button
+                    className="btn btn-sm btn-warning fw-semibold px-3 text-dark"
+                    onClick={() => {
+                      handleHold(selectedStudent.id || selectedStudent.student_id);
+                      setSelectedStudent(null);
+                    }}
+                  >
+                    <i className="bi bi-pause-fill me-1"></i>Put On Hold
+                  </button>
+                )}
+                {(selectedStudent.approval_status || selectedStudent.approvalStatus) !== "rejected" && (
+                  <button
+                    className="btn btn-sm btn-outline-danger fw-semibold px-3"
+                    onClick={() => {
+                      handleReject(selectedStudent.id || selectedStudent.student_id);
+                      setSelectedStudent(null);
+                    }}
+                  >
+                    <i className="bi bi-x-lg me-1"></i>Reject Account
+                  </button>
+                )}
+                <button className="btn btn-sm btn-secondary px-3" onClick={() => setSelectedStudent(null)}>
+                  Close
+                </button>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { toast } from "react-toastify";
 import { jobService, studentService, applicationService } from "../../services/api";
 import { getCompanyLogo, handleLogoError } from "../../utils/logoHelper";
+import ConfirmApplicationModal from "../../components/ConfirmApplicationModal/ConfirmApplicationModal";
 
 const statusMap = {
   published: "Published",
@@ -22,6 +23,7 @@ export default function JobDetails() {
   const [isApplied, setIsApplied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,7 +48,6 @@ export default function JobDetails() {
           description: backendJob.description,
           eligibility: backendJob.eligibility,
           skills: backendJob.skills || [],
-          eligibleInstitutes: backendJob.institutes?.map(i => i.id) || []
         };
         setJob(mappedJob);
 
@@ -61,7 +62,7 @@ export default function JobDetails() {
             const applied = myApps.some((app) => String(app.job?.id) === String(id));
             setIsApplied(applied);
           } catch (profileErr) {
-            console.error("Failed to load student profile for eligibility check", profileErr);
+            console.error("Failed to load student profile", profileErr);
           }
         }
       } catch (err) {
@@ -93,25 +94,32 @@ export default function JobDetails() {
     );
   }
 
-  // Check eligibility dynamically using the student's institute_id
-  const studentInstituteId = student ? student.institute_id : null;
-  const isEligible = role === "student" && studentInstituteId ? job.eligibleInstitutes.includes(studentInstituteId) : false;
+  const approvalStatus = student?.approval_status || user?.approval_status || "approved";
 
-  const handleApply = async () => {
+  const handleOpenConfirmModal = () => {
+    if (approvalStatus !== "approved") {
+      if (approvalStatus === "rejected") {
+        toast.error("Your account status is rejected. You cannot apply for placement drives.");
+      } else {
+        toast.info("Your account is currently on hold. You can apply for jobs once the Placement Team releases the hold on your account.");
+      }
+      return;
+    }
+
     if (!student) {
       toast.error("Student profile not loaded.");
       return;
     }
-    const hasUploadedResume = !!(student.resume_path || student.resume_url || student.resumeUrl);
-    const hasCreatedResume = !!(student.has_created_resume);
-    if (!hasUploadedResume && !hasCreatedResume) {
-      toast.error("Please create a resume in Resume Builder or upload a PDF first before applying.", { autoClose: 4000 });
-      return;
-    }
+
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     try {
       setApplying(true);
       await applicationService.apply({ job_id: job.id });
       setIsApplied(true);
+      setShowConfirmModal(false);
       toast.success(`Successfully applied for ${job.title} at ${job.company}! 🎉`);
     } catch (err) {
       console.error(err);
@@ -199,56 +207,75 @@ export default function JobDetails() {
               </div>
             </div>
 
-            {/* Apply / Eligibility Message */}
-            <div className={`card border-0 shadow-sm p-4 ${isEligible ? "border-start border-success border-4" : role === "student" ? "border-start border-danger border-4" : ""}`}>
+            {/* Apply / Status Banner */}
+            <div className="card border-0 shadow-sm p-4">
               {!user ? (
                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                   <div>
                     <h6 className="fw-bold mb-1">Interested in this role?</h6>
-                    <p className="text-muted small mb-0">Login to apply for this position.</p>
+                    <p className="text-muted small mb-0">Login with your mobile number to apply.</p>
                   </div>
                   <Link to="/student/login" className="btn btn-primary">
                     <i className="bi bi-box-arrow-in-right me-2"></i>Login to Apply
                   </Link>
                 </div>
-              ) : role === "student" && isEligible ? (
-                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                  <div>
-                    <h6 className="fw-bold text-success mb-1">
-                      <i className="bi bi-check-circle-fill me-2"></i>
-                      {isApplied ? "You have applied for this drive!" : "You are eligible for this drive!"}
-                    </h6>
-                    <p className="text-muted small mb-0">
-                      {isApplied
-                        ? "Your application and resume have been submitted."
-                        : "Your institute is part of this placement drive."}
-                    </p>
-                  </div>
-                  {isApplied ? (
-                    <button className="btn btn-success btn-lg fw-semibold" disabled>
-                      <i className="bi bi-check-circle-fill me-2"></i>Applied
-                    </button>
-                  ) : (
-                    <button className="btn btn-success btn-lg" onClick={handleApply} disabled={applying}>
-                      {applying ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2"></span>Applying...
-                        </>
-                      ) : (
-                        <>
-                          <i className="bi bi-send me-2"></i>Apply Now
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
               ) : role === "student" ? (
-                <div className="d-flex align-items-start gap-3">
-                  <i className="bi bi-exclamation-triangle-fill text-danger fs-4 mt-1"></i>
-                  <div>
-                    <h6 className="fw-bold text-danger mb-1">Not Available for Your Institute</h6>
-                    <p className="text-muted small mb-0">This placement drive is not available for students from your institute. Please check other available drives.</p>
-                  </div>
+                <div>
+                  {isApplied ? (
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                      <div>
+                        <h6 className="fw-bold text-success mb-1">
+                          <i className="bi bi-check-circle-fill me-2"></i>You have applied for this drive!
+                        </h6>
+                        <p className="text-muted small mb-0">Your application and resume have been submitted.</p>
+                      </div>
+                      <button className="btn btn-success btn-lg fw-semibold" disabled>
+                        <i className="bi bi-check-circle-fill me-2"></i>Applied
+                      </button>
+                    </div>
+                  ) : approvalStatus === "approved" ? (
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                      <div>
+                        <h6 className="fw-bold text-success mb-1">
+                          <i className="bi bi-check-circle-fill me-2"></i>You are eligible to apply
+                        </h6>
+                        <p className="text-muted small mb-0">Review your profile details and submit your application.</p>
+                      </div>
+                      <button className="btn btn-success btn-lg px-4" onClick={handleOpenConfirmModal} disabled={applying}>
+                        {applying ? (
+                          <><span className="spinner-border spinner-border-sm me-2"></span>Applying...</>
+                        ) : (
+                          <><i className="bi bi-send me-2"></i>Apply Now</>
+                        )}
+                      </button>
+                    </div>
+                  ) : (approvalStatus === "hold" || approvalStatus === "pending") ? (
+                    <div>
+                      <div className="alert alert-warning d-flex align-items-center gap-3 mb-3">
+                        <i className="bi bi-pause-circle-fill fs-4"></i>
+                        <div>
+                          <strong>Account On Hold</strong>
+                          <div className="small">Your account is currently placed on hold. You can apply for jobs once the Placement Team releases the hold on your account.</div>
+                        </div>
+                      </div>
+                      <button className="btn btn-warning text-dark btn-lg px-4" disabled onClick={handleOpenConfirmModal}>
+                        <i className="bi bi-pause-fill me-2"></i>Account On Hold
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="alert alert-danger d-flex align-items-center gap-3 mb-3">
+                        <i className="bi bi-x-circle-fill fs-4"></i>
+                        <div>
+                          <strong>Account Status Rejected</strong>
+                          <div className="small">Your account status is rejected. You cannot apply for placement drives.</div>
+                        </div>
+                      </div>
+                      <button className="btn btn-danger btn-lg px-4" disabled onClick={handleOpenConfirmModal}>
+                        <i className="bi bi-slash-circle me-2"></i>Application Disabled
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -280,22 +307,20 @@ export default function JobDetails() {
                 ))}
               </div>
             </div>
-
-            <div className="card border-0 shadow-sm mt-3">
-              <div className="card-body p-4">
-                <h6 className="fw-bold mb-3">Share This Drive</h6>
-                <div className="d-flex gap-2">
-                  {["bi-linkedin", "bi-whatsapp", "bi-telegram", "bi-link-45deg"].map((icon, i) => (
-                    <button key={i} className="btn btn-light btn-sm flex-grow-1">
-                      <i className={`bi ${icon}`}></i>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <ConfirmApplicationModal
+          job={job}
+          student={student}
+          onConfirm={handleConfirmSubmit}
+          onClose={() => setShowConfirmModal(false)}
+          submitting={applying}
+        />
+      )}
     </div>
   );
 }

@@ -5,13 +5,19 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class StudentController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $students = Student::with(['user', 'institute'])->get();
+        $query = Student::with(['user']);
+
+        if ($request->has('status') && in_array($request->status, ['pending', 'approved', 'rejected', 'hold'])) {
+            $query->where('approval_status', $request->status);
+        }
+
+        $students = $query->latest()->get();
 
         $data = $students->map(function ($student) {
             $hasUploaded = filled($student->resume_path);
@@ -27,15 +33,13 @@ class StudentController extends Controller
                 'id'                  => $student->user_id,
                 'student_id'          => $student->id,
                 'studentIdCardNumber' => $student->student_id_card,
-                'name'                => $student->user->name,
-                'email'               => $student->user->email ?? '',
+                'name'                => $student->user?->name ?? 'N/A',
+                'email'               => $student->user?->email ?? '',
                 'phone'               => $student->mobile ?? 'N/A',
                 'mobile'              => $student->mobile ?? 'N/A',
                 'dob'                 => $student->dob?->format('Y-m-d') ?? 'N/A',
                 'gender'              => $student->gender ?? 'N/A',
                 'address'             => $student->address ?? 'N/A',
-                'institute'           => $student->institute?->name ?? $student->other_institute_name ?? 'N/A',
-                'instituteId'         => $student->institute_id,
                 'course'              => $student->course ?? 'N/A',
                 'branch'              => $student->branch ?? 'N/A',
                 'batch'               => $student->batch ?? 'N/A',
@@ -44,8 +48,10 @@ class StudentController extends Controller
                 'skills'              => $student->skills ?? [],
                 'softSkills'          => $student->soft_skills ?? [],
                 'soft_skills'         => $student->soft_skills ?? [],
-                'profileCompletion'   => $student->profile_completion ?? 100,
-                'profile_completion'  => $student->profile_completion ?? 100,
+                'profileCompletion'   => $student->profile_completion ?? 0,
+                'profile_completion'  => $student->profile_completion ?? 0,
+                'approval_status'     => $student->approval_status ?? 'approved',
+                'approvalStatus'      => $student->approval_status ?? 'approved',
                 'resumeUrl'           => $primaryUrl,
                 'uploadedResumeUrl'   => $uploadedUrl,
                 'createdResumeUrl'    => $createdUrl,
@@ -58,5 +64,38 @@ class StudentController extends Controller
         });
 
         return response()->json(['data' => $data]);
+    }
+
+    public function approve($id): JsonResponse
+    {
+        $student = Student::where('user_id', $id)->orWhere('id', $id)->firstOrFail();
+        $student->update(['approval_status' => 'approved']);
+
+        return response()->json([
+            'message' => 'Student approved successfully.',
+            'student' => $student,
+        ]);
+    }
+
+    public function hold($id): JsonResponse
+    {
+        $student = Student::where('user_id', $id)->orWhere('id', $id)->firstOrFail();
+        $student->update(['approval_status' => 'hold']);
+
+        return response()->json([
+            'message' => 'Student placed on hold successfully.',
+            'student' => $student,
+        ]);
+    }
+
+    public function reject($id): JsonResponse
+    {
+        $student = Student::where('user_id', $id)->orWhere('id', $id)->firstOrFail();
+        $student->update(['approval_status' => 'rejected']);
+
+        return response()->json([
+            'message' => 'Student status set to rejected.',
+            'student' => $student,
+        ]);
     }
 }

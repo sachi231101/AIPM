@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
+import { useProfile } from "../../../context/ProfileContext";
 import { studentService, resumeService } from "../../../services/api";
 import {
   getAllResumes,
@@ -68,6 +69,7 @@ const POPULAR_SKILLS_SUGGESTIONS = [
 
 export default function ResumeBuilder() {
   const { user } = useAuth();
+  const { activeProfile } = useProfile();
   const [activeResume, setActiveResume] = useState(null);
   const [currentStep, setCurrentStep] = useState(0); // 0 to 10
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -75,22 +77,23 @@ export default function ResumeBuilder() {
   const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const [coverLetterText, setCoverLetterText] = useState("");
-  const [targetRole, setTargetRole] = useState("Full Stack Developer");
+  const [targetRole, setTargetRole] = useState(activeProfile?.target_role || "Full Stack Developer");
   const [newSkillInput, setNewSkillInput] = useState({});
 
-  // Fetch student profile & pre-fill single Master Resume
+  // Fetch student profile & pre-fill Master Resume for activeProfile
   useEffect(() => {
     let profileData = {};
-    studentService.getProfile()
+    const activeId = activeProfile?.id || localStorage.getItem("apms_active_profile_id");
+
+    studentService.getProfile(activeId ? { profile_id: activeId } : {})
       .then((pres) => {
         profileData = pres.data?.data || {};
-        return resumeService.getAll();
+        return resumeService.getAll(activeId ? { profile_id: activeId } : {});
       })
       .then((res) => {
         const dbResumes = res.data?.data || [];
         if (dbResumes.length > 0) {
           const first = dbResumes[0].content || {};
-          // Merge profile info into existing resume so missing fields get pre-filled
           const merged = mergeProfileIntoResume(first, profileData);
           const masterRes = {
             ...merged,
@@ -98,15 +101,15 @@ export default function ResumeBuilder() {
             title: "Master Resume",
           };
           setActiveResume(masterRes);
-          saveResume(masterRes, user?.id);
+          saveResume(masterRes, user?.id, activeId);
         } else {
-          // 0 resumes in DB -> create single default Master Resume pre-filled with profile data
           const freshResume = createDefaultResume(profileData);
           freshResume.id = "master";
           freshResume.title = "Master Resume";
           setActiveResume(freshResume);
-          saveResume(freshResume, user?.id);
+          saveResume(freshResume, user?.id, activeId);
           resumeService.save({
+            student_profile_id: activeId,
             resume_key: "master",
             title: "Master Resume",
             content: freshResume,
@@ -119,11 +122,12 @@ export default function ResumeBuilder() {
         fallback.title = "Master Resume";
         setActiveResume(fallback);
       });
-  }, [user?.id]);
+  }, [user?.id, activeProfile?.id]);
 
   const handleSyncProfile = async () => {
     try {
-      const pres = await studentService.getProfile();
+      const activeId = activeProfile?.id || localStorage.getItem("apms_active_profile_id");
+      const pres = await studentService.getProfile(activeId ? { profile_id: activeId } : {});
       const pdata = pres.data?.data || {};
       const merged = mergeProfileIntoResume(activeResume, pdata);
       handleUpdateResume(merged);
@@ -134,13 +138,16 @@ export default function ResumeBuilder() {
     }
   };
 
-  // Autosave when activeResume changes (syncs to both user-scoped localStorage & database)
+  // Autosave when activeResume changes (syncs to both profile-scoped localStorage & database)
   const handleUpdateResume = (updatedObj) => {
+    const activeId = activeProfile?.id || localStorage.getItem("apms_active_profile_id");
+
     setActiveResume(updatedObj);
-    saveResume(updatedObj, user?.id);
+    saveResume(updatedObj, user?.id, activeId);
 
     // Save to Database API
     resumeService.save({
+      student_profile_id: activeId,
       resume_key: updatedObj.id || "master",
       title: "Master Resume",
       content: updatedObj,

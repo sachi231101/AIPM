@@ -8,7 +8,7 @@ use App\Models\Notification;
 use App\Models\PlacementJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 class ApplicationController extends Controller
 {
@@ -16,52 +16,87 @@ class ApplicationController extends Controller
 
     public function apply(Request $request): JsonResponse
     {
-        $user    = $request->user();
-        $student = $user->student;
-
         $request->validate([
-            'job_id'      => 'required|exists:placement_jobs,id',
-            'resume_type' => 'nullable|string|in:uploaded,builder',
-            'resume_key'  => 'nullable|string',
+            'job_id'             => 'required|exists:placement_jobs,id',
+            'student_profile_id' => 'nullable|exists:student_profiles,id',
+            'resume_type'        => 'nullable|string|in:uploaded,builder',
+            'resume_key'         => 'nullable|string',
         ]);
 
-        $job = PlacementJob::with('institutes')->findOrFail($request->job_id);
+        $user    = Auth::user();
+        $student = $user->student;
 
-        // Check job is published
-        if (!$job->isPublished()) {
-            return response()->json(['message' => 'This placement drive is not currently open.'], 422);
+        if (!$student) {
+            return response()->json(['message' => 'Student record not found.'], 404);
         }
 
-        // Validate application deadline with buffer days
-        $bufferDays = (int) (\Illuminate\Support\Facades\DB::table('settings')->where('key', 'application_deadline_buffer')->value('value') ?? '2');
+        $job = PlacementJob::findOrFail($request->job_id);
+
+        // Check job status
+        if ($job->status !== 'published') {
+            return response()->json(['message' => 'This placement drive is not open for applications.'], 422);
+        }
+
+        // Check last date
         if ($job->last_date) {
-            $deadline = $job->last_date->copy()->addDays($bufferDays)->endOfDay();
-            if (now()->gt($deadline)) {
+            $lastDate = \Carbon\Carbon::parse($job->last_date)->endOfDay();
+            if (now()->gt($lastDate)) {
                 return response()->json(['message' => 'The application deadline for this placement drive has passed.'], 422);
             }
         }
 
-        // Check institute eligibility (students with other institutes cannot apply)
-        if ($student->institute_id) {
-            $eligible = $job->institutes->pluck('id')->contains($student->institute_id);
-            if (!$eligible) {
-                return response()->json(['message' => 'Your institute is not eligible for this placement drive.'], 403);
+        // Check student approval status
+        if (($student->approval_status ?? 'approved') !== 'approved') {
+            if ($student->approval_status === 'rejected') {
+                return response()->json([
+                    'message' => 'Your account status is rejected. You cannot apply for placement drives.'
+                ], 403);
             }
-        } else {
-            return response()->json(['message' => 'Students from unlisted institutes cannot apply.'], 403);
+            return response()->json([
+                'message' => 'Your account is currently on hold. You can apply for jobs once the Placement Team releases the hold on your account.'
+            ], 403);
         }
 
-        // Check profile completion (must have uploaded resume OR created resume in app)
-        $hasUploadedResume = filled($student->resume_path);
-        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
+        // Resolve requested profile or fallback to default
+        $profileId = $request->student_profile_id;
+        $profile = null;
+        if ($profileId) {
+            $profile = $student->profiles()->where('id', $profileId)->first();
+        }
+        if (!$profile) {
+            $profile = $student->getOrCreateDefaultProfile();
+        }
 
-        if (!$hasUploadedResume && !$hasCreatedResume) {
+        // Check profile completion for this specific profile
+        $course = $profile->course ?? $student->course;
+        $branch = $profile->branch ?? $student->branch;
+        $batch  = $profile->batch ?? $student->batch;
+
+        $incompleteFields = [];
+        if (blank($course))           $incompleteFields[] = 'Course';
+        if (blank($branch))           $incompleteFields[] = 'Branch';
+        if (blank($batch))            $incompleteFields[] = 'Batch';
+        if (blank($student->dob))     $incompleteFields[] = 'Date of Birth';
+        if (blank($student->gender))  $incompleteFields[] = 'Gender';
+        if (blank($student->address)) $incompleteFields[] = 'Address';
+
+        if (!empty($incompleteFields)) {
             return response()->json([
-                'message' => 'Please create a resume or upload one before applying.',
+                'message' => 'Your profile "' . $profile->profile_name . '" is incomplete. Please complete missing details (' . implode(', ', $incompleteFields) . ') before applying.'
             ], 422);
         }
 
-        // Prevent duplicate applications
+        // Check profile-level resume
+        $hasUploadedResume = filled($profile->resume_path);
+        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
+
+        if (!$hasUploadedResume && !$hasCreatedResume) {
+            return response()->json([
+                'message' => 'No resume found for profile "' . $profile->profile_name . '". Please build a resume or upload a PDF first before applying.',
+            ], 422);
+        }
+
+        // Prevent duplicate applications for same job + profile
         $alreadyApplied = Application::where('student_id', $student->id)
             ->where('job_id', $job->id)
             ->exists();
@@ -74,53 +109,55 @@ class ApplicationController extends Controller
         $resumeKey  = $request->resume_key;
 
         if ($resumeType === 'builder' && !$resumeKey) {
-            $defaultResume = \App\Models\StudentResume::where('student_id', $student->id)->orderByDesc('is_default')->first();
-            $resumeKey = $defaultResume?->resume_key;
+            $defaultResume = \App\Models\StudentResume::where('student_id', $student->id)
+                ->where('student_profile_id', $profile->id)
+                ->orderByDesc('is_default')
+                ->first();
+            $resumeKey = $defaultResume?->resume_key ?? 'master';
         }
 
-        Application::create([
-            'student_id'  => $student->id,
-            'job_id'      => $job->id,
-            'resume_path' => $student->resume_path,
-            'resume_type' => $resumeType,
-            'resume_key'  => $resumeKey,
-            'applied_at'  => now(),
+        $application = Application::create([
+            'student_id'         => $student->id,
+            'student_profile_id' => $profile->id,
+            'job_id'             => $job->id,
+            'resume_path'        => $profile->resume_path ?? $student->resume_path,
+            'resume_type'        => $resumeType,
+            'resume_key'         => $resumeKey,
+            'applied_at'         => now(),
         ]);
 
-        // Create admin notification
+        // Create notification for admin
         Notification::create([
             'type'    => 'new_application',
-            'title'   => 'New Application',
-            'message' => $user->name . ' applied for ' . $job->title,
+            'title'   => 'New Job Application',
+            'message' => $user->name . ' applied for ' . $job->title . ' (' . $profile->profile_name . ')',
             'link'    => '/admin/applications',
         ]);
 
-        return response()->json(['message' => 'Application submitted successfully.'], 201);
+        return response()->json([
+            'message' => 'Application submitted successfully! 🎉',
+            'data'    => $application,
+        ], 201);
     }
 
     // ───────── GET /api/student/applications ─────────
 
-    public function myApplications(Request $request): JsonResponse
+    public function myApplications(): JsonResponse
     {
-        $student      = $request->user()->student;
-        $applications = Application::with(['job.company'])
+        $user    = Auth::user();
+        $student = $user->student;
+
+        if (!$student) {
+            return response()->json(['data' => []]);
+        }
+
+        $applications = Application::with('job.company')
             ->where('student_id', $student->id)
             ->latest('applied_at')
             ->get();
 
-        $data = $applications->map(fn ($app) => [
-            'id'         => $app->id,
-            'status'     => $app->status,
-            'applied_at' => $app->applied_at?->format('Y-m-d H:i'),
-            'job'        => [
-                'id'       => $app->job->id,
-                'title'    => $app->job->title,
-                'company'  => $app->job->company->name,
-                'location' => $app->job->location,
-                'salary'   => $app->job->salary,
-            ],
+        return response()->json([
+            'data' => $applications,
         ]);
-
-        return response()->json(['data' => $data]);
     }
 }
