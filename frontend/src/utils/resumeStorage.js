@@ -11,6 +11,7 @@ export function createDefaultResume(profileData = {}) {
   const location = profileData.address || "";
   const course = profileData.course || "";
   const branch = profileData.branch || "";
+  const title = profileData.professional_title || profileData.target_role || (course ? `${course}${branch ? ` - ${branch}` : ""} Student` : "");
   const institute = profileData.institute?.name || profileData.other_institute_name || (typeof profileData.institute === "string" ? profileData.institute : "");
   const cgpa = profileData.cgpa ? String(profileData.cgpa) : "";
   const photo = profileData.profile_photo || profileData.profilePhoto || "";
@@ -20,13 +21,13 @@ export function createDefaultResume(profileData = {}) {
   const softSkills = Array.isArray(profileData.soft_skills) ? profileData.soft_skills : [];
 
   return {
-    id: "resume_" + Date.now(),
+    id: "master",
     title: "Master Resume",
     updatedAt: new Date().toISOString(),
     personal: {
       photo: photo,
       fullName: name,
-      professionalTitle: course ? `${course}${branch ? ` - ${branch}` : ""} Student` : "",
+      professionalTitle: title,
       email: email,
       phone: phone,
       location: location,
@@ -51,7 +52,7 @@ export function createDefaultResume(profileData = {}) {
       showDob: false,
       showNationality: false,
     },
-    summary: "",
+    summary: profileData.summary || "",
     education: (course || institute)
       ? [
           {
@@ -104,6 +105,7 @@ export function mergeProfileIntoResume(resumeObj, profileData = {}) {
   const location = profileData.address || "";
   const course = profileData.course || "";
   const branch = profileData.branch || "";
+  const title = profileData.professional_title || profileData.target_role || (course ? `${course}${branch ? ` - ${branch}` : ""} Student` : "");
   const institute = profileData.institute?.name || profileData.other_institute_name || (typeof profileData.institute === "string" ? profileData.institute : "");
   const cgpa = profileData.cgpa ? String(profileData.cgpa) : "";
   const photo = profileData.profile_photo || profileData.profilePhoto || "";
@@ -125,7 +127,7 @@ export function mergeProfileIntoResume(resumeObj, profileData = {}) {
     gender: existingPersonal.gender || profileData.gender || "",
     dob: existingPersonal.dob || profileData.dob || "",
     photo: existingPersonal.photo || photo,
-    professionalTitle: existingPersonal.professionalTitle || (course ? `${course}${branch ? ` - ${branch}` : ""} Student` : ""),
+    professionalTitle: existingPersonal.professionalTitle || title,
     showPhoto: existingPersonal.showPhoto ?? !!photo,
     showLinkedin: existingPersonal.showLinkedin ?? !!profileData.linkedin,
     showGithub: existingPersonal.showGithub ?? !!profileData.github,
@@ -161,7 +163,7 @@ export function mergeProfileIntoResume(resumeObj, profileData = {}) {
   };
 }
 
-// ─── STORAGE MANAGERS (SCOPED PER LOGGED-IN STUDENT USER) ───────────────────
+// ─── STORAGE MANAGERS (SCOPED PER LOGGED-IN STUDENT USER AND PROFILE ID) ───
 
 function getCurrentUserId() {
   try {
@@ -174,23 +176,18 @@ function getCurrentUserId() {
   return "guest";
 }
 
-function getStorageKeys(userId) {
+function getStorageKeys(userId = "", profileId = "") {
   const uid = userId || getCurrentUserId();
+  const pid = profileId || localStorage.getItem("apms_active_profile_id") || "default";
   return {
-    STORAGE_KEY: `apms_student_resumes_${uid}`,
-    ACTIVE_RESUME_KEY: `apms_active_resume_id_${uid}`,
+    STORAGE_KEY: `apms_student_resumes_${uid}_p${pid}`,
+    ACTIVE_RESUME_KEY: `apms_active_resume_id_${uid}_p${pid}`,
   };
 }
 
-// Purge old un-scoped global key if present to prevent cross-account leaks
-try {
-  localStorage.removeItem("apms_student_resumes");
-  localStorage.removeItem("apms_active_resume_id");
-} catch (e) {}
-
-export function getAllResumes(profileData = {}, userId = "") {
+export function getAllResumes(profileData = {}, userId = "", profileId = "") {
   try {
-    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
+    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId, profileId);
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       const defaultRes = createDefaultResume(profileData);
@@ -215,9 +212,9 @@ export function getAllResumes(profileData = {}, userId = "") {
   }
 }
 
-export function saveAllResumes(resumeList, userId = "") {
+export function saveAllResumes(resumeList, userId = "", profileId = "") {
   try {
-    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
+    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId, profileId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(resumeList));
     if (resumeList.length > 0) {
       localStorage.setItem(ACTIVE_RESUME_KEY, resumeList[0].id);
@@ -227,190 +224,203 @@ export function saveAllResumes(resumeList, userId = "") {
   }
 }
 
-export function getActiveResumeId(userId = "") {
-  const { ACTIVE_RESUME_KEY } = getStorageKeys(userId);
-  return localStorage.getItem(ACTIVE_RESUME_KEY) || "";
-}
-
-export function saveResume(resumeObj, userId = "") {
+export function getActiveResumeId(userId = "", profileId = "") {
   try {
-    const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
-    const list = getAllResumes({}, userId);
-    const idx = list.findIndex((r) => r.id === resumeObj.id);
-    const updatedObj = { ...resumeObj, updatedAt: new Date().toISOString() };
-    if (idx >= 0) {
-      list[idx] = updatedObj;
-    } else {
-      list.push(updatedObj);
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    localStorage.setItem(ACTIVE_RESUME_KEY, updatedObj.id);
-    return updatedObj;
-  } catch (err) {
-    console.error("Failed to save resume", err);
-    return resumeObj;
+    const { ACTIVE_RESUME_KEY } = getStorageKeys(userId, profileId);
+    return localStorage.getItem(ACTIVE_RESUME_KEY);
+  } catch (e) {
+    return null;
   }
 }
 
-export function createNewResume(title = "New Resume", profileData = {}, userId = "") {
+export function setActiveResumeId(id, userId = "", profileId = "") {
+  try {
+    const { ACTIVE_RESUME_KEY } = getStorageKeys(userId, profileId);
+    localStorage.setItem(ACTIVE_RESUME_KEY, id);
+  } catch (e) {}
+}
+
+export function saveResume(resumeObj, userId = "", profileId = "") {
+  if (!resumeObj || !resumeObj.id) return;
+  const list = getAllResumes({}, userId, profileId);
+  const index = list.findIndex((r) => r.id === resumeObj.id);
+
+  const updatedObj = { ...resumeObj, updatedAt: new Date().toISOString() };
+  if (index >= 0) {
+    list[index] = updatedObj;
+  } else {
+    list.push(updatedObj);
+  }
+  saveAllResumes(list, userId, profileId);
+  setActiveResumeId(updatedObj.id, userId, profileId);
+  return updatedObj;
+}
+
+export function createNewResume(profileData = {}, userId = "", profileId = "") {
+  const list = getAllResumes(profileData, userId, profileId);
   const newRes = createDefaultResume(profileData);
-  newRes.id = "resume_" + Date.now();
-  newRes.title = title;
-  saveResume(newRes, userId);
+  newRes.title = `Resume Version ${list.length + 1}`;
+  list.push(newRes);
+  saveAllResumes(list, userId, profileId);
+  setActiveResumeId(newRes.id, userId, profileId);
   return newRes;
 }
 
-export function duplicateResume(id, userId = "") {
-  const list = getAllResumes({}, userId);
+export function duplicateResume(id, userId = "", profileId = "") {
+  const list = getAllResumes({}, userId, profileId);
   const target = list.find((r) => r.id === id);
   if (!target) return null;
-  const clone = JSON.parse(JSON.stringify(target));
-  clone.id = "resume_" + Date.now();
-  clone.title = `${target.title} (Copy)`;
-  clone.updatedAt = new Date().toISOString();
-  saveResume(clone, userId);
-  return clone;
+
+  const dup = JSON.parse(JSON.stringify(target));
+  dup.id = "resume_" + Date.now();
+  dup.title = `${target.title} (Copy)`;
+  dup.updatedAt = new Date().toISOString();
+
+  list.push(dup);
+  saveAllResumes(list, userId, profileId);
+  setActiveResumeId(dup.id, userId, profileId);
+  return dup;
 }
 
-export function deleteResume(id, userId = "") {
-  const { STORAGE_KEY, ACTIVE_RESUME_KEY } = getStorageKeys(userId);
-  let list = getAllResumes({}, userId);
+export function deleteResume(id, userId = "", profileId = "") {
+  let list = getAllResumes({}, userId, profileId);
+  if (list.length <= 1) {
+    return false; // Minimum 1 resume required
+  }
   list = list.filter((r) => r.id !== id);
-  if (list.length === 0) {
-    const defaultRes = createDefaultResume();
-    list = [defaultRes];
+  saveAllResumes(list, userId, profileId);
+  const activeId = getActiveResumeId(userId, profileId);
+  if (activeId === id && list.length > 0) {
+    setActiveResumeId(list[0].id, userId, profileId);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  localStorage.setItem(ACTIVE_RESUME_KEY, list[0].id);
-  return list;
+  return true;
 }
 
-// ─── ATS SCORING & ANALYSIS ENGINE ──────────────────────────────────────────
+// ─── ATS SCORE CALCULATOR (Rule-based 0 - 100) ──────────────────────────────
 
-export function calculateATSMetrics(resume) {
-  if (!resume) return { atsScore: 0, profileScore: 0, suggestions: [], missingSkills: [] };
+export function calculateATSMetrics(resumeObj) {
+  if (!resumeObj) return { score: 0, grade: "F", breakdown: {}, tips: [] };
 
-  let atsScore = 50;
-  let profileScore = 40;
-  const suggestions = [];
-  const missingSkills = [];
+  let score = 0;
+  const breakdown = {
+    personal: 0,
+    summary: 0,
+    education: 0,
+    experience: 0,
+    projects: 0,
+    skills: 0,
+    formatting: 0,
+  };
+  const tips = [];
 
-  // Personal info evaluation
-  if (resume.personal?.fullName && resume.personal?.email && resume.personal?.phone) {
-    atsScore += 10;
-    profileScore += 10;
+  const p = resumeObj.personal || {};
+  if (p.fullName) breakdown.personal += 5;
+  if (p.email && p.email.includes("@")) breakdown.personal += 5;
+  if (p.phone) breakdown.personal += 5;
+  if (p.linkedin) breakdown.personal += 5;
+
+  const s = resumeObj.summary || "";
+  if (s.length > 50) breakdown.summary += 15;
+  else if (s.length > 0) breakdown.summary += 8;
+  else tips.push("Add a professional summary statement (50+ words) to boost ATS score by 15 points.");
+
+  const edu = resumeObj.education || [];
+  if (edu.length > 0) breakdown.education += 15;
+  else tips.push("Add at least 1 education entry.");
+
+  const exp = resumeObj.experience || [];
+  if (exp.length > 0) {
+    breakdown.experience += 20;
   } else {
-    suggestions.push("Complete essential personal details (Name, Email, Phone).");
+    tips.push("Add relevant work experience or internships to improve your score.");
   }
 
-  if (resume.personal?.linkedin) atsScore += 5;
-  if (resume.personal?.github) atsScore += 5;
-
-  // Summary evaluation
-  const summary = resume.summary || "";
-  if (summary.length > 100) {
-    atsScore += 10;
-    profileScore += 15;
+  const proj = resumeObj.projects || [];
+  if (proj.length > 0) {
+    breakdown.projects += 15;
   } else {
-    suggestions.push("Expand your Professional Summary to at least 100 characters emphasizing key strengths.");
+    tips.push("Add academic or personal projects to highlight technical problem solving.");
   }
 
-  // Skills evaluation
-  const allSkills = Object.values(resume.skills || {}).flat();
-  if (allSkills.length >= 8) {
-    atsScore += 10;
-    profileScore += 15;
-  } else {
-    suggestions.push("Add at least 8 relevant technical and soft skills to improve ATS keyword matches.");
-    missingSkills.push("Git / Version Control", "Docker", "RESTful APIs", "Agile / Scrum");
-  }
+  const skillsObj = resumeObj.skills || {};
+  const totalSkills = Object.values(skillsObj).flat().length;
+  if (totalSkills >= 8) breakdown.skills += 15;
+  else if (totalSkills > 0) breakdown.skills += 8;
+  else tips.push("Add at least 8 technical and soft skills.");
 
-  // Experience evaluation
-  const expCount = resume.experience?.length || 0;
-  if (expCount > 0) {
-    atsScore += 10;
-    profileScore += 20;
-    const hasDetailedExp = resume.experience.some((e) => (e.responsibilities || "").length > 50);
-    if (!hasDetailedExp) {
-      suggestions.push("Add quantitative impact metrics (e.g. 'Improved efficiency by 20%') to work experience.");
-    }
-  } else {
-    suggestions.push("Add internship or work experience items to boost recruiter ranking.");
-  }
+  if (resumeObj.settings && resumeObj.settings.template) breakdown.formatting += 5;
 
-  // Projects evaluation
-  const projCount = resume.projects?.length || 0;
-  if (projCount >= 2) {
-    atsScore += 10;
-    profileScore += 15;
-  } else {
-    suggestions.push("Include at least 2 detailed technical projects with GitHub links and live demos.");
-  }
+  score = Object.values(breakdown).reduce((a, b) => a + b, 0);
 
-  // Education evaluation
-  if (resume.education?.length > 0) {
-    atsScore += 5;
-    profileScore += 10;
-  }
+  let grade = "C";
+  if (score >= 90) grade = "A+";
+  else if (score >= 80) grade = "A";
+  else if (score >= 70) grade = "B+";
+  else if (score >= 60) grade = "B";
+  else if (score >= 50) grade = "C+";
 
-  // Certifications evaluation
-  if (resume.certifications?.length > 0) {
-    atsScore += 5;
-    profileScore += 5;
-  }
+  return { score, grade, breakdown, tips };
+}
 
+// ─── AI HELPER MOCKS (Produces Realistic Output) ────────────────────────────
+
+export async function aiGenerateSummary(resumeObj, jobTitle = "Software Developer") {
+  await new Promise((res) => setTimeout(res, 800));
+
+  const name = resumeObj?.personal?.fullName || "Candidate";
+  const title = jobTitle || resumeObj?.personal?.professionalTitle || "Software Engineer";
+  const skillsList = resumeObj?.skills?.technical?.slice(0, 4).join(", ") || "problem solving and modern web technologies";
+
+  return `Results-driven and motivated ${title} with a strong foundation in ${skillsList}. Experienced in building scalable applications, collaborating in agile environments, and delivering high-quality solutions. Passionate about technology innovation and continuous learning.`;
+}
+
+export async function aiImproveText(text) {
+  await new Promise((res) => setTimeout(res, 700));
+  if (!text || text.trim().length === 0) {
+    return "Successfully designed and implemented core application features, improving overall system efficiency and performance.";
+  }
+  return text.trim() + " Optimized performance and adhered to industry best practices.";
+}
+
+export async function aiShortenText(text) {
+  await new Promise((res) => setTimeout(res, 500));
+  if (!text) return "";
+  const words = text.split(" ");
+  if (words.length <= 15) return text;
+  return words.slice(0, 15).join(" ") + "...";
+}
+
+export async function aiAtsOptimize(resumeObj, targetRole = "Software Engineer") {
+  await new Promise((res) => setTimeout(res, 1000));
+  const suggestedKeywords = [
+    "Agile Methodologies",
+    "RESTful APIs",
+    "Git / Version Control",
+    "Unit Testing & Quality Assurance",
+    "CI/CD Pipelines",
+  ];
   return {
-    atsScore: Math.min(atsScore, 100),
-    profileScore: Math.min(profileScore, 100),
-    suggestions: suggestions.length > 0 ? suggestions : ["Your resume is highly optimized for ATS scanners!"],
-    missingSkills: Array.from(new Set(missingSkills)),
+    targetRole,
+    matchPercentage: Math.floor(Math.random() * 15) + 82, // 82% - 96%
+    addedKeywords: suggestedKeywords,
+    message: `Resume successfully optimized for "${targetRole}"! Added key industry action verbs and ATS keywords.`,
   };
 }
 
-// ─── AI ASSISTANT SIMULATION UTILITIES ───────────────────────────────────────
+export async function aiGenerateCoverLetter(resumeObj, jobTitle = "Software Engineer", companyName = "Target Company") {
+  await new Promise((res) => setTimeout(res, 900));
+  const p = resumeObj?.personal || {};
+  return `Dear Hiring Manager at ${companyName},
 
-export function aiGenerateSummary(role = "Full Stack Developer", skills = []) {
-  const skillList = skills.length ? skills.slice(0, 4).join(", ") : "React, Node.js, JavaScript, and Databases";
-  return `Results-driven ${role} with strong hands-on expertise in ${skillList}. Adept at designing scalable web architectures, writing clean reusable code, and optimizing application performance. Demonstrated track record in modern software development and eager to drive innovation in high-performing teams.`;
-}
+I am writing to express my enthusiastic interest in the ${jobTitle} position at ${companyName}. As a dedicated professional with expertise in ${resumeObj?.skills?.technical?.slice(0, 3).join(", ") || "software engineering"}, I am confident in my ability to make an immediate impact on your team.
 
-export function aiImproveText(text) {
-  if (!text) return "Spearheaded front-end optimization and automated database pipelines, reducing system latency and enhancing user satisfaction across production applications.";
-  return text
-    .replace(/worked on/gi, "Spearheaded development of")
-    .replace(/built/gi, "Engineered and deployed")
-    .replace(/helped/gi, "Collaborated cross-functionally to optimize")
-    .replace(/made/gi, "Architected and delivered") + " Achieved measurable productivity gains through clean modular code architecture.";
-}
+Throughout my academic and project experiences, I have developed a solid foundation in modern development practices and problem-solving. I am particularly drawn to ${companyName} because of your commitment to excellence and technological innovation.
 
-export function aiShortenText(text) {
-  if (!text) return "";
-  const sentences = text.split(". ").filter(Boolean);
-  return sentences.slice(0, 2).join(". ") + (sentences.length > 2 ? "." : "");
-}
-
-export function aiAtsOptimize(text, targetRole = "Software Engineer") {
-  return `${text} Optimized specifically for ${targetRole} positions with emphasis on Agile workflow, CI/CD practices, robust test coverage, and enterprise system reliability.`;
-}
-
-export function aiGenerateCoverLetter(resume, jobTitle = "Software Developer", companyName = "Top Tech Company") {
-  const name = resume?.personal?.fullName || "Candidate";
-  const email = resume?.personal?.email || "email@example.com";
-  const phone = resume?.personal?.phone || "";
-  const summary = resume?.summary || "";
-
-  return `Dear Hiring Manager,
-
-I am writing to express my enthusiastic interest in the ${jobTitle} position at ${companyName}. As a dedicated software developer with background in modern web technologies and software engineering practices, I am confident in my ability to make immediate contributions to your development team.
-
-During my academic and technical projects, I have developed a strong foundation in scalable frontend interfaces and backend API engineering. ${summary}
-
-I am particularly drawn to ${companyName}'s commitment to innovation and technical excellence. I look forward to the opportunity to discuss how my skill set, academic background, and passion for problem-solving align with your team's goals.
-
-Thank you for your time and consideration.
+Thank you for your time and consideration. I welcome the opportunity to discuss how my background and technical skills align with your goals.
 
 Sincerely,
-
-${name}
-${email} | ${phone}`;
+${p.fullName || "Applicant"}
+${p.email ? `Email: ${p.email}` : ""}
+${p.phone ? `Phone: ${p.phone}` : ""}
+`;
 }

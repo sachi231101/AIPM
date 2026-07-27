@@ -17,6 +17,10 @@ class ResumeViewController extends Controller
 
         $query = StudentResume::where('student_id', $studentId);
 
+        if ($request->filled('profile_id')) {
+            $query->where('student_profile_id', $request->profile_id);
+        }
+
         if ($request->filled('key')) {
             $query->where('resume_key', $request->key);
         } else {

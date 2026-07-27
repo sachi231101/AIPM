@@ -14,11 +14,9 @@ class StudentRegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'student_id_card'     => 'required|string|max:50|unique:students,student_id_card',
+            'student_id_card'     => 'nullable|string|max:50|unique:students,student_id_card',
             'full_name'           => 'required|string|max:255',
             'mobile'              => 'required|string|max:15|unique:students,mobile',
-            'institute_id'        => 'nullable|string',      // ID or "other"
-            'other_institute_name'=> 'required_if:institute_id,other|nullable|string|max:255',
             'password'            => 'required|string|min:8|confirmed',
         ];
     }
@@ -28,7 +26,6 @@ class StudentRegisterRequest extends FormRequest
         return [
             'student_id_card.unique'     => 'This student ID is already registered.',
             'mobile.unique'              => 'This mobile number is already registered.',
-            'other_institute_name.required_if' => 'Please enter your institute name.',
         ];
     }
 }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
-use App\Models\Institute;
 use App\Models\PlacementJob;
 use App\Models\Student;
 use App\Models\User;
@@ -47,14 +46,15 @@ class DashboardController extends Controller
         return response()->json([
             'data' => [
                 'total_students'     => Student::count(),
-                'total_institutes'   => Institute::count(),
+                'pending_students'   => Student::where('approval_status', 'pending')->count(),
+                'approved_students'  => Student::where('approval_status', 'approved')->count(),
                 'total_jobs'         => PlacementJob::count(),
                 'pending_jobs'       => PlacementJob::pending()->count(),
                 'published_jobs'     => PlacementJob::published()->count(),
                 'total_applications' => Application::count(),
                 'recent_jobs'        => PlacementJob::with('company')
                     ->latest()->limit(5)->get(),
-                'recent_applications'=> Application::with(['student.user', 'student.institute', 'job'])
+                'recent_applications'=> Application::with(['student.user', 'job'])
                     ->latest()->limit(10)->get(),
                 'placement_trends'   => $trends,
                 'jobs_by_status'     => $jobsByStatus,

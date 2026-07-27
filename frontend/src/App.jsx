@@ -8,6 +8,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "./index.css";
 
 import { AuthProvider } from "./hooks/useAuth";
+import { ProfileProvider } from "./context/ProfileContext";
 import Loading from "./components/Loading/Loading";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 import ProtectedLayout from "./components/ProtectedLayout/ProtectedLayout";
@@ -40,7 +41,6 @@ import SubmitJob from "./pages/Company/SubmitJob/SubmitJob";
 // Admin Pages
 import AdminLogin from "./pages/Admin/Login/Login";
 import AdminDashboard from "./pages/Admin/Dashboard/Dashboard";
-import Institutes from "./pages/Admin/Institutes/Institutes";
 import Students from "./pages/Admin/Students/Students";
 import Companies from "./pages/Admin/Companies/Companies";
 import Jobs from "./pages/Admin/Jobs/Jobs";
@@ -53,93 +53,69 @@ import AdminSettings from "./pages/Admin/Settings/Settings";
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            {/* ── PUBLIC ──────────────────────────────────────────────────── */}
-            <Route element={<PublicLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/placement-drives" element={<PlacementDrives />} />
-              <Route path="/job/:id" element={<JobDetails />} />
-              <Route path="/company/submit-job" element={<SubmitJob />} />
-            </Route>
+      <ProfileProvider>
+        <BrowserRouter>
+          <ScrollToTop />
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              {/* ── PUBLIC ──────────────────────────────────────────────────── */}
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/placement-drives" element={<PlacementDrives />} />
+                <Route path="/job/:id" element={<JobDetails />} />
+                <Route path="/company/submit-job" element={<SubmitJob />} />
+              </Route>
 
-            {/* ── AUTH (no layout) ─────────────────────────────────────────── */}
-            <Route path="/student/login" element={<StudentLogin />} />
-            <Route path="/student/register" element={<Register />} />
-            <Route path="/student/forgot-password" element={<ForgotPassword />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
+              {/* ── AUTH (no layout) ─────────────────────────────────────────── */}
+              <Route path="/student/login" element={<StudentLogin />} />
+              <Route path="/student/register" element={<Register />} />
+              <Route path="/student/forgot-password" element={<ForgotPassword />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
 
-            {/* ── STUDENT ──────────────────────────────────────────────────── */}
-            <Route element={<StudentLayout />}>
-              <Route path="/student/dashboard" element={<StudentDashboard />} />
-              <Route path="/student/profile" element={<Profile />} />
-              <Route path="/student/jobs" element={<AvailableJobs />} />
-              <Route path="/student/applied" element={<AppliedJobs />} />
-              <Route path="/student/resume-builder" element={<ResumeBuilder />} />
-            </Route>
+              {/* ── STUDENT DASHBOARD (Protected + StudentLayout) ────────────── */}
+              <Route
+                element={
+                  <ProtectedLayout requiredRole="student">
+                    <StudentLayout />
+                  </ProtectedLayout>
+                }
+              >
+                <Route path="/student/dashboard text-decoration-none" element={<StudentDashboard />} />
+                <Route path="/student/dashboard" element={<StudentDashboard />} />
+                <Route path="/student/profile" element={<Profile />} />
+                <Route path="/student/available-jobs" element={<AvailableJobs />} />
+                <Route path="/student/applied-jobs" element={<AppliedJobs />} />
+                <Route path="/student/resume-builder" element={<ResumeBuilder />} />
+              </Route>
 
-            {/* ── ADMIN ────────────────────────────────────────────────────── */}
-            <Route element={<AdminLayout />}>
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/institutes" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="institutes">
-                  <Institutes />
-                </ProtectedLayout>
-              } />
-              <Route path="/admin/students" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="students">
-                  <Students />
-                </ProtectedLayout>
-              } />
-              <Route path="/admin/companies" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
-                  <Companies />
-                </ProtectedLayout>
-              } />
-              <Route path="/admin/jobs" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
-                  <Jobs />
-                </ProtectedLayout>
-              } />
-              <Route path="/admin/jobs/:id" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
-                  <AdminJobDetails />
-                </ProtectedLayout>
-              } />
-              <Route path="/admin/applications" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
-                  <Applications />
-                </ProtectedLayout>
-              } />
-              <Route path="/admin/email-logs" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="jobs">
-                  <EmailLogs />
-                </ProtectedLayout>
-              } />
-              <Route path="/admin/contact-messages" element={<AdminMessages />} />
-              <Route path="/admin/settings" element={
-                <ProtectedLayout requiredRole="admin" requiredPermission="settings">
-                  <AdminSettings />
-                </ProtectedLayout>
-              } />
-            </Route>
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+              {/* ── ADMIN PANEL (Protected + AdminLayout) ────────────────────── */}
+              <Route
+                element={
+                  <ProtectedLayout requiredRole="admin">
+                    <AdminLayout />
+                  </ProtectedLayout>
+                }
+              >
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/students" element={<Students />} />
+                <Route path="/admin/companies" element={<Companies />} />
+                <Route path="/admin/jobs" element={<Jobs />} />
+                <Route path="/admin/jobs/:id" element={<AdminJobDetails />} />
+                <Route path="/admin/applications" element={<Applications />} />
+                <Route path="/admin/email-logs" element={<EmailLogs />} />
+                <Route path="/admin/messages" element={<AdminMessages />} />
+                <Route path="/admin/settings" element={<AdminSettings />} />
+              </Route>
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme="colored"
-      />
+              {/* ── FALLBACK ─────────────────────────────────────────────────── */}
+              <Route path="*" element={<Home />} />
+            </Routes>
+          </Suspense>
+          <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} />
+        </BrowserRouter>
+      </ProfileProvider>
     </AuthProvider>
   );
 }

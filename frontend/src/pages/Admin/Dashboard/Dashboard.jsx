@@ -229,7 +229,7 @@ export default function AdminDashboard() {
   const recentAppsMapped = (stats.recent_applications || []).map((app) => ({
     id: app.id,
     studentName: app.student?.user?.name || "Student",
-    institute: app.student?.institute?.name || app.student?.other_institute_name || "Unknown Institute",
+    studentMobile: app.student?.mobile || "N/A",
     jobTitle: app.job?.title || "Unknown Job",
     status: app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Applied"),
   }));
@@ -248,19 +248,16 @@ export default function AdminDashboard() {
           <StatCard title="Total Students" value={stats.total_students.toLocaleString()} icon="bi-people-fill" color="primary" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Institutes" value={stats.total_institutes} icon="bi-bank2" color="success" />
+          <StatCard title="Pending Review" value={stats.pending_students || 0} icon="bi-clock-history" color="warning" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Total Jobs" value={stats.total_jobs} icon="bi-briefcase-fill" color="danger" />
+          <StatCard title="Approved Students" value={stats.approved_students || 0} icon="bi-patch-check-fill" color="success" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
           <StatCard title="Published Jobs" value={stats.published_jobs} icon="bi-check-circle-fill" color="success" />
         </div>
         <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Pending Review" value={stats.pending_jobs} icon="bi-hourglass-split" color="warning" />
-        </div>
-        <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Applications" value={stats.total_applications.toLocaleString()} icon="bi-file-earmark-check-fill" color="primary" />
+          <StatCard title="Total Applications" value={stats.total_applications.toLocaleString()} icon="bi-file-earmark-check-fill" color="primary" />
         </div>
       </div>
 
@@ -358,7 +355,7 @@ export default function AdminDashboard() {
                         <tr key={app.id}>
                           <td className="px-4">
                             <p className="fw-medium mb-0 small">{app.studentName}</p>
-                            <small className="text-muted">{app.institute}</small>
+                            <small className="text-muted">{app.studentMobile}</small>
                           </td>
                           <td className="small text-muted">{app.jobTitle}</td>
                           <td>

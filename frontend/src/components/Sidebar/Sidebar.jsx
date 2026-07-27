@@ -3,13 +3,12 @@ import { useAuth } from "../../hooks/useAuth";
 
 const menuItems = [
   { to: "/admin/dashboard", icon: "bi-speedometer2", label: "Dashboard" },
-  { to: "/admin/institutes", icon: "bi-bank2", label: "Institutes" },
   { to: "/admin/students", icon: "bi-people-fill", label: "Students" },
   { to: "/admin/companies", icon: "bi-buildings-fill", label: "Companies" },
   { to: "/admin/jobs", icon: "bi-briefcase-fill", label: "Jobs" },
   { to: "/admin/applications", icon: "bi-file-earmark-check-fill", label: "Applications" },
-  { to: "/admin/email-logs", icon: "bi-envelope-check-fill", label: "Email Logs" },
-  { to: "/admin/contact-messages", icon: "bi-chat-dots-fill", label: "Messages" },
+  { to: "/admin/email-logs", icon: "bi-envelope-check-fill", label: "Resume Verification" },
+  { to: "/admin/contact-messages", icon: "bi-chat-dots-fill", label: "Reports" },
   { to: "/admin/settings", icon: "bi-gear-fill", label: "Settings" },
 ];
 

@@ -52,8 +52,6 @@ export default function StudentDashboard() {
           skills: job.skills || [],
           status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
           lastDate: job.last_date,
-          eligibleInstitutes: job.institutes?.map((i) => i.id) || [],
-          instituteId: job.institutes?.map((i) => i.id) || [],
           isApplied: appliedJobIds.has(job.id),
         }));
         setAvailableJobs(mappedJobs);
@@ -77,6 +75,8 @@ export default function StudentDashboard() {
     );
   }
 
+  const approvalStatus = student.approval_status || user?.approval_status || "approved";
+
   // Calculate dynamic completion checklist
   const sections = {
     personal: !!(student.email && student.dob && student.gender && student.address),
@@ -94,14 +94,32 @@ export default function StudentDashboard() {
   const notifications = [
     { id: 1, type: "success", icon: "bi-check-circle-fill", text: "Welcome to Aadya placement drives dashboard.", time: "Just now" },
     { id: 2, type: "info", icon: "bi-info-circle-fill", text: "New placement drives are open.", time: "Today" },
-    { id: 3, type: "warning", icon: "bi-exclamation-circle-fill", text: `Profile completion is at ${student.profileCompletion}%. Please update your details.`, time: "Just now" },
   ];
+
+  if (approvalStatus === "hold" || approvalStatus === "pending") {
+    notifications.push({
+      id: 3,
+      type: "warning",
+      icon: "bi-pause-circle-fill",
+      text: "Your account is currently placed on hold by the Placement Team.",
+      time: "On Hold"
+    });
+  }
 
   const hasUploadedResume = !!(student?.resume_path || student?.resume_url || student?.resumeUrl);
   const hasCreatedResume = !!(student?.has_created_resume);
   const hasAnyResume = hasUploadedResume || hasCreatedResume;
 
   const handleApply = async (job) => {
+    if (approvalStatus !== "approved") {
+      if (approvalStatus === "rejected") {
+        toast.error("Your account status is rejected. You cannot apply for placement drives.");
+      } else {
+        toast.info("Your account is currently on hold. You can apply for jobs once the Placement Team releases the hold on your account.");
+      }
+      return;
+    }
+
     if (!hasAnyResume) {
       toast.error("Please create a resume in Resume Builder or upload a PDF first before applying.", {
         autoClose: 4000,
@@ -141,27 +159,23 @@ export default function StudentDashboard() {
         breadcrumbs={[{ label: "Home", to: "/" }, { label: "Dashboard" }]}
       />
 
-      {/* Warning Banner at the top if profile is incomplete */}
-      {student.profileCompletion < 100 && (
+      {/* Account Status Approval Alert */}
+      {(approvalStatus === "hold" || approvalStatus === "pending") && (
         <div className="alert alert-warning border-0 shadow-sm mb-4 d-flex align-items-center gap-3">
-          <i className="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+          <i className="bi bi-pause-circle-fill fs-4 text-warning"></i>
           <div>
-            <p className="fw-semibold mb-0" style={{ fontSize: "0.95rem" }}>Incomplete Profile</p>
-            <small className="text-muted">Complete your profile and upload your resume to apply for placement drives.</small>
+            <p className="fw-semibold mb-0" style={{ fontSize: "0.95rem" }}>Account On Hold</p>
+            <small className="text-dark opacity-75">Your account is currently placed on hold. You can apply for jobs once the Placement Team releases the hold on your account.</small>
           </div>
-          <Link to="/student/profile" className="btn btn-warning btn-sm ms-auto fw-semibold">Complete Profile</Link>
         </div>
       )}
 
-      {/* Welcome Card for new/incomplete students */}
-      {student.profileCompletion < 100 && (
-        <div className="card border-0 shadow-sm mb-4" style={{ background: "linear-gradient(135deg, #0F4C81 0%, #1E88E5 100%)", color: "white" }}>
-          <div className="card-body p-4 p-md-5">
-            <h3 className="fw-bold mb-2">Welcome to Aadya Placement Portal!</h3>
-            <p className="lead text-white-75 mb-4">Please complete your profile before applying for placement drives.</p>
-            <Link to="/student/profile" className="btn btn-warning btn-lg fw-semibold">
-              <i className="bi bi-person-check-fill me-2"></i>Complete Profile
-            </Link>
+      {approvalStatus === "rejected" && (
+        <div className="alert alert-danger border-0 shadow-sm mb-4 d-flex align-items-center gap-3">
+          <i className="bi bi-x-circle-fill fs-4 text-danger"></i>
+          <div>
+            <p className="fw-semibold mb-0" style={{ fontSize: "0.95rem" }}>Account Application Disabled</p>
+            <small className="text-dark opacity-75">Your account application was not approved. You cannot apply for placement drives.</small>
           </div>
         </div>
       )}
@@ -178,7 +192,7 @@ export default function StudentDashboard() {
           <StatCard title="Profile Score" value={`${student.profileCompletion}%`} icon="bi-person-check-fill" color="warning" />
         </div>
         <div className="col-6 col-md-3">
-          <StatCard title="CGPA / Percentage" value={student.cgpa || "N/A"} icon="bi-bar-chart-fill" color="danger" />
+          <StatCard title="Approval Status" value={approvalStatus.toUpperCase()} icon="bi-patch-check-fill" color={approvalStatus === "approved" ? "success" : approvalStatus === "pending" ? "warning" : "danger"} />
         </div>
       </div>
 
@@ -186,9 +200,9 @@ export default function StudentDashboard() {
       <div className="card border-0 shadow-sm mb-4" style={{ background: "linear-gradient(135deg, #0F4C81 0%, #1565C0 100%)", color: "white" }}>
         <div className="card-body p-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
           <div>
-            <div className="badge bg-warning text-dark fw-bold mb-2">NEW FEATURE</div>
-            <h4 className="fw-bold mb-1">Build Your ATS-Friendly Professional Resume</h4>
-            <p className="text-white-75 mb-0 small">Automatically import your profile data, customize section contents, score ATS compatibility, and download PDF resumes.</p>
+            <div className="badge bg-warning text-dark fw-bold mb-2">RESUME BUILDER</div>
+            <h4 className="fw-bold mb-1">Build Your Professional Resume</h4>
+            <p className="text-white-75 mb-0 small">Import your details, format ATS-ready templates, and export PDF resumes easily.</p>
           </div>
           <Link to="/student/resume-builder" className="btn btn-warning btn-lg fw-bold text-nowrap">
             <i className="bi bi-file-earmark-person me-2"></i> Launch Resume Builder
@@ -219,7 +233,7 @@ export default function StudentDashboard() {
                   )}
                   <div>
                     <h6 className="fw-bold mb-0">{student.name}</h6>
-                    <small className="text-muted">{student.course || "No Course Selected"} • {student.institute}</small>
+                    <small className="text-muted">{student.course || "No Course Selected"}</small>
                   </div>
                 </div>
                 <Link to="/student/profile" className="btn btn-outline-primary btn-sm">Edit Profile</Link>
@@ -252,12 +266,6 @@ export default function StudentDashboard() {
                   style={{ width: `${student.profileCompletion}%`, borderRadius: 4 }}
                 ></div>
               </div>
-              {student.profileCompletion < 100 && (
-                <small className="text-muted d-block mt-2">
-                  <i className="bi bi-lightbulb-fill text-warning me-1"></i>
-                  Complete your profile and upload your resume to apply for placement drives.
-                </small>
-              )}
             </div>
           </div>
 
@@ -275,7 +283,7 @@ export default function StudentDashboard() {
               ))
             ) : (
               <div className="col-12 text-center py-4 bg-white rounded-3 shadow-sm text-muted">
-                No placement drives match your institute's eligibility.
+                No active placement drives currently open.
               </div>
             )}
           </div>

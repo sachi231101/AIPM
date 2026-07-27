@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
-import { jobService, instituteService } from "../../../services/api";
+import { jobService } from "../../../services/api";
 
 const statusColors = { 
   Published: "success", 
@@ -23,21 +23,15 @@ const statusMap = {
 export default function AdminJobDetails() {
   const { id } = useParams();
   const [job, setJob] = useState(null);
-  const [institutes, setInstitutes] = useState([]);
-  const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [jobRes, instRes] = await Promise.all([
-          jobService.getById(id),
-          instituteService.getAll()
-        ]);
-
+        const jobRes = await jobService.getById(id);
         const backendJob = jobRes.data.data;
-        const instList = Array.isArray(instRes.data.data) ? instRes.data.data : (Array.isArray(instRes.data) ? instRes.data : []);
 
         // Map backend job to UI structure
         const mappedJob = {
@@ -57,12 +51,9 @@ export default function AdminJobDetails() {
           description: backendJob.description,
           eligibility: backendJob.eligibility,
           skills: backendJob.skills || [],
-          eligibleInstitutes: backendJob.institutes?.map(i => i.id) || []
         };
 
         setJob(mappedJob);
-        setInstitutes(instList.filter(i => i.name !== "Other"));
-        setSelected(mappedJob.eligibleInstitutes);
       } catch (err) {
         console.error(err);
         toast.error("Failed to load job details.");
@@ -73,29 +64,22 @@ export default function AdminJobDetails() {
     fetchData();
   }, [id]);
 
-  const toggleInstitute = (instId) => {
-    setSelected(prev => prev.includes(instId) ? prev.filter(x => x !== instId) : [...prev, instId]);
-  };
-
-  const handleSave = async () => {
-    if (selected.length === 0) {
-      toast.error("Please select at least one eligible institute.");
-      return;
-    }
+  const handleStatusChange = async (newStatus) => {
     try {
-      await jobService.publish(id, { institute_ids: selected });
-      toast.success("Eligible institutes updated and drive published! 🎉");
-      // Refresh job details
-      const jobRes = await jobService.getById(id);
-      const backendJob = jobRes.data.data;
-      setJob(prev => ({
-        ...prev,
-        status: statusMap[backendJob.status] || "Pending",
-        eligibleInstitutes: backendJob.institutes?.map(i => i.id) || []
-      }));
+      setUpdating(true);
+      if (newStatus === "published") {
+        await jobService.publish(id, {});
+        toast.success("Job drive published successfully! 🎉");
+      } else {
+        await jobService.updateStatus(id, { status: newStatus });
+        toast.success(`Job drive status updated to ${newStatus}.`);
+      }
+      setJob((prev) => ({ ...prev, status: statusMap[newStatus] || newStatus }));
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to update eligible institutes.");
+      toast.error(err.response?.data?.message || "Failed to update drive status.");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -163,7 +147,7 @@ export default function AdminJobDetails() {
               <h6 className="fw-bold mb-2">Description</h6>
               <p className="text-muted mb-4">{job.description}</p>
 
-              <h6 className="fw-bold mb-2">Eligibility</h6>
+              <h6 className="fw-bold mb-2">Eligibility Criteria</h6>
               <p className="text-muted mb-4">{job.eligibility}</p>
 
               <h6 className="fw-bold mb-2">Skills Required</h6>
@@ -176,38 +160,30 @@ export default function AdminJobDetails() {
           </div>
         </div>
 
-        {/* Eligible Institutes */}
+        {/* Status Actions Sidebar */}
         <div className="col-lg-4">
           <div className="card border-0 shadow-sm sticky-top" style={{ top: "80px" }}>
             <div className="card-header bg-white border-0 pt-4 pb-0 px-4">
-              <h6 className="fw-bold mb-0"><i className="bi bi-bank2 me-2 text-primary"></i>Eligible Institutes</h6>
-              <small className="text-muted">Select which institutes can apply</small>
+              <h6 className="fw-bold mb-0"><i className="bi bi-gear me-2 text-primary"></i>Drive Settings</h6>
+              <small className="text-muted">Manage drive publication status</small>
             </div>
             <div className="card-body px-4 pb-4 pt-3">
-              <div className="d-flex flex-column gap-2 mb-4">
-                {institutes.map(inst => (
-                  <div key={inst.id} className="form-check d-flex align-items-center gap-2 p-3 rounded-3 border" style={{ background: selected.includes(inst.id) ? "#e3f0ff" : "#fff" }}>
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id={`inst-${inst.id}`}
-                      checked={selected.includes(inst.id)}
-                      onChange={() => toggleInstitute(inst.id)}
-                    />
-                    <label className="form-check-label small fw-medium" htmlFor={`inst-${inst.id}`}>
-                      <i className="bi bi-bank2 me-2 text-muted"></i>{inst.name}
-                    </label>
-                  </div>
-                ))}
+              <div className="d-flex flex-column gap-2 mb-3">
+                <button
+                  className="btn btn-success w-100 fw-semibold py-2"
+                  onClick={() => handleStatusChange("published")}
+                  disabled={updating || job.status === "Published"}
+                >
+                  <i className="bi bi-check-circle me-2"></i>Publish Job Drive
+                </button>
+                <button
+                  className="btn btn-outline-secondary w-100 fw-semibold py-2"
+                  onClick={() => handleStatusChange("closed")}
+                  disabled={updating || job.status === "Closed"}
+                >
+                  <i className="bi bi-lock me-2"></i>Close Job Drive
+                </button>
               </div>
-              <div className="d-flex gap-2">
-                <button className="btn btn-sm btn-outline-secondary flex-grow-1" onClick={() => setSelected(institutes.map(i => i.id))}>Select All</button>
-                <button className="btn btn-sm btn-outline-secondary flex-grow-1" onClick={() => setSelected([])}>Clear All</button>
-              </div>
-              <button className="btn btn-primary w-100 mt-3" onClick={handleSave}>
-                <i className="bi bi-floppy me-2"></i>Save Eligible Institutes
-              </button>
-              <small className="text-muted d-block text-center mt-2">{selected.length} of {institutes.length} selected</small>
             </div>
           </div>
         </div>

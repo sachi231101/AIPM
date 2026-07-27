@@ -31,6 +31,7 @@ class Student extends Model
         'github',
         'portfolio',
         'profile_completion',
+        'approval_status',
     ];
 
     protected $casts = [
@@ -57,7 +58,51 @@ class Student extends Model
         return $this->hasMany(Application::class);
     }
 
+    public function profiles(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StudentProfile::class, 'student_id');
+    }
+
     // ---------- Helpers ----------
+
+    public function getOrCreateDefaultProfile(): StudentProfile
+    {
+        $defaultProfile = $this->profiles()->where('is_default', true)->first();
+
+        if (!$defaultProfile) {
+            $defaultProfile = $this->profiles()->first();
+        }
+
+        if (!$defaultProfile) {
+            $name = $this->course ? $this->course . ' Profile' : 'Primary Profile';
+            $defaultProfile = $this->profiles()->create([
+                'profile_name'       => $name,
+                'professional_title' => $this->course ? $this->course . ' Developer' : 'Software Engineer',
+                'target_role'        => 'Software Engineer',
+                'summary'            => 'Passionate engineering candidate with strong problem-solving skills.',
+                'course'             => $this->course,
+                'branch'             => $this->branch,
+                'batch'              => $this->batch,
+                'passing_year'       => $this->passing_year,
+                'cgpa'               => $this->cgpa,
+                'skills'             => $this->skills ?? [],
+                'soft_skills'        => $this->soft_skills ?? [],
+                'resume_path'        => $this->resume_path,
+                'linkedin'           => $this->linkedin,
+                'github'             => $this->github,
+                'portfolio'          => $this->portfolio,
+                'profile_completion' => $this->profile_completion ?? 0,
+                'is_default'         => true,
+                'status'             => 'active',
+            ]);
+
+            // Link existing resumes & applications to this default profile
+            StudentResume::where('student_id', $this->id)->whereNull('student_profile_id')->update(['student_profile_id' => $defaultProfile->id]);
+            Application::where('student_id', $this->id)->whereNull('student_profile_id')->update(['student_profile_id' => $defaultProfile->id]);
+        }
+
+        return $defaultProfile;
+    }
 
     /**
      * Return the student's email (stored on the user account).

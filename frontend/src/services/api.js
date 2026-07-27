@@ -19,7 +19,7 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     const url = err.config?.url || "";
-    const isAuthRequest = url.includes("login") || url.includes("register") || url.includes("forgot-password");
+    const isAuthRequest = url.includes("login") || url.includes("register") || url.includes("forgot-password") || url.includes("otp");
     
     console.log("[Axios Interceptor] URL:", url, "Status:", err.response?.status, "isAuthRequest:", isAuthRequest);
     
@@ -38,7 +38,11 @@ api.interceptors.response.use(
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 export const authService = {
   studentLogin: (data) => api.post("/student/login", data),
+  sendStudentOtp: (data) => api.post("/student/send-otp", data),
+  verifyStudentOtp: (data) => api.post("/student/verify-otp", data),
   studentRegister: (data) => api.post("/student/register", data),
+  sendRegisterOtp: (data) => api.post("/student/register/send-otp", data),
+  verifyRegisterOtp: (data) => api.post("/student/register/verify-otp", data),
   studentForgotPassword: (data) => api.post("/student/forgot-password", data),
   adminLogin: (data) => api.post("/admin/login", data),
   logout: () => api.post("/logout"),
@@ -49,6 +53,7 @@ export const jobService = {
   getAll: (params) => api.get("/jobs", { params }),
   getById: (id) => api.get(`/jobs/${id}`),
   adminGetAll: (params) => api.get("/admin/jobs", { params }),
+  create: (data) => api.post("/admin/jobs", data),
   approve: (id) => api.put(`/admin/jobs/${id}/approve`),
   reject: (id) => api.put(`/admin/jobs/${id}/reject`),
   publish: (id, data) => api.put(`/admin/jobs/${id}/publish`, data),
@@ -58,16 +63,30 @@ export const jobService = {
 // ─── STUDENTS ────────────────────────────────────────────────────────────────
 export const studentService = {
   getAll: (params) => api.get("/admin/students", { params }),
-  getProfile: () => api.get("/student/profile"),
+  approve: (id) => api.put(`/admin/students/${id}/approve`),
+  hold: (id) => api.put(`/admin/students/${id}/hold`),
+  reject: (id) => api.put(`/admin/students/${id}/reject`),
+  getProfile: (params) => api.get("/student/profile", { params }),
   updateProfile: (data) => api.put("/student/profile", data),
   uploadResume: (formData) => api.post("/student/resume", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   }),
 };
 
+// ─── STUDENT CAREER PROFILES ──────────────────────────────────────────────────
+export const studentProfileService = {
+  getAll: () => api.get("/student/profiles"),
+  create: (data) => api.post("/student/profiles", data),
+  getById: (id) => api.get(`/student/profiles/${id}`),
+  update: (id, data) => api.put(`/student/profiles/${id}`, data),
+  delete: (id) => api.delete(`/student/profiles/${id}`),
+  duplicate: (id) => api.post(`/student/profiles/${id}/duplicate`),
+  setDefault: (id) => api.post(`/student/profiles/${id}/set-default`),
+};
+
 // ─── RESUMES ──────────────────────────────────────────────────────────────────
 export const resumeService = {
-  getAll: () => api.get("/student/resumes"),
+  getAll: (params) => api.get("/student/resumes", { params }),
   save: (data) => api.post("/student/resumes", data),
   delete: (key) => api.delete(`/student/resumes/${key}`),
 };
@@ -79,14 +98,6 @@ export const applicationService = {
   getAllAdmin: (params) => api.get("/admin/applications", { params }),
   getByJob: (jobId) => api.get(`/admin/jobs/${jobId}/applications`),
   sendToCompany: (jobId) => api.post("/admin/send-to-company", { job_id: jobId }),
-};
-
-// ─── INSTITUTES ──────────────────────────────────────────────────────────────
-export const instituteService = {
-  getAll: () => api.get("/institutes"),
-  create: (data) => api.post("/admin/institutes", data),
-  update: (id, data) => api.put(`/admin/institutes/${id}`, data),
-  delete: (id) => api.delete(`/admin/institutes/${id}`),
 };
 
 // ─── COMPANIES ───────────────────────────────────────────────────────────────

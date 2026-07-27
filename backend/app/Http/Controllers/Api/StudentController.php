@@ -18,8 +18,19 @@ class StudentController extends Controller
         $user    = $request->user();
         $student = $user->student->load('institute');
 
+        $profileId = $request->query('profile_id');
+        $activeProfile = null;
+
+        if ($profileId) {
+            $activeProfile = $student->profiles()->where('id', $profileId)->first();
+        }
+
+        if (!$activeProfile) {
+            $activeProfile = $student->getOrCreateDefaultProfile();
+        }
+
         return response()->json([
-            'data' => $this->formatProfile($user, $student),
+            'data' => $this->formatProfile($user, $student, $activeProfile),
         ]);
     }
 
@@ -30,13 +41,25 @@ class StudentController extends Controller
         $user    = $request->user();
         $student = $user->student;
 
+        $profileId = $request->input('profile_id') ?? $request->query('profile_id');
+        $activeProfile = null;
+
+        if ($profileId) {
+            $activeProfile = $student->profiles()->where('id', $profileId)->first();
+        }
+        if (!$activeProfile) {
+            $activeProfile = $student->getOrCreateDefaultProfile();
+        }
+
         // Update email on user record
         if ($request->filled('email')) {
             $user->update(['email' => $request->email]);
         }
 
-        // Update student profile
-        $updateData = $request->safe()->except('email');
+        // Parent shared fields update ONLY
+        $parentFields = ['dob', 'gender', 'address', 'institute_id', 'other_institute_name'];
+        $studentParentData = array_filter($request->only($parentFields), fn($v) => !is_null($v));
+
         if ($request->filled('profile_photo')) {
             $photoData = $request->input('profile_photo');
             if (str_starts_with($photoData, 'data:image')) {
@@ -56,24 +79,36 @@ class StudentController extends Controller
                     }
 
                     file_put_contents($fullPath, $decoded);
-                    $updateData['profile_photo'] = $relPath;
+                    $studentParentData['profile_photo'] = $relPath;
                 }
             } elseif (str_starts_with($photoData, 'http://') || str_starts_with($photoData, 'https://')) {
                 $parsedPath = parse_url($photoData, PHP_URL_PATH);
-                $updateData['profile_photo'] = ltrim($parsedPath, '/');
+                $studentParentData['profile_photo'] = ltrim($parsedPath, '/');
             } else {
-                $updateData['profile_photo'] = $photoData;
+                $studentParentData['profile_photo'] = $photoData;
             }
         }
-        $student->update($updateData);
 
-        // Recalculate completion
+        if (!empty($studentParentData)) {
+            $student->update($studentParentData);
+        }
+
+        // Profile-specific fields update ONLY on activeProfile
+        $profileFields = [
+            'course', 'branch', 'batch', 'passing_year', 'cgpa',
+            'skills', 'soft_skills', 'linkedin', 'github', 'portfolio',
+            'profile_name', 'professional_title', 'target_role', 'summary'
+        ];
+        $profileData = $request->only($profileFields);
+
+        $activeProfile->update(array_filter($profileData, fn($v) => !is_null($v)));
+        $activeProfile->calculateCompletion();
+
         $student->refresh();
-        $student->recalculateCompletion();
 
         return response()->json([
             'message' => 'Profile updated successfully.',
-            'data'    => $this->formatProfile($user->fresh(), $student->fresh()),
+            'data'    => $this->formatProfile($user->fresh(), $student->fresh(), $activeProfile->fresh()),
         ]);
     }
 
@@ -84,28 +119,35 @@ class StudentController extends Controller
         $user    = $request->user();
         $student = $user->student;
 
-        // Delete old resume if exists
-        if ($student->resume_path) {
-            Storage::disk('public')->delete($student->resume_path);
+        $profileId = $request->input('profile_id');
+        $activeProfile = null;
+        if ($profileId) {
+            $activeProfile = $student->profiles()->where('id', $profileId)->first();
+        }
+        if (!$activeProfile) {
+            $activeProfile = $student->getOrCreateDefaultProfile();
         }
 
-        // Get original filename
+        // Delete old resume for this profile if exists
+        if ($activeProfile->resume_path) {
+            Storage::disk('public')->delete($activeProfile->resume_path);
+        }
+
+        // Store file with clean name
         $originalName = $request->file('resume')->getClientOriginalName();
-        // Replace special characters to avoid path traversal or exploits
         $cleanName = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $originalName);
 
-        // Store file with original filename inside student-specific folder
         $path = $request->file('resume')->storeAs(
-            'resumes/' . $student->id,
+            'resumes/' . $student->id . '/' . $activeProfile->id,
             $cleanName,
             'public'
         );
 
-        $student->update(['resume_path' => $path]);
-        $student->recalculateCompletion();
+        $activeProfile->update(['resume_path' => $path]);
+        $activeProfile->calculateCompletion();
 
         return response()->json([
-            'message'     => 'Resume uploaded successfully.',
+            'message'     => 'Resume uploaded successfully for ' . $activeProfile->profile_name . '.',
             'resume_url'  => Storage::url($path),
             'resume_path' => $path,
         ]);
@@ -113,8 +155,16 @@ class StudentController extends Controller
 
     // ───────── Helper ─────────
 
-    private function formatProfile($user, $student): array
+    private function formatProfile($user, $student, $activeProfile = null): array
     {
+        if (!$activeProfile) {
+            $activeProfile = $student->getOrCreateDefaultProfile();
+        }
+
+        $hasCreatedResume = \App\Models\StudentResume::where('student_id', $student->id)
+            ->where('student_profile_id', $activeProfile->id)
+            ->exists();
+
         return [
             'id'                  => $user->id,
             'student_id'          => $student->id,
@@ -125,27 +175,33 @@ class StudentController extends Controller
             'dob'                 => $student->dob?->format('Y-m-d'),
             'gender'              => $student->gender,
             'address'             => $student->address,
+            'approval_status'     => $student->approval_status ?? 'approved',
             'institute_id'        => $student->institute_id,
             'institute'           => $student->institute?->name ?? $student->other_institute_name,
-            'course'              => $student->course,
-            'branch'              => $student->branch,
-            'batch'               => $student->batch,
-            'passing_year'        => $student->passing_year,
-            'cgpa'                => $student->cgpa,
-            'skills'              => $student->skills ?? [],
-            'soft_skills'         => $student->soft_skills ?? [],
-            'linkedin'            => $student->linkedin,
-            'github'              => $student->github,
-            'portfolio'           => $student->portfolio,
             'profile_photo'       => $student->profile_photo ? (str_starts_with($student->profile_photo, 'http') || str_starts_with($student->profile_photo, 'data:') ? $student->profile_photo : url('/' . ltrim($student->profile_photo, '/'))) : null,
-            'resume_path'         => $student->resume_path,
-            'resume_url'          => $student->resume_path ? url('/storage/' . $student->resume_path) : null,
-            'has_uploaded_resume' => filled($student->resume_path),
-            'has_created_resume'  => \App\Models\StudentResume::where('student_id', $student->id)->exists(),
-            'created_resume_url'  => \App\Models\StudentResume::where('student_id', $student->id)->exists()
-                                     ? url('/created-resume/' . $student->id)
-                                     : null,
-            'profile_completion'  => $student->profile_completion,
+
+            // Active Career Profile Data (100% isolated strictly to activeProfile)
+            'active_profile_id'   => $activeProfile->id,
+            'profile_name'        => $activeProfile->profile_name,
+            'professional_title'  => $activeProfile->professional_title,
+            'target_role'         => $activeProfile->target_role,
+            'summary'             => $activeProfile->summary,
+            'course'              => $activeProfile->course,
+            'branch'              => $activeProfile->branch,
+            'batch'               => $activeProfile->batch,
+            'passing_year'        => $activeProfile->passing_year,
+            'cgpa'                => $activeProfile->cgpa,
+            'skills'              => $activeProfile->skills ?? [],
+            'soft_skills'         => $activeProfile->soft_skills ?? [],
+            'linkedin'            => $activeProfile->linkedin,
+            'github'              => $activeProfile->github,
+            'portfolio'           => $activeProfile->portfolio,
+            'resume_path'         => $activeProfile->resume_path,
+            'resume_url'          => $activeProfile->resume_path ? url('/storage/' . $activeProfile->resume_path) : null,
+            'has_uploaded_resume' => filled($activeProfile->resume_path),
+            'has_created_resume'  => $hasCreatedResume,
+            'created_resume_url'  => $hasCreatedResume ? url('/created-resume/' . $student->id . '?profile_id=' . $activeProfile->id) : null,
+            'profile_completion'  => $activeProfile->profile_completion ?? 0,
         ];
     }
 }

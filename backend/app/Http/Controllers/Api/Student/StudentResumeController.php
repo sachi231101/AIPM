@@ -11,7 +11,7 @@ class StudentResumeController extends Controller
 {
     /**
      * GET /api/student/resumes
-     * Retrieve all saved resumes for the logged-in student.
+     * Retrieve all saved resumes for the logged-in student scoped strictly to profile_id.
      */
     public function index(Request $request): JsonResponse
     {
@@ -20,7 +20,13 @@ class StudentResumeController extends Controller
             return response()->json(['message' => 'Student profile not found'], 404);
         }
 
+        $profileId = $request->query('profile_id');
+        if (!$profileId) {
+            $profileId = $student->getOrCreateDefaultProfile()->id;
+        }
+
         $resumes = StudentResume::where('student_id', $student->id)
+            ->where('student_profile_id', $profileId)
             ->orderByDesc('updated_at')
             ->get();
 
@@ -32,7 +38,7 @@ class StudentResumeController extends Controller
 
     /**
      * POST /api/student/resumes
-     * Save or update a resume version.
+     * Save or update a resume version for a specific profile.
      */
     public function store(Request $request): JsonResponse
     {
@@ -42,16 +48,20 @@ class StudentResumeController extends Controller
         }
 
         $validated = $request->validate([
-            'resume_key' => 'required|string',
-            'title'      => 'nullable|string',
-            'content'    => 'required|array',
-            'is_default' => 'nullable|boolean',
+            'resume_key'         => 'required|string',
+            'student_profile_id' => 'nullable|integer',
+            'title'              => 'nullable|string',
+            'content'            => 'required|array',
+            'is_default'         => 'nullable|boolean',
         ]);
+
+        $profileId = $validated['student_profile_id'] ?? $student->getOrCreateDefaultProfile()->id;
 
         $resume = StudentResume::updateOrCreate(
             [
-                'student_id' => $student->id,
-                'resume_key' => $validated['resume_key'],
+                'student_id'         => $student->id,
+                'student_profile_id' => $profileId,
+                'resume_key'         => $validated['resume_key'],
             ],
             [
                 'title'      => $validated['title'] ?? 'Master Resume',
@@ -62,7 +72,7 @@ class StudentResumeController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Resume saved successfully to database.',
+            'message' => 'Resume saved successfully to profile.',
             'data'    => $resume,
         ]);
     }
@@ -78,9 +88,13 @@ class StudentResumeController extends Controller
             return response()->json(['message' => 'Student profile not found'], 404);
         }
 
-        StudentResume::where('student_id', $student->id)
-            ->where('resume_key', $key)
-            ->delete();
+        $profileId = $request->query('profile_id');
+
+        $query = StudentResume::where('student_id', $student->id)->where('resume_key', $key);
+        if ($profileId) {
+            $query->where('student_profile_id', $profileId);
+        }
+        $query->delete();
 
         return response()->json([
             'status'  => 'success',

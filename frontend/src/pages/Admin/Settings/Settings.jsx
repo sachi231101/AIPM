@@ -387,7 +387,6 @@ export default function Settings() {
                       <th>Email</th>
                       <th className="text-center">Students Access</th>
                       <th className="text-center">Jobs Access</th>
-                      <th className="text-center">Institutes Access</th>
                       <th className="text-center">Settings Access</th>
                       <th className="text-end">Actions</th>
                     </tr>
@@ -404,9 +403,6 @@ export default function Settings() {
                         </td>
                         <td className="text-center">
                           <input type="checkbox" className="form-check-input" checked={!!subadmin.permissions?.jobs} onChange={() => handleTogglePermission(subadmin, "jobs")} />
-                        </td>
-                        <td className="text-center">
-                          <input type="checkbox" className="form-check-input" checked={!!subadmin.permissions?.institutes} onChange={() => handleTogglePermission(subadmin, "institutes")} />
                         </td>
                         <td className="text-center">
                           <input type="checkbox" className="form-check-input" checked={!!subadmin.permissions?.settings} onChange={() => handleTogglePermission(subadmin, "settings")} />
@@ -453,7 +449,7 @@ export default function Settings() {
 
                       <div className="mb-2 small fw-bold text-secondary">Initial Permission Levels</div>
                       <div className="row g-2">
-                        {["students", "jobs", "institutes", "settings"].map((key) => (
+                        {["students", "jobs", "settings"].map((key) => (
                           <div key={key} className="col-6">
                             <div className="form-check form-switch card p-2 border-0 bg-light flex-row align-items-center justify-content-between">
                               <label className="form-check-label small fw-medium text-capitalize mb-0" htmlFor={`switch-${key}`}>{key}</label>
