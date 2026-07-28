@@ -10,25 +10,25 @@ export default function Students() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  const { data: rawStudentsResponse, loading, refetch } = useCachedData(
+  const { data: rawStudentsResponse, loading, refresh: refetch, setData } = useCachedData(
     "admin_students",
     studentService.getAll
   );
 
-  const rawList = rawStudentsResponse?.data || [];
-  const [studentsList, setStudentsList] = useState([]);
+  const listToDisplay = rawStudentsResponse?.data || [];
 
-  // Sync state with fetched cached data
-  useState(() => {
-    if (rawList.length > 0) {
-      setStudentsList(rawList);
+  const updateStudentStatusLocally = (id, newStatus) => {
+    if (rawStudentsResponse?.data) {
+      const updatedList = rawStudentsResponse.data.map((s) =>
+        s.id === id ? { ...s, approval_status: newStatus, approvalStatus: newStatus } : s
+      );
+      setData({ ...rawStudentsResponse, data: updatedList });
     }
-  });
-
-  const listToDisplay = studentsList.length > 0 ? studentsList : rawList;
+  };
 
   const handleApprove = async (id) => {
     setActionLoadingId(id);
+    updateStudentStatusLocally(id, "approved");
     try {
       await studentService.approve(id);
       toast.success("Student account approved successfully! 🎉");
@@ -36,6 +36,7 @@ export default function Students() {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to approve student.");
+      refetch();
     } finally {
       setActionLoadingId(null);
     }
@@ -43,6 +44,7 @@ export default function Students() {
 
   const handleHold = async (id) => {
     setActionLoadingId(id);
+    updateStudentStatusLocally(id, "hold");
     try {
       await studentService.hold(id);
       toast.warning("Student account placed on hold.");
@@ -50,6 +52,7 @@ export default function Students() {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to hold student.");
+      refetch();
     } finally {
       setActionLoadingId(null);
     }
@@ -57,6 +60,7 @@ export default function Students() {
 
   const handleReject = async (id) => {
     setActionLoadingId(id);
+    updateStudentStatusLocally(id, "rejected");
     try {
       await studentService.reject(id);
       toast.info("Student status set to Rejected.");
@@ -64,10 +68,12 @@ export default function Students() {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to reject student.");
+      refetch();
     } finally {
       setActionLoadingId(null);
     }
   };
+
 
   const filtered = listToDisplay.filter((s) => {
     const sName = s.name || "";

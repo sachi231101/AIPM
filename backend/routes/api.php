@@ -26,7 +26,9 @@ Route::post('/student/register/verify-otp',  [AuthController::class, 'registerVe
 Route::post('/student/login',                [AuthController::class, 'login']);
 Route::post('/student/send-otp',             [AuthController::class, 'sendOtp']);
 Route::post('/student/verify-otp',           [AuthController::class, 'verifyOtp']);
+Route::post('/student/resend-otp',           [AuthController::class, 'resendOtp']);
 Route::post('/student/forgot-password',      [AuthController::class, 'forgotPassword']);
+
 
 // Admin Auth
 Route::post('/admin/login',      [AdminAuthController::class, 'login']);

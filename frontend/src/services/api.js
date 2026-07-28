@@ -40,6 +40,8 @@ export const authService = {
   studentLogin: (data) => api.post("/student/login", data),
   sendStudentOtp: (data) => api.post("/student/send-otp", data),
   verifyStudentOtp: (data) => api.post("/student/verify-otp", data),
+  resendStudentOtp: (data) => api.post("/student/resend-otp", data),
+
   studentRegister: (data) => api.post("/student/register", data),
   sendRegisterOtp: (data) => api.post("/student/register/send-otp", data),
   verifyRegisterOtp: (data) => api.post("/student/register/verify-otp", data),

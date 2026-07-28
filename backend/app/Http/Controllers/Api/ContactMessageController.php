@@ -18,7 +18,7 @@ class ContactMessageController extends Controller
             'phone'      => 'nullable|string|max:20',
             'queryType'  => 'required|string|max:255',
             'subject'    => 'required|string|max:255',
-            'message'    => 'required|string|min:20',
+            'message'    => 'required|string|min:5',
         ]);
 
         $message = ContactMessage::create([
@@ -35,7 +35,7 @@ class ContactMessageController extends Controller
             'type'    => 'new_contact',
             'title'   => 'New Contact Message',
             'message' => 'New message from ' . $request->name . ': ' . $request->subject,
-            'link'    => '/admin/contact-messages',
+            'link'    => '/admin/messages',
         ]);
 
         return response()->json([

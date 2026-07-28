@@ -80,7 +80,7 @@ export default function Navbar() {
                   <li><Link className="dropdown-item" to="/student/dashboard"><i className="bi bi-speedometer2 me-2"></i>Dashboard</Link></li>
                   <li><Link className="dropdown-item" to="/student/profile"><i className="bi bi-person me-2"></i>My Profile</Link></li>
                   <li><Link className="dropdown-item" to="/student/resume-builder"><i className="bi bi-file-earmark-person me-2 text-primary"></i>Resume Builder</Link></li>
-                  <li><Link className="dropdown-item" to="/student/jobs"><i className="bi bi-briefcase me-2"></i>Jobs</Link></li>
+                  <li><Link className="dropdown-item" to="/placement-drives"><i className="bi bi-briefcase me-2"></i>Jobs</Link></li>
                   <li><Link className="dropdown-item" to="/student/applied"><i className="bi bi-check2-circle me-2"></i>Applied Jobs</Link></li>
                   <li><hr className="dropdown-divider" /></li>
                   <li><button className="dropdown-item text-danger" onClick={handleLogout}><i className="bi bi-box-arrow-right me-2"></i>Logout</button></li>

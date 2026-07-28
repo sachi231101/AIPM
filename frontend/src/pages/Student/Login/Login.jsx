@@ -73,7 +73,7 @@ export default function StudentLogin() {
         setDebugOtp(response.data.otp_debug);
       }
       setOtpStep("verify");
-      setResendTimer(60);
+      setResendTimer(30);
     } catch (err) {
       console.error(err);
       const errorMessage = err.response?.data?.message || "Failed to send OTP. Please check your mobile number.";
@@ -83,7 +83,36 @@ export default function StudentLogin() {
     }
   };
 
+  // Handle Resending OTP
+  const handleResendOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (!otpMobile.trim()) {
+      toast.error("Please enter your Mobile Number");
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      const response = await authService.resendStudentOtp({
+        mobile: otpMobile.trim()
+      });
+      toast.success(response.data.message || "OTP resent successfully!");
+      setSentTo(response.data.sent_to || otpMobile);
+      if (response.data.otp_debug) {
+        setDebugOtp(response.data.otp_debug);
+      }
+      setResendTimer(30);
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err.response?.data?.message || "Failed to resend OTP. Please try again later.";
+      toast.error(errorMessage);
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   // Handle Verifying OTP for Login
+
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (!otpCode.trim() || otpCode.trim().length !== 6) {
@@ -153,7 +182,7 @@ export default function StudentLogin() {
                 {loginMode === "password" && (
                   <form onSubmit={handleSubmit(onPasswordSubmit)}>
                     <div className="mb-3">
-                      <label className="form-label fw-medium small">Phone Number / Student ID</label>
+                      <label className="form-label fw-medium small">Phone Number</label>
                       <div className="input-group">
                         <span className="input-group-text bg-light border-end-0">
                           <i className="bi bi-telephone text-muted"></i>
@@ -162,7 +191,7 @@ export default function StudentLogin() {
                           type="text"
                           {...register("identifier", { required: "Phone number or ID is required" })}
                           className={`form-control border-start-0 ps-0 ${errors.identifier ? "is-invalid" : ""}`}
-                          placeholder="e.g. 9876543210 or STU1001"
+                          placeholder="e.g. 9876543210"
                         />
                         {errors.identifier && <div className="invalid-feedback">{errors.identifier.message}</div>}
                       </div>
@@ -306,7 +335,7 @@ export default function StudentLogin() {
                             <button
                               type="button"
                               className="btn btn-link btn-sm text-decoration-none fw-medium"
-                              onClick={handleSendOtp}
+                              onClick={handleResendOtp}
                               disabled={sendingOtp}
                             >
                               Didn't receive OTP? Resend

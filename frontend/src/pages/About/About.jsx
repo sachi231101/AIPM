@@ -1,9 +1,9 @@
 export default function About() {
   const team = [
-    { name: "Rakshith S", role: "Founder", avatar: "https://ui-avatars.com/api/?name=Rakshith+S&background=0F4C81&color=fff&size=80" },
-    { name: "Shreyas", role: "Senior Trainer & Consultant", avatar: "https://ui-avatars.com/api/?name=Shreyas&background=1E88E5&color=fff&size=80" },
-    { name: "Priyanka", role: "Trainer & Coordinator", avatar: "https://ui-avatars.com/api/?name=Priyanka&background=2E7D32&color=fff&size=80" },
-    { name: "Vignesh", role: "Placement Officer", avatar: "https://ui-avatars.com/api/?name=Vignesh&background=F9A825&color=fff&size=80" },
+    { name: "Rakshith S",  avatar: "https://ui-avatars.com/api/?name=Rakshith+S&background=0F4C81&color=fff&size=80" },
+    { name: "Shreyas", avatar: "https://ui-avatars.com/api/?name=Shreyas&background=1E88E5&color=fff&size=80" },
+    { name: "Priyanka", avatar: "https://ui-avatars.com/api/?name=Priyanka&background=2E7D32&color=fff&size=80" },
+    { name: "Vignesh", avatar: "https://ui-avatars.com/api/?name=Vignesh&background=F9A825&color=fff&size=80" },
   ];
 
   return (
@@ -162,7 +162,6 @@ export default function About() {
                 <div className="card border-0 shadow-sm text-center p-4 h-100">
                   <img src={member.avatar} alt={member.name} className="rounded-circle mx-auto mb-3" width={72} height={72} />
                   <h6 className="fw-bold mb-1">{member.name}</h6>
-                  <small className="text-primary">{member.role}</small>
                 </div>
               </div>
             ))}

@@ -213,12 +213,6 @@ export default function Messages() {
               </div>
               <div className="modal-footer border-0 pt-0">
                 <button className="btn btn-outline-secondary" onClick={() => setSelectedMessage(null)}>Close</button>
-                <a
-                  href={`mailto:${selectedMessage.email}?subject=Re: ${encodeURIComponent(selectedMessage.subject)}`}
-                  className="btn btn-primary d-flex align-items-center gap-2"
-                >
-                  <i className="bi bi-envelope"></i> Reply via Email
-                </a>
               </div>
             </div>
           </div>

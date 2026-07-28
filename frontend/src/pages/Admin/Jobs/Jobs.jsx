@@ -42,7 +42,7 @@ export default function Jobs() {
     status: "published"
   });
 
-  const { data: rawJobsResponse, loading, refetch } = useCachedData(
+  const { data: rawJobsResponse, loading, refresh: refetch, setData } = useCachedData(
     "admin_jobs",
     jobService.adminGetAll
   );
@@ -66,6 +66,21 @@ export default function Jobs() {
   });
 
   const updateStatus = async (id, action) => {
+    const newStatusLower = action.toLowerCase();
+
+    // Optimistic UI update
+    if (rawJobsResponse) {
+      const isArray = Array.isArray(rawJobsResponse.data);
+      const currentList = isArray ? rawJobsResponse.data : (rawJobsResponse.data?.data || []);
+      const updatedList = currentList.map((job) =>
+        job.id === id ? { ...job, status: newStatusLower } : job
+      );
+      const updatedResponse = isArray
+        ? { ...rawJobsResponse, data: updatedList }
+        : { ...rawJobsResponse, data: { ...rawJobsResponse.data, data: updatedList } };
+      setData(updatedResponse);
+    }
+
     try {
       if (action === "Approved") {
         await jobService.approve(id);
@@ -76,11 +91,12 @@ export default function Jobs() {
       } else if (action === "Closed") {
         await jobService.close(id);
       }
-      toast.success(`Job drive status updated to ${action.toLowerCase()}!`);
+      toast.success(`Job drive status updated to ${newStatusLower}!`);
       refetch();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to update drive status.");
+      refetch();
     }
   };
 
@@ -299,12 +315,11 @@ export default function Jobs() {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small fw-medium">Salary / CTC Package <span className="text-danger">*</span></label>
+                      <label className="form-label small fw-medium">Salary / CTC Package</label>
                       <input
                         type="text"
-                        required
                         className="form-control"
-                        placeholder="e.g. ₹6.5 LPA - ₹8.0 LPA"
+                        placeholder="e.g. ₹6.5 LPA - ₹8.0 LPA (Optional)"
                         value={formData.salary}
                         onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
                       />

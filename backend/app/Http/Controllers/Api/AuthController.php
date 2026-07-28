@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StudentRegisterRequest;
+use App\Http\Requests\Api\Student\SendOtpRequest;
+use App\Http\Requests\Api\Student\VerifyOtpRequest;
+use App\Http\Requests\Api\Student\ResendOtpRequest;
 use App\Models\Institute;
 use App\Models\Notification;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +20,13 @@ use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
+    protected OtpService $otpService;
+
+    public function __construct(OtpService $otpService)
+    {
+        $this->otpService = $otpService;
+    }
+
     // ───────── POST /api/student/register ─────────
 
     public function register(StudentRegisterRequest $request): JsonResponse
@@ -200,123 +211,41 @@ class AuthController extends Controller
 
     // ───────── POST /api/student/send-otp ─────────
 
-    public function sendOtp(Request $request): JsonResponse
+    public function sendOtp(SendOtpRequest $request): JsonResponse
     {
-        $request->validate([
-            'mobile' => 'required|string',
-            'name'   => 'nullable|string',
-        ]);
-
-        $mobile = trim($request->mobile);
-        $student = Student::where('mobile', $mobile)->first();
-
-        $otp = (string) mt_rand(100000, 999999);
-
-        if ($student && $student->user) {
-            $user = $student->user;
-            if ($request->name && trim($request->name)) {
-                $user->update(['name' => trim($request->name)]);
-            }
-            Cache::put('otp_student_' . $user->id, $otp, 600);
-            Cache::put('otp_mobile_' . $mobile, [
-                'user_id' => $user->id,
-                'otp'     => $otp,
-                'is_new'  => false,
-            ], 600);
-        } else {
-            Cache::put('otp_mobile_' . $mobile, [
-                'name'   => trim($request->name) ?: 'Student',
-                'mobile' => $mobile,
-                'otp'    => $otp,
-                'is_new' => true,
-            ], 600);
+        try {
+            $result = $this->otpService->sendOtp($request->mobile);
+            return response()->json($result);
+        } catch (\Exception $e) {
+            $status = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 400;
+            return response()->json(['message' => $e->getMessage()], $status);
         }
+    }
 
-        $maskedMobile = strlen($mobile) >= 10 ? substr($mobile, 0, 2) . '******' . substr($mobile, -2) : $mobile;
+    // ───────── POST /api/student/resend-otp ─────────
 
-        $responseData = [
-            'message' => "OTP sent successfully to mobile number {$maskedMobile}.",
-            'sent_to' => $maskedMobile,
-            'mobile'  => $mobile,
-        ];
-
-        if (config('app.env') !== 'production' || config('app.debug')) {
-            $responseData['otp_debug'] = $otp;
+    public function resendOtp(ResendOtpRequest $request): JsonResponse
+    {
+        try {
+            $result = $this->otpService->resendOtp($request->mobile);
+            return response()->json($result);
+        } catch (\Exception $e) {
+            $status = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 400;
+            return response()->json(['message' => $e->getMessage()], $status);
         }
-
-        return response()->json($responseData);
     }
 
     // ───────── POST /api/student/verify-otp ─────────
 
-    public function verifyOtp(Request $request): JsonResponse
+    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
     {
-        $request->validate([
-            'mobile' => 'required|string',
-            'otp'    => 'required|string|size:6',
-        ]);
-
-        $mobile = trim($request->mobile);
-        $cachedData = Cache::get('otp_mobile_' . $mobile);
-        $student = Student::where('mobile', $mobile)->first();
-
-        // Check fallback cache key
-        $cachedOtp = is_array($cachedData) ? ($cachedData['otp'] ?? null) : null;
-        if (!$cachedOtp && $student && $student->user) {
-            $cachedOtp = Cache::get('otp_student_' . $student->user->id);
+        try {
+            $result = $this->otpService->verifyOtp($request->mobile, $request->otp);
+            return response()->json($result);
+        } catch (\Exception $e) {
+            $status = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 400;
+            return response()->json(['message' => $e->getMessage()], $status);
         }
-
-        if (!$cachedOtp || $cachedOtp !== trim($request->otp)) {
-            return response()->json(['message' => 'Invalid or expired OTP. Please check and try again.'], 422);
-        }
-
-        // OTP is valid! Create student if new
-        if (!$student) {
-            $name = (is_array($cachedData) && !empty($cachedData['name'])) ? $cachedData['name'] : 'Student';
-            
-            $user = User::create([
-                'name'     => $name,
-                'email'    => null,
-                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
-                'role'     => 'student',
-            ]);
-
-            $studentIdCard = 'STU' . mt_rand(10000, 99999);
-            while (Student::where('student_id_card', $studentIdCard)->exists()) {
-                $studentIdCard = 'STU' . mt_rand(10000, 99999);
-            }
-
-            $student = Student::create([
-                'user_id'            => $user->id,
-                'student_id_card'    => $studentIdCard,
-                'mobile'             => $mobile,
-                'approval_status'    => 'approved',
-                'profile_completion' => 0,
-            ]);
-
-            Notification::create([
-                'type'    => 'new_student',
-                'title'   => 'New Student Registration',
-                'message' => $name . ' registered via Mobile OTP (' . $mobile . ')',
-                'link'    => '/admin/students',
-            ]);
-        } else {
-            $user = $student->user;
-        }
-
-        // Clear cache
-        Cache::forget('otp_mobile_' . $mobile);
-        if ($user) {
-            Cache::forget('otp_student_' . $user->id);
-        }
-
-        $token = $user->createToken('student-token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'OTP verification successful.',
-            'token'   => $token,
-            'user'    => $this->formatStudent($user, $student),
-        ]);
     }
 
     // ───────── POST /api/student/logout ─────────
