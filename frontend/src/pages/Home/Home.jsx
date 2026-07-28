@@ -1,73 +1,79 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { companies as mockCompanies, testimonials, institutes } from "../../utils/mockData";
 import JobCard from "../../components/JobCard/JobCard";
 import CompanyCard from "../../components/CompanyCard/CompanyCard";
-import { jobService, companyService } from "../../services/api";
-
+import { jobService, companyService, contactService } from "../../services/api";
+import { useCachedData } from "../../hooks/useCachedData";
 import { getCompanyLogo, handleLogoError } from "../../utils/logoHelper";
 
 export default function Home() {
-  const [latestJobs, setLatestJobs] = useState([]);
-  const [realCompanies, setRealCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [jobsRes, compRes] = await Promise.all([
-          jobService.getAll().catch(() => ({ data: { data: [] } })),
-          companyService.getPublic().catch(() => ({ data: { data: [] } })),
-        ]);
+  const { data: rawJobsResponse } = useCachedData(
+    "public_jobs",
+    jobService.getAll
+  );
 
-        const rawJobs = jobsRes.data?.data || [];
-        const rawComps = compRes.data?.data || [];
+  const { data: rawCompsResponse } = useCachedData(
+    "public_companies",
+    companyService.getPublic
+  );
 
-        const mappedJobs = rawJobs.map((job) => ({
-          id: job.id,
-          title: job.title,
-          company: job.company?.name || "Unknown Company",
-          companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
-          location: job.location,
-          salary: job.salary,
-          experience: job.experience,
-          skills: job.skills || [],
-          status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
-          lastDate: job.last_date,
-        }));
-        setLatestJobs(mappedJobs.slice(0, 3));
+  const rawJobs = rawJobsResponse ? (Array.isArray(rawJobsResponse.data) ? rawJobsResponse.data : (rawJobsResponse.data?.data || [])) : [];
+  const rawComps = rawCompsResponse ? (Array.isArray(rawCompsResponse.data) ? rawCompsResponse.data : (rawCompsResponse.data?.data || [])) : [];
 
-        if (rawComps && rawComps.length > 0) {
-          const mappedComps = rawComps.map((c) => ({
-            id: c.id,
-            name: c.name,
-            logo: getCompanyLogo(c.logo_url || c.logo, c.name),
-            industry: c.industry || "Technology",
-            location: c.location || "India",
-            openJobs: c.open_jobs || 0,
-          }));
-          setRealCompanies(mappedComps);
-        } else {
-          setRealCompanies(mockCompanies);
-        }
-      } catch (err) {
-        console.error("Failed to load home page data", err);
-        setRealCompanies(mockCompanies);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const latestJobs = rawJobs.map((job) => ({
+    id: job.id,
+    title: job.title,
+    company: job.company?.name || "Unknown Company",
+    companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
+    location: job.location,
+    salary: job.salary,
+    experience: job.experience,
+    skills: job.skills || [],
+    status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
+    lastDate: job.last_date,
+  })).slice(0, 3);
 
-  const handleCourseRegister = (e) => {
+  const realCompanies = (rawComps && rawComps.length > 0)
+    ? rawComps.map((c) => ({
+        id: c.id,
+        name: c.name,
+        logo: getCompanyLogo(c.logo_url || c.logo, c.name),
+        industry: c.industry || "Technology",
+        location: c.location || "India",
+        openJobs: c.open_jobs || 0,
+      }))
+    : mockCompanies;
+
+  const handleCourseRegister = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const name = formData.get("course_name");
-    toast.success(`Thank you, ${name}! Your registration has been received. We will contact you within 24 hours. 🎉`);
-    e.target.reset();
+    const name = (formData.get("course_name") || "").trim();
+    const phone = (formData.get("course_phone") || "").trim();
+    const email = (formData.get("course_email") || "").trim();
+    const city = (formData.get("course_city") || "").trim();
+
+    setRegistering(true);
+    try {
+      await contactService.submit({
+        name,
+        email,
+        phone,
+        queryType: "Student Placement Query",
+        subject: `Course Registration from ${name} (${city})`,
+        message: `New Course Registration:\nName: ${name}\nPhone: ${phone}\nEmail: ${email}\nCity: ${city}`,
+      });
+      toast.success(`Thank you, ${name}! Your course registration has been submitted successfully. We will contact you within 24 hours. 🎉`);
+      e.target.reset();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to submit course registration. Please try again.");
+    } finally {
+      setRegistering(false);
+    }
   };
 
   return (
@@ -331,8 +337,12 @@ export default function Home() {
                     <label className="form-label fw-semibold small">City</label>
                     <input type="text" name="course_city" required className="form-control bg-white" placeholder="Enter your city" />
                   </div>
-                  <button type="submit" className="btn btn-primary w-100 py-2 fw-semibold">
-                    Register Now
+                  <button type="submit" className="btn btn-primary w-100 py-2 fw-semibold" disabled={registering}>
+                    {registering ? (
+                      <><span className="spinner-border spinner-border-sm me-2"></span>Registering...</>
+                    ) : (
+                      "Register Now"
+                    )}
                   </button>
                 </form>
               </div>

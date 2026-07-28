@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "react-toastify";
@@ -14,66 +14,54 @@ const statusMap = {
   closed: "Closed"
 };
 
+import { useCachedData } from "../../hooks/useCachedData";
+
 export default function JobDetails() {
   const { id } = useParams();
   const { user } = useAuth();
   const role = user?.role;
-  const [job, setJob] = useState(null);
-  const [student, setStudent] = useState(null);
-  const [isApplied, setIsApplied] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res = await jobService.getById(id);
-        const backendJob = res.data.data;
+  const { data: jobRes, loading: loadingJob } = useCachedData(
+    `job_details_${id}`,
+    () => jobService.getById(id),
+    [id]
+  );
 
-        // Map backend job to UI structure
-        const mappedJob = {
-          id: backendJob.id,
-          title: backendJob.title,
-          company: backendJob.company?.name || "Unknown Company",
-          companyLogo: getCompanyLogo(backendJob.company?.logo_path, backendJob.company?.name),
-          location: backendJob.location,
-          salary: backendJob.salary,
-          experience: backendJob.experience,
-          openings: backendJob.openings,
-          postedDate: backendJob.created_at,
-          lastDate: backendJob.last_date,
-          status: statusMap[backendJob.status] || "Published",
-          description: backendJob.description,
-          eligibility: backendJob.eligibility,
-          skills: backendJob.skills || [],
-        };
-        setJob(mappedJob);
+  const { data: profileRes } = useCachedData(
+    role === "student" ? "student_profile" : null,
+    studentService.getProfile
+  );
 
-        if (role === "student") {
-          try {
-            const [profileRes, appsRes] = await Promise.all([
-              studentService.getProfile(),
-              applicationService.getMyApplications().catch(() => ({ data: { data: [] } })),
-            ]);
-            setStudent(profileRes.data.data);
-            const myApps = appsRes.data?.data || [];
-            const applied = myApps.some((app) => String(app.job?.id) === String(id));
-            setIsApplied(applied);
-          } catch (profileErr) {
-            console.error("Failed to load student profile", profileErr);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch job details", err);
-        toast.error("Failed to load job details.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id, role]);
+  const { data: appsRes } = useCachedData(
+    role === "student" ? "student_applications" : null,
+    applicationService.getMyApplications
+  );
+
+  const backendJob = jobRes?.data || jobRes?.data?.data || null;
+
+  const job = backendJob ? {
+    id: backendJob.id,
+    title: backendJob.title,
+    company: backendJob.company?.name || "Unknown Company",
+    companyLogo: getCompanyLogo(backendJob.company?.logo_path, backendJob.company?.name),
+    location: backendJob.location,
+    salary: backendJob.salary,
+    experience: backendJob.experience,
+    openings: backendJob.openings,
+    postedDate: backendJob.created_at,
+    lastDate: backendJob.last_date,
+    status: statusMap[backendJob.status] || "Published",
+    description: backendJob.description,
+    eligibility: backendJob.eligibility,
+    skills: backendJob.skills || [],
+  } : null;
+
+  const student = profileRes?.data || null;
+  const myApps = appsRes ? (Array.isArray(appsRes.data) ? appsRes.data : (appsRes.data?.data || [])) : [];
+  const isApplied = myApps.some((app) => String(app.job?.id) === String(id));
+  const loading = loadingJob && !job;
 
   if (loading) {
     return (

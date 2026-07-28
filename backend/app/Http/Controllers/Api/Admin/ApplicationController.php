@@ -32,7 +32,7 @@ class ApplicationController extends Controller
             $hasCreated  = \App\Models\StudentResume::where('student_id', $app->student_id)->exists();
 
             $createdUrl = $hasCreated
-                ? url("/created-resume/" . $app->student_id . ($app->resume_key ? "?key=" . $app->resume_key : ""))
+                ? url("/created-resume/" . $app->student_id . ($app->resume_key ? "?key=" . $app->resume_key : ($app->student_profile_id ? "?profile_id=" . $app->student_profile_id : "")))
                 : null;
             $uploadedUrl = $hasUploaded ? url("/storage/" . $app->resume_path) : null;
             $primaryUrl  = ($app->resume_type === 'builder' && $createdUrl) ? $createdUrl : ($uploadedUrl ?? $createdUrl);

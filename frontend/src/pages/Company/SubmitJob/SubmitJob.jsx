@@ -54,7 +54,7 @@ export default function SubmitJob() {
       formData.append("description", data.jobDescription.trim());
       formData.append("eligibility", data.eligibility.trim());
       formData.append("experience", data.experience);
-      formData.append("salary", data.salary.trim());
+      formData.append("salary", data.salary?.trim() || "Not Disclosed");
       formData.append("location", data.jobLocation.trim());
       formData.append("openings", parseInt(data.openings) || 1);
       formData.append("last_date", data.lastDate);
@@ -231,9 +231,8 @@ export default function SubmitJob() {
                         </select>
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label small fw-medium">Salary / CTC (LPA) <span className="text-danger">*</span></label>
-                        <input {...register("salary", { required: "Salary is required" })} className={`form-control ${errors.salary ? "is-invalid" : ""}`} placeholder="6–8 LPA" />
-                        {errors.salary && <div className="invalid-feedback">{errors.salary.message}</div>}
+                        <label className="form-label small fw-medium">Salary / CTC (LPA)</label>
+                        <input {...register("salary")} className="form-control" placeholder="6–8 LPA (Optional)" />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label small fw-medium">Number of Openings <span className="text-danger">*</span></label>

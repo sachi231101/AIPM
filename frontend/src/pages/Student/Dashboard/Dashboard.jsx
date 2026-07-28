@@ -8,62 +8,44 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import { studentService, jobService, applicationService } from "../../../services/api";
 import { getCompanyLogo } from "../../../utils/logoHelper";
 
-export default function StudentDashboard() {
+import { useCachedData } from "../../../hooks/useCachedData";
+
+export default function Dashboard() {
   const { user } = useAuth();
-  const [student, setStudent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [availableJobs, setAvailableJobs] = useState([]);
-  const [myApplications, setMyApplications] = useState([]);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [profileRes, jobsRes, appsRes] = await Promise.all([
-          studentService.getProfile(),
-          jobService.getAll(),
-          applicationService.getMyApplications(),
-        ]);
+  const { data: profileRes, loading: loadingProfile } = useCachedData("student_profile", studentService.getProfile);
+  const { data: jobsRes, loading: loadingJobs } = useCachedData("public_jobs", jobService.getAll);
+  const { data: appsRes, loading: loadingApps } = useCachedData("student_applications", applicationService.getMyApplications);
 
-        const profile = profileRes.data.data;
-        setStudent(profile);
+  const student = profileRes?.data || null;
+  const rawApps = appsRes ? (Array.isArray(appsRes.data) ? appsRes.data : (appsRes.data?.data || [])) : [];
+  const rawJobs = jobsRes ? (Array.isArray(jobsRes.data) ? jobsRes.data : (jobsRes.data?.data || [])) : [];
 
-        // Fetch and map applications
-        const rawApps = appsRes.data.data || [];
-        const appliedJobIds = new Set(rawApps.map((app) => app.job?.id));
-        const mappedApps = rawApps.map((app) => ({
-          id: app.id,
-          jobTitle: app.job?.title || "Unknown Job",
-          company: app.job?.company || "Unknown Company",
-          status: app.status,
-          appliedAt: app.applied_at,
-        }));
-        setMyApplications(mappedApps);
+  const appliedJobIds = new Set(rawApps.map((app) => app.job?.id));
 
-        // Fetch and map jobs
-        const rawJobs = jobsRes.data.data || [];
-        const mappedJobs = rawJobs.map((job) => ({
-          id: job.id,
-          title: job.title,
-          company: job.company?.name || "Unknown Company",
-          companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
-          location: job.location,
-          salary: job.salary,
-          experience: job.experience,
-          skills: job.skills || [],
-          status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
-          lastDate: job.last_date,
-          isApplied: appliedJobIds.has(job.id),
-        }));
-        setAvailableJobs(mappedJobs);
-      } catch (err) {
-        console.error("Error loading dashboard data", err);
-        toast.error("Failed to load dashboard statistics.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
-  }, []);
+  const myApplications = rawApps.map((app) => ({
+    id: app.id,
+    jobTitle: app.job?.title || "Unknown Job",
+    company: typeof app.job?.company === "object" ? (app.job?.company?.name || "Unknown Company") : (app.job?.company || "Unknown Company"),
+    status: app.status,
+    appliedAt: app.applied_at,
+  }));
+
+  const availableJobs = rawJobs.map((job) => ({
+    id: job.id,
+    title: job.title,
+    company: job.company?.name || "Unknown Company",
+    companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
+    location: job.location,
+    salary: job.salary,
+    experience: job.experience,
+    skills: job.skills || [],
+    status: job.status === "published" ? "Published" : (job.status === "closed" ? "Closed" : "Pending"),
+    lastDate: job.last_date,
+    isApplied: appliedJobIds.has(job.id),
+  }));
+
+  const loading = (loadingProfile && !student) || (loadingJobs && rawJobs.length === 0) || (loadingApps && rawApps.length === 0);
 
   if (loading || !student) {
     return (
@@ -272,13 +254,13 @@ export default function StudentDashboard() {
           {/* Recent Jobs */}
           <div className="d-flex align-items-center justify-content-between mb-3">
             <h6 className="fw-bold mb-0">Available Drives for You</h6>
-            <Link to="/student/jobs" className="small text-primary text-decoration-none">View all <i className="bi bi-arrow-right"></i></Link>
+            <Link to="/placement-drives" className="small text-primary text-decoration-none">View all <i className="bi bi-arrow-right"></i></Link>
           </div>
           <div className="row g-3">
             {recentJobs.length > 0 ? (
               recentJobs.map((job) => (
                 <div key={job.id} className="col-md-6">
-                  <JobCard job={job} showApply onApply={() => handleApply(job)} />
+                  <JobCard job={job} />
                 </div>
               ))
             ) : (
@@ -325,7 +307,7 @@ export default function StudentDashboard() {
                   <div key={app.id} className="d-flex align-items-center justify-content-between p-2 border-bottom">
                     <div>
                       <p className="small fw-medium mb-0">{app.jobTitle}</p>
-                      <small className="text-muted">{app.company}</small>
+                      <small className="text-muted">{typeof app.company === "object" ? (app.company?.name || "Unknown Company") : app.company}</small>
                     </div>
                     <span className={`badge bg-${app.status === "shortlisted" || app.status === "Shortlisted" ? "success" : (app.status === "rejected" || app.status === "Rejected" ? "danger" : "primary")} bg-opacity-10 text-${app.status === "shortlisted" || app.status === "Shortlisted" ? "success" : (app.status === "rejected" || app.status === "Rejected" ? "danger" : "primary")} small`}>
                       {app.status}

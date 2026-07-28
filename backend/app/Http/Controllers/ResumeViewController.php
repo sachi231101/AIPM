@@ -4,36 +4,86 @@ namespace App\Http\Controllers;
 
 use App\Models\Student;
 use App\Models\StudentResume;
+use App\Models\StudentProfile;
 use Illuminate\Http\Request;
 
 class ResumeViewController extends Controller
 {
     /**
-     * Render the student's app-created resume as a clean HTML/printable page.
+     * Render the student's app-created resume as a clean, printable A4 document.
      */
     public function show(int $studentId, Request $request)
     {
-        $student = Student::with(['user', 'institute'])->findOrFail($studentId);
+        $student = Student::with(['user', 'institute', 'profiles'])->findOrFail($studentId);
 
-        $query = StudentResume::where('student_id', $studentId);
-
-        if ($request->filled('profile_id')) {
-            $query->where('student_profile_id', $request->profile_id);
-        }
+        $resume = null;
 
         if ($request->filled('key')) {
-            $query->where('resume_key', $request->key);
+            $key = $request->key;
+            $resume = StudentResume::where('student_id', $studentId)
+                ->where(function ($q) use ($key) {
+                    $q->where('resume_key', $key)
+                      ->orWhere('id', $key);
+                })
+                ->first();
+        } elseif ($request->filled('profile_id')) {
+            $resume = StudentResume::where('student_id', $studentId)
+                ->where('student_profile_id', $request->profile_id)
+                ->orderByDesc('updated_at')
+                ->first();
         } else {
-            $query->orderByDesc('is_default')->orderByDesc('updated_at');
+            $resume = StudentResume::where('student_id', $studentId)
+                ->orderByDesc('is_default')
+                ->orderByDesc('updated_at')
+                ->first();
         }
 
-        $resume = $query->first();
+        // Construct profile-specific content if no resume row exists yet for this profile
+        if ($resume) {
+            $content = $resume->content ?? [];
+        } else {
+            $profile = null;
+            if ($request->filled('profile_id')) {
+                $profile = StudentProfile::where('student_id', $studentId)->where('id', $request->profile_id)->first();
+            }
+            if (!$profile) {
+                $profile = $student->getOrCreateDefaultProfile();
+            }
 
-        if (!$resume) {
-            abort(404, 'No app-created resume found for this student.');
+            $content = [
+                'personal' => [
+                    'fullName'          => $student->name ?: ($student->user?->name ?? 'Student Name'),
+                    'professionalTitle' => $profile->professional_title ?: ($student->course ? $student->course . ' Developer' : 'Graduate Candidate'),
+                    'email'             => $student->email ?: ($student->user?->email ?? ''),
+                    'phone'             => $student->mobile ?? '',
+                    'location'          => $student->address ?? '',
+                    'linkedin'          => $profile->linkedin ?: ($student->linkedin ?? ''),
+                    'github'            => $profile->github ?: ($student->github ?? ''),
+                    'portfolio'         => $profile->portfolio ?: ($student->portfolio ?? ''),
+                ],
+                'summary'   => $profile->summary ?: '',
+                'education' => [
+                    [
+                        'id'             => 'edu_1',
+                        'degree'         => $profile->course ?: ($student->course ?? 'B.E / B.Tech'),
+                        'specialization' => $profile->branch ?: ($student->branch ?? 'Computer Science'),
+                        'college'        => $student->institute?->name ?: ($student->other_institute_name ?? 'Engineering Institute'),
+                        'endYear'        => $profile->passing_year ?: ($student->passing_year ?? ''),
+                        'cgpa'           => $profile->cgpa ?: ($student->cgpa ?? ''),
+                    ]
+                ],
+                'skills'    => [
+                    'technical'  => $profile->skills ?: ($student->skills ?? []),
+                    'softSkills' => $profile->soft_skills ?: ($student->soft_skills ?? []),
+                ],
+                'experience' => [],
+                'projects'   => [],
+                'settings'   => [
+                    'template'    => 'modern',
+                    'accentColor' => '#0F4C81',
+                ]
+            ];
         }
-
-        $content = $resume->content ?? [];
 
         return view('resume-template', [
             'student' => $student,

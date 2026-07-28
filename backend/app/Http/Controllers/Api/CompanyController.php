@@ -55,7 +55,7 @@ class CompanyController extends Controller
             'eligibility' => $request->eligibility,
             'skills'      => $request->skills ?? [],
             'experience'  => $request->experience,
-            'salary'      => $request->salary,
+            'salary'      => $request->salary ? trim($request->salary) : 'Not Disclosed',
             'location'    => $request->location,
             'openings'    => $request->openings ?? 1,
             'last_date'   => $request->last_date,

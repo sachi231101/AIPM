@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import EmptyState from "../../../components/EmptyState/EmptyState";
 import { useAuth } from "../../../hooks/useAuth";
@@ -6,35 +6,25 @@ import { Link } from "react-router-dom";
 import { applicationService } from "../../../services/api";
 import { toast } from "react-toastify";
 
+import { useCachedData } from "../../../hooks/useCachedData";
+
 export default function AppliedJobs() {
   const { user } = useAuth();
-  const [myApplications, setMyApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        setLoading(true);
-        const res = await applicationService.getMyApplications();
-        const rawApps = res.data.data || [];
-        const mappedApps = rawApps.map((app) => ({
-          id: app.id,
-          company: app.job?.company || "Unknown Company",
-          jobTitle: app.job?.title || "Unknown Job",
-          appliedDate: app.applied_at,
-          status: app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Applied"),
-          jobId: app.job?.id,
-        }));
-        setMyApplications(mappedApps);
-      } catch (err) {
-        console.error("Failed to load applied jobs", err);
-        toast.error("Failed to load applied jobs history.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchApplications();
-  }, []);
+  const { data: appsRes, loading } = useCachedData(
+    "student_applications",
+    applicationService.getMyApplications
+  );
+
+  const rawApps = appsRes ? (Array.isArray(appsRes.data) ? appsRes.data : (appsRes.data?.data || [])) : [];
+  const myApplications = rawApps.map((app) => ({
+    id: app.id,
+    company: typeof app.job?.company === "object" ? (app.job?.company?.name || "Unknown Company") : (app.job?.company || "Unknown Company"),
+    jobTitle: app.job?.title || "Unknown Job",
+    appliedDate: app.applied_at,
+    status: app.status === "shortlisted" ? "Shortlisted" : (app.status === "rejected" ? "Rejected" : "Applied"),
+    jobId: app.job?.id,
+  }));
 
   const statusColors = {
     "Shortlisted": "success",
@@ -66,7 +56,7 @@ export default function AppliedJobs() {
           icon="bi-file-earmark-x"
           title="No Applications Yet"
           description="You haven't applied to any jobs. Browse available drives and start applying!"
-          action={<Link to="/student/jobs" className="btn btn-primary"><i className="bi bi-briefcase me-2"></i>Browse Jobs</Link>}
+          action={<Link to="/placement-drives" className="btn btn-primary"><i className="bi bi-briefcase me-2"></i>Browse Jobs</Link>}
         />
       ) : (
         <div className="card border-0 shadow-sm">
@@ -88,7 +78,7 @@ export default function AppliedJobs() {
                     <tr key={app.id}>
                       <td className="px-4 text-muted">{i + 1}</td>
                       <td>
-                        <div className="fw-medium">{app.company}</div>
+                        <div className="fw-medium">{typeof app.company === "object" ? (app.company?.name || "Unknown Company") : app.company}</div>
                       </td>
                       <td>
                         <div className="fw-medium">{app.jobTitle}</div>

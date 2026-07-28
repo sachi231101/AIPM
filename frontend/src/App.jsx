@@ -82,11 +82,12 @@ export default function App() {
                   </ProtectedLayout>
                 }
               >
-                <Route path="/student/dashboard text-decoration-none" element={<StudentDashboard />} />
                 <Route path="/student/dashboard" element={<StudentDashboard />} />
                 <Route path="/student/profile" element={<Profile />} />
-                <Route path="/student/available-jobs" element={<AvailableJobs />} />
+                <Route path="/student/available-jobs" element={<PlacementDrives />} />
+                <Route path="/student/jobs" element={<PlacementDrives />} />
                 <Route path="/student/applied-jobs" element={<AppliedJobs />} />
+                <Route path="/student/applied" element={<AppliedJobs />} />
                 <Route path="/student/resume-builder" element={<ResumeBuilder />} />
               </Route>
 
@@ -106,6 +107,7 @@ export default function App() {
                 <Route path="/admin/applications" element={<Applications />} />
                 <Route path="/admin/email-logs" element={<EmailLogs />} />
                 <Route path="/admin/messages" element={<AdminMessages />} />
+                <Route path="/admin/contact-messages" element={<AdminMessages />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
               </Route>
 

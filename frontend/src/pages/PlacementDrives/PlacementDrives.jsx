@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import JobCard from "../../components/JobCard/JobCard";
 import SearchBar from "../../components/SearchBar/SearchBar";
 import EmptyState from "../../components/EmptyState/EmptyState";
 import Pagination from "../../components/Pagination/Pagination";
 import { SkeletonGrid } from "../../components/Skeleton/Skeleton";
 import { jobService } from "../../services/api";
+import { useCachedData } from "../../hooks/useCachedData";
 import { toast } from "react-toastify";
 
 import { getCompanyLogo } from "../../utils/logoHelper";
@@ -20,41 +21,29 @@ const statusMap = {
 };
 
 export default function PlacementDrives() {
-  const [jobsList, setJobsList] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setLoading(true);
-        const res = await jobService.getAll();
-        const rawJobs = res.data.data || [];
-        const mapped = rawJobs.map((job) => ({
-          id: job.id,
-          title: job.title,
-          company: job.company?.name || "Unknown Company",
-          companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
-          location: job.location,
-          salary: job.salary,
-          experience: job.experience,
-          skills: job.skills || [],
-          status: statusMap[job.status] || "Published",
-          lastDate: job.last_date,
-        }));
-        setJobsList(mapped);
-      } catch (err) {
-        console.error("Failed to fetch public drives", err);
-        toast.error("Failed to load public placement drives.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchJobs();
-  }, []);
+  const { data: rawJobsResponse, loading } = useCachedData(
+    "public_jobs",
+    jobService.getAll
+  );
+
+  const rawJobs = rawJobsResponse ? (Array.isArray(rawJobsResponse.data) ? rawJobsResponse.data : (rawJobsResponse.data?.data || [])) : [];
+  const jobsList = rawJobs.map((job) => ({
+    id: job.id,
+    title: job.title,
+    company: job.company?.name || "Unknown Company",
+    companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
+    location: job.location,
+    salary: job.salary,
+    experience: job.experience,
+    skills: job.skills || [],
+    status: statusMap[job.status] || "Published",
+    lastDate: job.last_date,
+  }));
 
   const locations = [...new Set(jobsList.map((j) => j.location))];
 

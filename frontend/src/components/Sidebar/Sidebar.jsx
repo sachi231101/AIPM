@@ -7,8 +7,8 @@ const menuItems = [
   { to: "/admin/companies", icon: "bi-buildings-fill", label: "Companies" },
   { to: "/admin/jobs", icon: "bi-briefcase-fill", label: "Jobs" },
   { to: "/admin/applications", icon: "bi-file-earmark-check-fill", label: "Applications" },
-  { to: "/admin/email-logs", icon: "bi-envelope-check-fill", label: "Resume Verification" },
-  { to: "/admin/contact-messages", icon: "bi-chat-dots-fill", label: "Reports" },
+  { to: "/admin/email-logs", icon: "bi-envelope-check-fill", label: "Email Sent" },
+  { to: "/admin/messages", icon: "bi-chat-dots-fill", label: "Messages" },
   { to: "/admin/settings", icon: "bi-gear-fill", label: "Settings" },
 ];
 
@@ -37,7 +37,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         return !!perms.jobs;
       }
       if (item.to === "/admin/settings") return !!perms.settings;
-      if (item.to === "/admin/contact-messages") return true;
+      if (item.to === "/admin/messages" || item.to === "/admin/contact-messages") return true;
     }
     return false;
   });
