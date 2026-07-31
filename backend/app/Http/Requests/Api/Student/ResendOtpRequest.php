@@ -14,7 +14,7 @@ class ResendOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mobile' => ['required', 'string', 'regex:/^[0-9]{10,15}$/'],
+            'mobile' => ['required', 'string', 'regex:/^[6-9][0-9]{9}$/'],
         ];
     }
 
@@ -22,7 +22,7 @@ class ResendOtpRequest extends FormRequest
     {
         return [
             'mobile.required' => 'Mobile number is required.',
-            'mobile.regex'    => 'Please enter a valid 10-15 digit mobile number.',
+            'mobile.regex'    => 'Please enter a valid 10-digit mobile number.',
         ];
     }
 }

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { authService } from "../../../services/api";
+import OtpInput from "../../../components/OtpInput/OtpInput";
 
 export default function StudentLogin() {
   const [loginMode, setLoginMode] = useState("password"); // "password" | "otp"
@@ -19,7 +20,6 @@ export default function StudentLogin() {
   const [otpMobile, setOtpMobile] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [sentTo, setSentTo] = useState("");
-  const [debugOtp, setDebugOtp] = useState("");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
@@ -57,8 +57,13 @@ export default function StudentLogin() {
   // Handle Requesting OTP for Login (Mobile Number only)
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (!otpMobile.trim()) {
+    const mobile = otpMobile.trim();
+    if (!mobile) {
       toast.error("Please enter your Mobile Number");
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
+      toast.error("Please enter a valid 10-digit mobile number starting with 6-9.");
       return;
     }
 
@@ -69,9 +74,6 @@ export default function StudentLogin() {
       });
       toast.success(response.data.message || "OTP sent successfully!");
       setSentTo(response.data.sent_to || otpMobile);
-      if (response.data.otp_debug) {
-        setDebugOtp(response.data.otp_debug);
-      }
       setOtpStep("verify");
       setResendTimer(30);
     } catch (err) {
@@ -98,9 +100,6 @@ export default function StudentLogin() {
       });
       toast.success(response.data.message || "OTP resent successfully!");
       setSentTo(response.data.sent_to || otpMobile);
-      if (response.data.otp_debug) {
-        setDebugOtp(response.data.otp_debug);
-      }
       setResendTimer(30);
     } catch (err) {
       console.error(err);
@@ -191,7 +190,7 @@ export default function StudentLogin() {
                           type="text"
                           {...register("identifier", { required: "Phone number or ID is required" })}
                           className={`form-control border-start-0 ps-0 ${errors.identifier ? "is-invalid" : ""}`}
-                          placeholder="e.g. 9876543210"
+                          placeholder="Enter your phone number"
                         />
                         {errors.identifier && <div className="invalid-feedback">{errors.identifier.message}</div>}
                       </div>
@@ -207,7 +206,7 @@ export default function StudentLogin() {
                           type={showPassword ? "text" : "password"}
                           {...register("password", { required: "Password is required" })}
                           className={`form-control border-start-0 border-end-0 ps-0 ${errors.password ? "is-invalid" : ""}`}
-                          placeholder="••••••••"
+                          placeholder="Enter your password"
                         />
                         <span
                           className="input-group-text bg-white border-start-0"
@@ -252,10 +251,10 @@ export default function StudentLogin() {
                             <input
                               type="tel"
                               value={otpMobile}
-                              onChange={(e) => setOtpMobile(e.target.value.replace(/\D/g, ""))}
+                              onChange={(e) => setOtpMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                               className="form-control border-start-0 ps-0"
-                              placeholder="e.g. 9876543210"
-                              maxLength={15}
+                              placeholder="Enter 10-digit mobile number"
+                              maxLength={10}
                               required
                               autoFocus
                             />
@@ -279,11 +278,6 @@ export default function StudentLogin() {
                       <form onSubmit={handleVerifyOtp}>
                         <div className="alert alert-info py-2 small mb-3">
                           <i className="bi bi-info-circle me-1"></i> OTP sent to <strong>{sentTo}</strong>
-                          {debugOtp && (
-                            <div className="mt-1 fw-bold text-dark">
-                              Demo OTP: <span className="badge bg-primary fs-6 ms-1">{debugOtp}</span>
-                            </div>
-                          )}
                         </div>
 
                         <div className="mb-4">
@@ -300,22 +294,7 @@ export default function StudentLogin() {
                               Change Number
                             </button>
                           </div>
-                          <div className="input-group">
-                            <span className="input-group-text bg-light border-end-0">
-                              <i className="bi bi-shield-check text-muted"></i>
-                            </span>
-                            <input
-                              type="text"
-                              maxLength={6}
-                              value={otpCode}
-                              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                              className="form-control border-start-0 ps-0 text-center fw-bold"
-                              placeholder="123456"
-                              style={{ letterSpacing: "4px", fontSize: "1.2rem" }}
-                              required
-                              autoFocus
-                            />
-                          </div>
+                          <OtpInput value={otpCode} onChange={setOtpCode} length={6} />
                         </div>
 
                         <button type="submit" className="btn btn-primary w-100 py-2 fw-semibold mb-3" disabled={verifyingOtp}>

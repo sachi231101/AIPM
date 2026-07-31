@@ -59,7 +59,7 @@ export default function ForgotPassword() {
                         type="text" 
                         {...register("student_id_card", { required: "Student ID Card Number is required" })} 
                         className={`form-control border-start-0 ps-0 ${errors.student_id_card ? "is-invalid" : ""}`} 
-                        placeholder="e.g. STU1001" 
+                        placeholder="Enter Student ID Card number" 
                       />
                       {errors.student_id_card && <div className="invalid-feedback">{errors.student_id_card.message}</div>}
                     </div>
@@ -72,12 +72,16 @@ export default function ForgotPassword() {
                       <span className="input-group-text bg-light border-end-0"><i className="bi bi-telephone text-muted"></i></span>
                       <input 
                         type="tel" 
+                        maxLength={10}
+                        onInput={(e) => {
+                          e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        }}
                         {...register("mobile", { 
                           required: "Mobile number is required", 
-                          pattern: { value: /^[6-9]\d{9}$/, message: "Enter a valid 10-digit mobile number" } 
+                          pattern: { value: /^[6-9]\d{9}$/, message: "Enter a valid 10-digit mobile number starting with 6-9" } 
                         })} 
                         className={`form-control border-start-0 ps-0 ${errors.mobile ? "is-invalid" : ""}`} 
-                        placeholder="e.g. 9876543210" 
+                        placeholder="Enter 10-digit mobile number" 
                       />
                       {errors.mobile && <div className="invalid-feedback">{errors.mobile.message}</div>}
                     </div>
@@ -95,7 +99,7 @@ export default function ForgotPassword() {
                           minLength: { value: 8, message: "Password must be at least 8 characters" } 
                         })} 
                         className={`form-control border-start-0 border-end-0 ps-0 ${errors.password ? "is-invalid" : ""}`} 
-                        placeholder="Min 8 characters" 
+                        placeholder="Enter new password (min 8 characters)" 
                       />
                       <span 
                         className="input-group-text bg-white border-start-0" 
@@ -120,7 +124,7 @@ export default function ForgotPassword() {
                           validate: (v) => v === password || "Passwords do not match" 
                         })} 
                         className={`form-control border-start-0 border-end-0 ps-0 ${errors.confirmPassword ? "is-invalid" : ""}`} 
-                        placeholder="Repeat new password" 
+                        placeholder="Re-enter new password" 
                       />
                       <span 
                         className="input-group-text bg-white border-start-0" 
