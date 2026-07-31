@@ -38,7 +38,7 @@ return [
     'msg91' => [
         'auth_key'    => env('MSG91_AUTH_KEY'),
         'sender_id'   => env('MSG91_SENDER_ID', 'EDIFI'),
-        'template_id' => env('MSG91_TEMPLATE_ID', '100000000387960'),
+        'template_id' => env('MSG91_TEMPLATE_ID', '6a688e2ee6d6938468046ae2'),
     ],
 ];
 

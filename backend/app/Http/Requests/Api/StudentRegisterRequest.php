@@ -16,7 +16,7 @@ class StudentRegisterRequest extends FormRequest
         return [
             'student_id_card'     => 'nullable|string|max:50|unique:students,student_id_card',
             'full_name'           => 'required|string|max:255',
-            'mobile'              => 'required|string|max:15|unique:students,mobile',
+            'mobile'              => 'required|string|regex:/^[6-9][0-9]{9}$/|unique:students,mobile',
             'password'            => 'required|string|min:8|confirmed',
         ];
     }

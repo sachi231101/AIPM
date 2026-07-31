@@ -75,14 +75,10 @@ class OtpService
             Log::warning("MSG91 failed to send OTP to {$mobile}, but OTP record was saved.");
         }
 
-        $maskedMobile = strlen($mobile) >= 10
-            ? substr($mobile, 0, 2) . '******' . substr($mobile, -2)
-            : $mobile;
-
         return [
             'success' => true,
-            'message' => "OTP sent successfully to mobile number {$maskedMobile}.",
-            'sent_to' => $maskedMobile,
+            'message' => "OTP sent successfully to mobile number {$mobile}.",
+            'sent_to' => $mobile,
         ];
     }
 

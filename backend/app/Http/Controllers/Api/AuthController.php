@@ -91,9 +91,10 @@ class AuthController extends Controller
     {
         $request->validate([
             'full_name' => 'required|string|max:255',
-            'mobile'    => 'required|string|max:15|unique:students,mobile',
+            'mobile'    => 'required|string|regex:/^[6-9][0-9]{9}$/|unique:students,mobile',
             'password'  => 'required|string|min:8|confirmed',
         ], [
+            'mobile.regex'  => 'Please enter a valid 10-digit mobile number.',
             'mobile.unique' => 'This mobile number is already registered. Please sign in.',
         ]);
 
@@ -108,17 +109,11 @@ class AuthController extends Controller
             'otp'       => $otp,
         ], 600);
 
-        $maskedMobile = strlen($mobile) >= 10 ? substr($mobile, 0, 2) . '******' . substr($mobile, -2) : $mobile;
-
         $responseData = [
-            'message' => "OTP sent successfully to mobile number {$maskedMobile}.",
-            'sent_to' => $maskedMobile,
+            'message' => "OTP sent successfully to mobile number {$mobile}.",
+            'sent_to' => $mobile,
             'mobile'  => $mobile,
         ];
-
-        if (config('app.env') !== 'production' || config('app.debug')) {
-            $responseData['otp_debug'] = $otp;
-        }
 
         return response()->json($responseData);
     }
@@ -217,7 +212,8 @@ class AuthController extends Controller
             $result = $this->otpService->sendOtp($request->mobile);
             return response()->json($result);
         } catch (\Exception $e) {
-            $status = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 400;
+            $code = is_numeric($e->getCode()) ? (int) $e->getCode() : 400;
+            $status = ($code >= 400 && $code < 600) ? $code : 400;
             return response()->json(['message' => $e->getMessage()], $status);
         }
     }
@@ -230,7 +226,8 @@ class AuthController extends Controller
             $result = $this->otpService->resendOtp($request->mobile);
             return response()->json($result);
         } catch (\Exception $e) {
-            $status = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 400;
+            $code = is_numeric($e->getCode()) ? (int) $e->getCode() : 400;
+            $status = ($code >= 400 && $code < 600) ? $code : 400;
             return response()->json(['message' => $e->getMessage()], $status);
         }
     }
@@ -243,7 +240,8 @@ class AuthController extends Controller
             $result = $this->otpService->verifyOtp($request->mobile, $request->otp);
             return response()->json($result);
         } catch (\Exception $e) {
-            $status = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 400;
+            $code = is_numeric($e->getCode()) ? (int) $e->getCode() : 400;
+            $status = ($code >= 400 && $code < 600) ? $code : 400;
             return response()->json(['message' => $e->getMessage()], $status);
         }
     }
