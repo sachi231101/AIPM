@@ -9,6 +9,16 @@ export default function ProfessionalTemplate({ resume }) {
     <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-serif" style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
       {/* Header Banner */}
       <div className="text-center pb-4 mb-4 border-bottom border-2" style={{ borderColor: accent }}>
+        {personal?.showPhoto && personal?.photo && (
+          <div className="mb-3">
+            <img
+              src={personal.photo}
+              alt={personal.fullName}
+              className="rounded-circle object-fit-cover shadow-sm"
+              style={{ width: 85, height: 85, border: `2px solid ${accent}` }}
+            />
+          </div>
+        )}
         <h1 className="fw-bold mb-1 tracking-tight" style={{ color: accent, fontSize: "2rem" }}>
           {personal?.fullName}
         </h1>
