@@ -12,6 +12,16 @@ export default function StudentTemplate({ resume }) {
     <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-sans" style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
       {/* Header */}
       <div className="text-center pb-3 mb-4 border-bottom border-2" style={{ borderColor: accent }}>
+        {personal?.showPhoto && personal?.photo && (
+          <div className="mb-3">
+            <img
+              src={personal.photo}
+              alt={personal.fullName}
+              className="rounded-circle object-fit-cover shadow-sm"
+              style={{ width: 80, height: 80, border: `2px solid ${accent}` }}
+            />
+          </div>
+        )}
         <h2 className="fw-bold text-uppercase mb-1" style={{ color: accent, fontSize: "1.85rem" }}>
           {personal?.fullName}
         </h2>

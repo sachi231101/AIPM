@@ -8,16 +8,26 @@ export default function MinimalTemplate({ resume }) {
   return (
     <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-sans" style={{ fontSize: "0.875rem", lineHeight: "1.6" }}>
       {/* Name and Header */}
-      <div className="mb-4">
-        <h1 className="fw-bold tracking-tight mb-0" style={{ color: accent, fontSize: "2.25rem" }}>
-          {personal?.fullName}
-        </h1>
-        <p className="fs-6 text-muted mb-2">{personal?.professionalTitle}</p>
-        <div className="d-flex flex-wrap gap-3 small text-muted">
-          <span>{personal?.email}</span> • <span>{personal?.phone}</span> • <span>{personal?.location}</span>
-          {personal?.showLinkedin && personal?.linkedin && <span> • {personal.linkedin}</span>}
-          {personal?.showGithub && personal?.github && <span> • {personal.github}</span>}
+      <div className="d-flex align-items-center justify-content-between mb-4">
+        <div>
+          <h1 className="fw-bold tracking-tight mb-0" style={{ color: accent, fontSize: "2.25rem" }}>
+            {personal?.fullName}
+          </h1>
+          <p className="fs-6 text-muted mb-2">{personal?.professionalTitle}</p>
+          <div className="d-flex flex-wrap gap-3 small text-muted">
+            <span>{personal?.email}</span> • <span>{personal?.phone}</span> • <span>{personal?.location}</span>
+            {personal?.showLinkedin && personal?.linkedin && <span> • {personal.linkedin}</span>}
+            {personal?.showGithub && personal?.github && <span> • {personal.github}</span>}
+          </div>
         </div>
+        {personal?.showPhoto && personal?.photo && (
+          <img
+            src={personal.photo}
+            alt={personal.fullName}
+            className="rounded-circle object-fit-cover shadow-sm ms-3"
+            style={{ width: 75, height: 75, border: `2px solid ${accent}` }}
+          />
+        )}
       </div>
 
       <hr className="my-4" />

@@ -19,6 +19,13 @@
     $portfolio = $personal['portfolio'] ?? $student->portfolio ?? '';
     $summary  = $content['summary'] ?? $content['professionalSummary'] ?? '';
     
+    $rawPhoto = $personal['photo'] ?? $student->profile_photo ?? '';
+    $photo = '';
+    if (!empty($rawPhoto)) {
+        $photo = (str_starts_with($rawPhoto, 'http') || str_starts_with($rawPhoto, 'data:')) ? $rawPhoto : url('/' . ltrim($rawPhoto, '/'));
+    }
+    $showPhoto = isset($personal['showPhoto']) ? !empty($personal['showPhoto']) : !empty($photo);
+    
     $settings = $content['settings'] ?? [];
     $templateKey = strtolower($settings['template'] ?? 'modern');
     $accentColor = $settings['accentColor'] ?? ($templateKey === 'executive' ? '#0F4C81' : ($templateKey === 'professional' ? '#0F4C81' : ($templateKey === 'minimal' ? '#1e293b' : ($templateKey === 'student' ? '#0F4C81' : '#0F4C81'))));
@@ -121,6 +128,11 @@
       <div class="p-4 p-md-5 bg-white text-dark" style="font-size: 0.9rem; line-height: 1.5;">
         <!-- Header Banner -->
         <div class="text-center pb-4 mb-4 border-bottom border-2" style="border-color: {{ $accentColor }} !important;">
+          @if($showPhoto && $photo)
+            <div class="mb-3">
+              <img src="{{ $photo }}" alt="{{ $fullName }}" class="rounded-circle object-fit-cover shadow-sm" style="width: 85px; height: 85px; border: 2px solid {{ $accentColor }};">
+            </div>
+          @endif
           <h1 class="fw-bold mb-1" style="color: {{ $accentColor }}; font-size: 2rem;">
             {{ $fullName }}
           </h1>
@@ -222,6 +234,11 @@
       <div class="d-flex flex-column flex-md-row min-vh-100">
         <!-- Left Sidebar Column -->
         <div class="p-4 text-white" style="width: 32%; min-width: 250px; background-color: {{ $accentColor }};">
+          @if($showPhoto && $photo)
+            <div class="text-center mb-4">
+              <img src="{{ $photo }}" alt="{{ $fullName }}" class="rounded-circle border border-3 border-white object-fit-cover shadow" style="width: 110px; height: 110px;">
+            </div>
+          @endif
           <div class="mb-4">
             <h6 class="fw-bold text-uppercase border-bottom border-light border-opacity-25 pb-1 mb-3 text-warning">Contact Info</h6>
             <div class="d-flex flex-column gap-2 small opacity-90">
@@ -295,14 +312,19 @@
     @elseif($templateKey === 'minimal')
       <!-- ════════════════ MINIMAL TEMPLATE (MATCHES MinimalTemplate.jsx) ════════════════ -->
       <div class="p-4 p-md-5 bg-white text-dark" style="font-size: 0.875rem; line-height: 1.6;">
-        <div class="mb-4">
-          <h1 class="fw-bold mb-0" style="color: {{ $accentColor }}; font-size: 2.25rem;">{{ $fullName }}</h1>
-          <p class="fs-6 text-muted mb-2">{{ $title }}</p>
-          <div class="d-flex flex-wrap gap-2 small text-muted">
-            @if($email) <span>{{ $email }}</span> @endif
-            @if($phone) <span>• {{ $phone }}</span> @endif
-            @if($location) <span>• {{ $location }}</span> @endif
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h1 class="fw-bold mb-0" style="color: {{ $accentColor }}; font-size: 2.25rem;">{{ $fullName }}</h1>
+            <p class="fs-6 text-muted mb-2">{{ $title }}</p>
+            <div class="d-flex flex-wrap gap-2 small text-muted">
+              @if($email) <span>{{ $email }}</span> @endif
+              @if($phone) <span>• {{ $phone }}</span> @endif
+              @if($location) <span>• {{ $location }}</span> @endif
+            </div>
           </div>
+          @if($showPhoto && $photo)
+            <img src="{{ $photo }}" alt="{{ $fullName }}" class="rounded-circle object-fit-cover shadow-sm ms-3" style="width: 75px; height: 75px; border: 2px solid {{ $accentColor }};">
+          @endif
         </div>
 
         <hr class="my-4" />
@@ -356,6 +378,11 @@
       <!-- ════════════════ STUDENT TEMPLATE (MATCHES StudentTemplate.jsx) ════════════════ -->
       <div class="p-4 p-md-5 bg-white text-dark" style="font-size: 0.9rem; line-height: 1.5;">
         <div class="text-center pb-3 mb-4 border-bottom border-2" style="border-color: {{ $accentColor }} !important;">
+          @if($showPhoto && $photo)
+            <div class="mb-3">
+              <img src="{{ $photo }}" alt="{{ $fullName }}" class="rounded-circle object-fit-cover shadow-sm" style="width: 80px; height: 80px; border: 2px solid {{ $accentColor }};">
+            </div>
+          @endif
           <h2 class="fw-bold text-uppercase mb-1" style="color: {{ $accentColor }}; font-size: 1.85rem;">{{ $fullName }}</h2>
           <div class="fw-medium text-secondary mb-2">{{ $title }}</div>
           <div class="d-flex flex-wrap justify-content-center gap-3 small text-muted">
@@ -406,10 +433,15 @@
       <!-- ════════════════ MODERN TEMPLATE (MATCHES ModernTemplate.jsx) ════════════════ -->
       <div class="p-4 p-md-5 bg-white text-dark" style="font-size: 0.9rem; line-height: 1.5;">
         <div class="d-flex align-items-center justify-content-between border-bottom pb-4 mb-4" style="border-bottom: 2px solid {{ $accentColor }} !important;">
-          <div>
-            <h2 class="fw-bold mb-1 text-uppercase" style="color: {{ $accentColor }}; font-size: 1.75rem;">{{ $fullName }}</h2>
-            <p class="fw-semibold text-secondary mb-1 fs-6">{{ $title }}</p>
-            <p class="text-muted small mb-0">{{ $location }}</p>
+          <div class="d-flex align-items-center gap-3">
+            @if($showPhoto && $photo)
+              <img src="{{ $photo }}" alt="{{ $fullName }}" class="rounded-circle object-fit-cover shadow-sm" style="width: 72px; height: 72px; border: 2px solid {{ $accentColor }};">
+            @endif
+            <div>
+              <h2 class="fw-bold mb-1 text-uppercase" style="color: {{ $accentColor }}; font-size: 1.75rem;">{{ $fullName }}</h2>
+              <p class="fw-semibold text-secondary mb-1 fs-6">{{ $title }}</p>
+              <p class="text-muted small mb-0">{{ $location }}</p>
+            </div>
           </div>
           <div class="text-end small text-muted">
             @if($email) <div><i class="bi bi-envelope-fill me-1" style="color: {{ $accentColor }};"></i>{{ $email }}</div> @endif

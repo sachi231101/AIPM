@@ -240,23 +240,21 @@ export default function Profile() {
                   <span className="fs-1 fw-bold text-primary">{student.name?.charAt(0) || "S"}</span>
                 )}
               </div>
-              {editing && (
-                <label
-                  htmlFor="photoUploadInput"
-                  className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow"
-                  style={{ width: 36, height: 36, cursor: "pointer" }}
-                  title="Upload Photo"
-                >
-                  <i className="bi bi-camera-fill"></i>
-                  <input
-                    id="photoUploadInput"
-                    type="file"
-                    accept="image/*"
-                    className="d-none"
-                    onChange={handlePhotoChange}
-                  />
-                </label>
-              )}
+              <label
+                htmlFor="photoUploadInput"
+                className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow"
+                style={{ width: 36, height: 36, cursor: "pointer" }}
+                title="Upload Photo"
+              >
+                <i className="bi bi-camera-fill"></i>
+                <input
+                  id="photoUploadInput"
+                  type="file"
+                  accept="image/*"
+                  className="d-none"
+                  onChange={handlePhotoChange}
+                />
+              </label>
             </div>
 
             <h5 className="fw-bold mb-1 text-dark">{student.name}</h5>
