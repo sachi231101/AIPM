@@ -17,10 +17,49 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [resumeFile, setResumeFile] = useState(null);
   const [uploadingResume, setUploadingResume] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState(null);
   const [photoBase64, setPhotoBase64] = useState("");
   const [builderResumes, setBuilderResumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [imgError, setImgError] = useState(false);
+
+  // Derive backend root URL from the same VITE_API_BASE_URL used by axios.
+  // e.g. "http://192.168.1.5:8000/api" → "http://192.168.1.5:8000"
+  //      "https://yourdomain.com/api"  → "https://yourdomain.com"
+  const BACKEND_ROOT = (() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
+    try {
+      const parsed = new URL(apiBase);
+      return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+      return `http://${window.location.hostname}:8000`;
+    }
+  })();
+
+  // Normalize a photo URL — handles http, base64, /storage/ paths, and relative paths.
+  // Always rebuilds the host from BACKEND_ROOT so it works on local dev AND production.
+  const normalizePhotoUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("data:")) return url;
+    // Full URL from Storage::url() — strip the host, rebuild with correct BACKEND_ROOT
+    if (url.startsWith("http")) {
+      try {
+        const parsed = new URL(url);
+        return `${BACKEND_ROOT}${parsed.pathname}`;
+      } catch {
+        return url;
+      }
+    }
+    // Relative path like "profile_photos/xxx.png" or "/storage/profile_photos/xxx.png"
+    let path = url;
+    if (!path.startsWith("/storage/") && !path.startsWith("storage/")) {
+      path = `/storage/${path.replace(/^\//, "")}`;
+    } else if (!path.startsWith("/")) {
+      path = `/${path}`;
+    }
+    return `${BACKEND_ROOT}${path}`;
+  };
 
   // Load profile data scoped to active profile
   const fetchProfile = async () => {
@@ -34,7 +73,8 @@ export default function Profile() {
       const current = profileRes.data.data;
       setStudent(current);
       setImgError(false);
-      setPhotoBase64(current.profile_photo || current.profilePhoto || "");
+      // Normalize the photo URL so /storage/... becomes a full URL
+      setPhotoBase64(normalizePhotoUrl(current.profile_photo || current.profilePhoto || ""));
       setBuilderResumes(resumesRes.data?.data || []);
     } catch (err) {
       console.error("Failed to load profile", err);
@@ -42,6 +82,7 @@ export default function Profile() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     if (user) {
@@ -84,18 +125,34 @@ export default function Profile() {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 1024 * 1024 * 5) {
-        toast.error("Profile photo must be smaller than 5MB.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImgError(false);
-        setPhotoBase64(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (!editing) {
+      toast.info("Please click 'Edit Career Profile' to change your photo.");
+      return;
     }
+
+    if (file.size > 1024 * 1024 * 5) {
+      toast.error("Profile photo must be smaller than 5MB.");
+      return;
+    }
+
+    // Show preview ONLY — do NOT upload to server yet
+    setPendingPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImgError(false);
+      setPhotoBase64(reader.result);
+    };
+    reader.readAsDataURL(file);
+    toast.info("Photo preview updated! Click 'Save Career Profile' to save.");
+  };
+
+  const handleCancelEditing = () => {
+    setEditing(false);
+    setPendingPhotoFile(null);
+    setImgError(false);
+    setPhotoBase64(normalizePhotoUrl(student?.profile_photo || ""));
   };
 
   const handleUploadResumeFile = async (file) => {
@@ -122,6 +179,19 @@ export default function Profile() {
     try {
       const activeId = activeProfile?.id || localStorage.getItem("apms_active_profile_id");
 
+      // Save pending photo first if user selected a new photo
+      if (pendingPhotoFile) {
+        setUploadingPhoto(true);
+        const formData = new FormData();
+        formData.append("photo", pendingPhotoFile);
+        const photoRes = await studentService.uploadProfilePhoto(formData);
+        if (photoRes.data?.photo_url) {
+          setImgError(false);
+          setPhotoBase64(normalizePhotoUrl(photoRes.data.photo_url));
+        }
+        setPendingPhotoFile(null);
+      }
+
       if (resumeFile) {
         await handleUploadResumeFile(resumeFile);
       }
@@ -146,16 +216,19 @@ export default function Profile() {
         cgpa: data.cgpa ? parseFloat(data.cgpa) : null,
         skills: skillsArray,
         soft_skills: softSkillsArray,
-        linkedin: data.linkedin.trim() || null,
-        github: data.github.trim() || null,
-        portfolio: data.portfolio.trim() || null,
-        profile_photo: photoBase64 || null,
+        linkedin: data.linkedin?.trim() ? (data.linkedin.trim().startsWith("http") ? data.linkedin.trim() : "https://" + data.linkedin.trim()) : null,
+        github: data.github?.trim() ? (data.github.trim().startsWith("http") ? data.github.trim() : "https://" + data.github.trim()) : null,
+        portfolio: data.portfolio?.trim() ? (data.portfolio.trim().startsWith("http") ? data.portfolio.trim() : "https://" + data.portfolio.trim()) : null,
+
       };
 
       const response = await studentService.updateProfile(profileData);
       const updatedUser = response.data.data;
 
       setStudent(updatedUser);
+      if (updatedUser.profile_photo) {
+        setPhotoBase64(normalizePhotoUrl(updatedUser.profile_photo));
+      }
       login({ ...user, name: updatedUser.name, email: updatedUser.email }, user.role, localStorage.getItem("apms_token"));
       fetchProfiles();
 
@@ -165,12 +238,10 @@ export default function Profile() {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to update profile.");
+    } finally {
+      setUploadingPhoto(false);
     }
   };
-
-  const courses = ["B.Tech", "M.Tech", "MCA", "BCA", "B.Sc", "MBA"];
-  const branches = ["Computer Science", "Information Technology", "Electronics & Comm", "Electrical Eng", "Mechanical Eng", "Civil Eng", "Data Science", "AI & ML"];
-  const batches = ["2024", "2025", "2026", "2027"];
 
   const profileCompletion = student.profile_completion ?? 0;
   const hasUploadedResume = !!(student.resume_url || student.resumeUrl || student.resume_path);
@@ -228,6 +299,7 @@ export default function Profile() {
                 className="rounded-circle overflow-hidden d-flex align-items-center justify-content-center shadow-sm"
                 style={{ width: 120, height: 120, background: "#e9ecef" }}
               >
+                {/* Always show photo or initial — never replace with spinner */}
                 {photoBase64 && !imgError ? (
                   <img
                     src={photoBase64}
@@ -240,22 +312,35 @@ export default function Profile() {
                   <span className="fs-1 fw-bold text-primary">{student.name?.charAt(0) || "S"}</span>
                 )}
               </div>
-              <label
-                htmlFor="photoUploadInput"
-                className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow"
-                style={{ width: 36, height: 36, cursor: "pointer" }}
-                title="Upload Photo"
-              >
-                <i className="bi bi-camera-fill"></i>
-                <input
-                  id="photoUploadInput"
-                  type="file"
-                  accept="image/*"
-                  className="d-none"
-                  onChange={handlePhotoChange}
-                />
-              </label>
+              {/* Camera button — only visible and allowed when editing */}
+              {editing && (
+                <label
+                  htmlFor="photoUploadInput"
+                  className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow"
+                  style={{ width: 36, height: 36, cursor: "pointer" }}
+                  title="Choose New Photo"
+                >
+                  <i className="bi bi-camera-fill"></i>
+                  <input
+                    id="photoUploadInput"
+                    type="file"
+                    accept="image/*"
+                    className="d-none"
+                    onChange={handlePhotoChange}
+                  />
+                </label>
+              )}
             </div>
+            {/* Hint below photo */}
+            {editing ? (
+              <p className="text-primary small mb-2" style={{ fontSize: "0.72rem" }}>
+                <i className="bi bi-camera me-1"></i>Click camera icon to change photo preview
+              </p>
+            ) : (
+              <p className="text-muted small mb-2" style={{ fontSize: "0.72rem" }}>
+                Click "Edit Career Profile" to change details or photo
+              </p>
+            )}
 
             <h5 className="fw-bold mb-1 text-dark">{student.name}</h5>
             <p className="text-primary fw-semibold small mb-1">{student.professional_title || activeProfile?.professional_title || "Software Engineer"}</p>
@@ -283,7 +368,7 @@ export default function Profile() {
                 <i className="bi bi-pencil-square me-2"></i>Edit Career Profile
               </button>
             ) : (
-              <button className="btn btn-secondary w-100 fw-semibold rounded-3" onClick={() => setEditing(false)}>
+              <button className="btn btn-secondary w-100 fw-semibold rounded-3" onClick={handleCancelEditing}>
                 Cancel Editing
               </button>
             )}
@@ -400,68 +485,11 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Academic & Skills */}
-                <h6 className="fw-bold text-muted small text-uppercase mb-3" style={{ letterSpacing: "0.05em" }}>
-                  3. Academic & Technical Skills ({activeProfile?.profile_name})
-                </h6>
-                <div className="row g-3 mb-4">
-                  <div className="col-md-4">
-                    <label className="form-label small fw-medium">Course</label>
-                    <select disabled={!editing} {...register("course")} className="form-select">
-                      <option value="">Select Course</option>
-                      {courses.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-medium">Branch</label>
-                    <select disabled={!editing} {...register("branch")} className="form-select">
-                      <option value="">Select Branch</option>
-                      {branches.map((b) => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-medium">Batch / Passing Year</label>
-                    <select disabled={!editing} {...register("batch")} className="form-select">
-                      <option value="">Select Batch</option>
-                      {batches.map((bt) => <option key={bt} value={bt}>{bt}</option>)}
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-medium">CGPA / Percentage</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      disabled={!editing}
-                      {...register("cgpa")}
-                      className="form-control"
-                      placeholder="e.g. 8.5"
-                    />
-                  </div>
-                  <div className="col-md-8">
-                    <label className="form-label small fw-medium">Technical Skills (Comma separated)</label>
-                    <input
-                      type="text"
-                      disabled={!editing}
-                      {...register("technicalSkills")}
-                      className="form-control"
-                      placeholder="e.g. Java, Spring Boot, MySQL, React"
-                    />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label small fw-medium">Soft Skills (Comma separated)</label>
-                    <input
-                      type="text"
-                      disabled={!editing}
-                      {...register("softSkills")}
-                      className="form-control"
-                      placeholder="e.g. Problem Solving, Communication, Teamwork"
-                    />
-                  </div>
-                </div>
+
 
                 {/* ── 4. RESUMES SECTION FOR THIS PROFILE ── */}
                 <h6 className="fw-bold text-muted small text-uppercase mb-3 d-flex align-items-center justify-content-between" style={{ letterSpacing: "0.05em" }}>
-                  <span>4. Resume Documents ({activeProfile?.profile_name})</span>
+                  <span>3. Resume Documents ({activeProfile?.profile_name})</span>
                   <Link to="/student/resume-builder" className="btn btn-xs btn-outline-warning text-dark fw-bold" style={{ fontSize: "0.75rem" }}>
                     <i className="bi bi-pencil-square me-1"></i>Open AI Resume Builder
                   </Link>
@@ -540,15 +568,45 @@ export default function Profile() {
                 <div className="row g-3 mb-4">
                   <div className="col-md-4">
                     <label className="form-label small fw-medium">LinkedIn Profile</label>
-                    <input type="url" disabled={!editing} {...register("linkedin")} className="form-control" placeholder="https://linkedin.com/in/..." />
+                    <input
+                      type="text"
+                      disabled={!editing}
+                      {...register("linkedin")}
+                      className="form-control"
+                      placeholder="https://linkedin.com/in/..."
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && !v.startsWith("http")) e.target.value = "https://" + v;
+                      }}
+                    />
                   </div>
                   <div className="col-md-4">
                     <label className="form-label small fw-medium">GitHub Profile</label>
-                    <input type="url" disabled={!editing} {...register("github")} className="form-control" placeholder="https://github.com/..." />
+                    <input
+                      type="text"
+                      disabled={!editing}
+                      {...register("github")}
+                      className="form-control"
+                      placeholder="https://github.com/..."
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && !v.startsWith("http")) e.target.value = "https://" + v;
+                      }}
+                    />
                   </div>
                   <div className="col-md-4">
                     <label className="form-label small fw-medium">Portfolio Website</label>
-                    <input type="url" disabled={!editing} {...register("portfolio")} className="form-control" placeholder="https://myportfolio.dev" />
+                    <input
+                      type="text"
+                      disabled={!editing}
+                      {...register("portfolio")}
+                      className="form-control"
+                      placeholder="https://myportfolio.dev"
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v && !v.startsWith("http")) e.target.value = "https://" + v;
+                      }}
+                    />
                   </div>
                 </div>
 

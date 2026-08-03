@@ -2,15 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Notification;
 use App\Models\Otp;
 use App\Models\Student;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use ValidationException;
 
 class OtpService
 {
@@ -95,14 +90,13 @@ class OtpService
     }
 
     /**
-     * Verify OTP code and authenticate/register student.
+     * Verify only the OTP code (hash check, expiry, attempts).
+     * Does NOT look up or create any student account.
+     * Used by the registration flow where the student doesn't exist yet.
      *
-     * @param string $mobile
-     * @param string $inputOtp
-     * @return array
      * @throws \Exception
      */
-    public function verifyOtp(string $mobile, string $inputOtp): array
+    public function verifyOtpCode(string $mobile, string $inputOtp): void
     {
         $mobile   = trim($mobile);
         $inputOtp = trim($inputOtp);
@@ -136,7 +130,7 @@ class OtpService
         if (!Hash::check($inputOtp, $otpRecord->otp)) {
             $otpRecord->increment('attempts');
             $remainingAttempts = 5 - $otpRecord->attempts;
-            
+
             if ($remainingAttempts <= 0) {
                 $otpRecord->delete();
                 throw new \Exception("Invalid OTP code. Maximum attempts reached. Please request a new OTP.", 422);
@@ -145,76 +139,57 @@ class OtpService
             throw new \Exception("Invalid OTP code. You have {$remainingAttempts} attempt(s) remaining.", 422);
         }
 
-        // OTP is VALID! Mark verified & delete old OTP records
+        // OTP is VALID — mark verified & delete
         $otpRecord->update(['verified' => true]);
         Otp::where('mobile', $mobile)->delete();
+    }
 
-        // Authenticate or create student account in database transaction
-        return DB::transaction(function () use ($mobile) {
-            $student = Student::where('mobile', $mobile)->first();
+    /**
+     * Verify OTP code and authenticate an existing (registered) student.
+     *
+     * @param string $mobile
+     * @param string $inputOtp
+     * @return array
+     * @throws \Exception
+     */
+    public function verifyOtp(string $mobile, string $inputOtp): array
+    {
+        // Reuse the shared OTP-check logic
+        $this->verifyOtpCode($mobile, $inputOtp);
+        // Authenticate the registered student
+        $student = Student::where('mobile', $mobile)->first();
 
-            if (!$student) {
-                // Automatically create student account using mobile number
-                $name = 'Student';
-                $user = User::create([
-                    'name'     => $name,
-                    'email'    => null,
-                    'password' => Hash::make(Str::random(16)),
-                    'role'     => 'student',
-                ]);
+        // Unregistered mobile — the guard in sendOtp should have caught this,
+        // but we enforce it here too so verifyOtp cannot be called directly to
+        // create phantom accounts.
+        if (!$student) {
+            throw new \Exception('This mobile number is not registered. Please register first.', 404);
+        }
 
-                $studentIdCard = 'STU' . random_int(10000, 99999);
-                while (Student::where('student_id_card', $studentIdCard)->exists()) {
-                    $studentIdCard = 'STU' . random_int(10000, 99999);
-                }
+        $user = $student->user;
 
-                $student = Student::create([
-                    'user_id'            => $user->id,
-                    'student_id_card'    => $studentIdCard,
-                    'mobile'             => $mobile,
-                    'approval_status'    => 'approved',
-                    'profile_completion' => 0,
-                ]);
+        // Ensure user account exists (edge case: student record without a user)
+        if (!$user) {
+            throw new \Exception('Account error. Please contact support.', 500);
+        }
 
-                Notification::create([
-                    'type'    => 'new_student',
-                    'title'   => 'New Student Registration',
-                    'message' => "Student registered via Mobile OTP ({$mobile})",
-                    'link'    => '/admin/students',
-                ]);
-            } else {
-                $user = $student->user;
+        $token = $user->createToken('student-token')->plainTextToken;
 
-                // Ensure user account exists
-                if (!$user) {
-                    $user = User::create([
-                        'name'     => 'Student',
-                        'email'    => null,
-                        'password' => Hash::make(Str::random(16)),
-                        'role'     => 'student',
-                    ]);
-                    $student->update(['user_id' => $user->id]);
-                }
-            }
-
-            $token = $user->createToken('student-token')->plainTextToken;
-
-            return [
-                'success' => true,
-                'message' => 'OTP verified successfully.',
-                'token'   => $token,
-                'user'    => [
-                    'id'                 => $user->id,
-                    'student_id'         => $student->id,
-                    'student_id_card'    => $student->student_id_card,
-                    'name'               => $user->name,
-                    'email'              => $user->email,
-                    'mobile'             => $student->mobile,
-                    'profile_completion' => $student->profile_completion ?? 0,
-                    'approval_status'    => $student->approval_status ?? 'approved',
-                    'role'               => $user->role,
-                ]
-            ];
-        });
+        return [
+            'success' => true,
+            'message' => 'OTP verified successfully.',
+            'token'   => $token,
+            'user'    => [
+                'id'                 => $user->id,
+                'student_id'         => $student->id,
+                'student_id_card'    => $student->student_id_card,
+                'name'               => $user->name,
+                'email'              => $user->email,
+                'mobile'             => $student->mobile,
+                'profile_completion' => $student->profile_completion ?? 0,
+                'approval_status'    => $student->approval_status ?? 'approved',
+                'role'               => $user->role,
+            ]
+        ];
     }
 }

@@ -3,6 +3,19 @@
 const STORAGE_KEY = "apms_student_resumes";
 const ACTIVE_RESUME_KEY = "apms_active_resume_id";
 
+// Normalize a photo URL — handles absolute http URLs, base64, /storage/... paths, and relative paths
+export function normalizePhotoUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  let path = url;
+  if (!path.startsWith("/storage/") && !path.startsWith("storage/")) {
+    path = `/storage/${path.replace(/^\//, "")}`;
+  } else if (!path.startsWith("/")) {
+    path = `/${path}`;
+  }
+  return `http://${window.location.hostname}:8000${path}`;
+}
+
 // Default blank resume structure (uses strictly student profile data, NO mock data)
 export function createDefaultResume(profileData = {}) {
   const name = profileData.name || profileData.fullName || "";
@@ -14,7 +27,7 @@ export function createDefaultResume(profileData = {}) {
   const title = profileData.professional_title || profileData.target_role || (course ? `${course}${branch ? ` - ${branch}` : ""} Student` : "");
   const institute = profileData.institute?.name || profileData.other_institute_name || (typeof profileData.institute === "string" ? profileData.institute : "");
   const cgpa = profileData.cgpa ? String(profileData.cgpa) : "";
-  const photo = profileData.profile_photo || profileData.profilePhoto || "";
+  const photo = normalizePhotoUrl(profileData.profile_photo || profileData.profilePhoto || "");
 
   // Skill array from student profile if available
   const profileSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
@@ -108,7 +121,7 @@ export function mergeProfileIntoResume(resumeObj, profileData = {}) {
   const title = profileData.professional_title || profileData.target_role || (course ? `${course}${branch ? ` - ${branch}` : ""} Student` : "");
   const institute = profileData.institute?.name || profileData.other_institute_name || (typeof profileData.institute === "string" ? profileData.institute : "");
   const cgpa = profileData.cgpa ? String(profileData.cgpa) : "";
-  const photo = profileData.profile_photo || profileData.profilePhoto || "";
+  const photo = normalizePhotoUrl(profileData.profile_photo || profileData.profilePhoto || "");
   const profileSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
 
   const existingPersonal = resumeObj.personal || {};

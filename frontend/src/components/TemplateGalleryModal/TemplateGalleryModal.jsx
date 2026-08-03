@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import ResumePreview from "../ResumePreview/ResumePreview";
 import ModernTemplate from "../ResumeTemplates/ModernTemplate";
 import ProfessionalTemplate from "../ResumeTemplates/ProfessionalTemplate";
@@ -108,8 +108,34 @@ function getDisplayResume(userResume, templateId) {
   };
 }
 
-// Renders the ACTUAL REAL RESUME component inside a scaled thumbnail frame
-export function RealResumeThumbnail({ templateId, resumeData }) {
+// Renders the ACTUAL REAL RESUME component inside a scaled thumbnail frame that dynamically fits container width
+export function RealResumeThumbnail({ templateId, resumeData, height }) {
+  const containerRef = useRef(null);
+  const [scale, setScale] = useState(0.34);
+  const [computedHeight, setComputedHeight] = useState(height || 280);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateScale = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.clientWidth;
+        if (w > 0) {
+          const newScale = w / 794;
+          setScale(newScale);
+          if (!height) {
+            // Keep proportion based on container width (~1.35 aspect ratio for crisp cards)
+            setComputedHeight(Math.round(w * 1.35));
+          }
+        }
+      }
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [height]);
+
   const displayResume = getDisplayResume(resumeData, templateId);
 
   const renderActualTemplate = () => {
@@ -130,13 +156,14 @@ export function RealResumeThumbnail({ templateId, resumeData }) {
 
   return (
     <div
-      className="border rounded bg-secondary bg-opacity-10 overflow-hidden position-relative shadow-inner"
-      style={{ height: 270, width: "100%" }}
+      ref={containerRef}
+      className="border rounded bg-white overflow-hidden position-relative shadow-sm w-100"
+      style={{ height: height || computedHeight || 280, width: "100%" }}
     >
       <div
         style={{
           width: "794px",
-          transform: "scale(0.34)",
+          transform: `scale(${scale})`,
           transformOrigin: "top left",
           pointerEvents: "none",
           userSelect: "none",
@@ -147,6 +174,7 @@ export function RealResumeThumbnail({ templateId, resumeData }) {
     </div>
   );
 }
+
 
 export const TEMPLATE_DEFINITIONS = [
   {

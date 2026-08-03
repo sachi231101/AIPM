@@ -1,3 +1,5 @@
+import { normalizePhotoUrl } from "../../utils/resumeStorage";
+
 export default function MinimalTemplate({ resume }) {
   if (!resume) return null;
   const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
@@ -22,7 +24,7 @@ export default function MinimalTemplate({ resume }) {
         </div>
         {personal?.showPhoto && personal?.photo && (
           <img
-            src={personal.photo}
+            src={normalizePhotoUrl(personal.photo)}
             alt={personal.fullName}
             className="rounded-circle object-fit-cover shadow-sm ms-3"
             style={{ width: 75, height: 75, border: `2px solid ${accent}` }}

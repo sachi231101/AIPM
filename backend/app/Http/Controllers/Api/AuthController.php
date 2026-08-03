@@ -99,23 +99,25 @@ class AuthController extends Controller
         ]);
 
         $mobile = trim($request->mobile);
-        $otp = (string) mt_rand(100000, 999999);
 
-        // Store pending registration data in Cache for 10 minutes (600 seconds)
-        Cache::put('reg_otp_student_' . $mobile, [
+        // Store pending registration details in Cache for 15 minutes so they survive OTP verification
+        Cache::put('reg_pending_student_' . $mobile, [
             'full_name' => trim($request->full_name),
             'mobile'    => $mobile,
             'password'  => $request->password,
-            'otp'       => $otp,
-        ], 600);
+        ], 900);
 
-        $responseData = [
-            'message' => "OTP sent successfully to mobile number {$mobile}.",
-            'sent_to' => $mobile,
-            'mobile'  => $mobile,
-        ];
-
-        return response()->json($responseData);
+        // Actually send the OTP via MSG91 (same service used by login flow)
+        try {
+            $result = $this->otpService->sendOtp($mobile);
+            return response()->json(array_merge($result, ['mobile' => $mobile]));
+        } catch (\Exception $e) {
+            // Clean up cache if OTP dispatch fails
+            Cache::forget('reg_pending_student_' . $mobile);
+            $code = is_numeric($e->getCode()) ? (int) $e->getCode() : 400;
+            $status = ($code >= 400 && $code < 600) ? $code : 400;
+            return response()->json(['message' => $e->getMessage()], $status);
+        }
     }
 
     // ───────── POST /api/student/register/verify-otp ─────────
@@ -128,13 +130,24 @@ class AuthController extends Controller
         ]);
 
         $mobile = trim($request->mobile);
-        $regData = Cache::get('reg_otp_student_' . $mobile);
 
-        if (!$regData || $regData['otp'] !== trim($request->otp)) {
-            return response()->json(['message' => 'Invalid or expired OTP. Please check and try again.'], 422);
+        // Retrieve the registration details stored during send-otp
+        $regData = Cache::get('reg_pending_student_' . $mobile);
+        if (!$regData) {
+            return response()->json(['message' => 'Registration session expired. Please start registration again.'], 422);
         }
 
-        // OTP verified -> create user & student
+        // Verify OTP via OtpService — verifyOtpCode() only checks the OTP record,
+        // it does NOT require the student to exist yet (unlike verifyOtp() used for login).
+        try {
+            $this->otpService->verifyOtpCode($mobile, trim($request->otp));
+        } catch (\Exception $e) {
+            $code = is_numeric($e->getCode()) ? (int) $e->getCode() : 422;
+            $status = ($code >= 400 && $code < 600) ? $code : 422;
+            return response()->json(['message' => $e->getMessage()], $status);
+        }
+
+        // OTP verified — create the student account with the registration data from Cache
         $user = User::create([
             'name'     => $regData['full_name'],
             'email'    => null,
@@ -155,7 +168,6 @@ class AuthController extends Controller
             'profile_completion' => 0,
         ]);
 
-        // Create notification
         Notification::create([
             'type'    => 'new_student',
             'title'   => 'New Student Registration',
@@ -163,8 +175,8 @@ class AuthController extends Controller
             'link'    => '/admin/students',
         ]);
 
-        // Clear cache
-        Cache::forget('reg_otp_student_' . $mobile);
+        // Clear the pending registration cache
+        Cache::forget('reg_pending_student_' . $mobile);
 
         $token = $user->createToken('student-token')->plainTextToken;
 
@@ -208,8 +220,17 @@ class AuthController extends Controller
 
     public function sendOtp(SendOtpRequest $request): JsonResponse
     {
+        $mobile = trim($request->mobile);
+
+        // Block OTP login for unregistered mobile numbers
+        if (!Student::where('mobile', $mobile)->exists()) {
+            return response()->json([
+                'message' => 'This mobile number is not registered. Please register first before logging in with OTP.',
+            ], 404);
+        }
+
         try {
-            $result = $this->otpService->sendOtp($request->mobile);
+            $result = $this->otpService->sendOtp($mobile);
             return response()->json($result);
         } catch (\Exception $e) {
             $code = is_numeric($e->getCode()) ? (int) $e->getCode() : 400;
@@ -222,8 +243,17 @@ class AuthController extends Controller
 
     public function resendOtp(ResendOtpRequest $request): JsonResponse
     {
+        $mobile = trim($request->mobile);
+
+        // Same guard as sendOtp — only registered students can resend
+        if (!Student::where('mobile', $mobile)->exists()) {
+            return response()->json([
+                'message' => 'This mobile number is not registered. Please register first before logging in with OTP.',
+            ], 404);
+        }
+
         try {
-            $result = $this->otpService->resendOtp($request->mobile);
+            $result = $this->otpService->resendOtp($mobile);
             return response()->json($result);
         } catch (\Exception $e) {
             $code = is_numeric($e->getCode()) ? (int) $e->getCode() : 400;

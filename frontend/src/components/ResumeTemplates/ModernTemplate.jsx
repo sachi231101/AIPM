@@ -1,3 +1,5 @@
+import { normalizePhotoUrl } from "../../utils/resumeStorage";
+
 export default function ModernTemplate({ resume }) {
   if (!resume) return null;
   const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
@@ -14,7 +16,7 @@ export default function ModernTemplate({ resume }) {
       <div className="d-flex align-items-center justify-content-between border-bottom pb-4 mb-4" style={{ borderColor: accent }}>
         <div className="d-flex align-items-center gap-3">
           {personal?.showPhoto && personal?.photo && (
-            <img src={personal.photo} alt={personal.fullName} className="rounded-circle object-fit-cover shadow-sm" style={{ width: 72, height: 72, border: `2px solid ${accent}` }} />
+            <img src={normalizePhotoUrl(personal.photo)} alt={personal.fullName} className="rounded-circle object-fit-cover shadow-sm" style={{ width: 72, height: 72, border: `2px solid ${accent}` }} />
           )}
           <div>
             <h2 className="fw-bold mb-1 text-uppercase tracking-wide" style={{ color: accent, fontSize: "1.75rem" }}>
