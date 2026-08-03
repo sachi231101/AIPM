@@ -9,108 +9,44 @@ Route::get('/', function () {
 
 Route::get('/created-resume/{studentId}', [\App\Http\Controllers\ResumeViewController::class, 'show']);
 
-Route::get('/storage/resumes/{filename}', function ($filename) {
-    $directory = storage_path('app/public/resumes');
-    if (!is_dir($directory)) {
-        abort(404);
+// Universal static storage file server — solves Windows junction / artisan serve issues
+Route::get('/storage/{path}', function ($path) {
+    // 1. Check storage/app/public/$path
+    $fullPath = storage_path('app/public/' . $path);
+    if (!file_exists($fullPath)) {
+        // 2. Fallback check inside storage/app/public/profile_photos/
+        $fullPath = storage_path('app/public/profile_photos/' . $path);
     }
-    
-    $files = scandir($directory);
-    foreach ($files as $file) {
-        if (strtolower($file) === strtolower($filename)) {
-            return response()->file($directory . '/' . $file, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $file . '"'
-            ]);
-        }
+    if (!file_exists($fullPath)) {
+        // 3. Fallback check in public/$path
+        $fullPath = public_path($path);
     }
-    abort(404);
-});
+    if (!file_exists($fullPath)) {
+        // 4. Fallback check in public/profile_photos/
+        $fullPath = public_path('profile_photos/' . $path);
+    }
 
-// Serve company logos — needed because artisan serve (PHP built-in server)
-// does not follow Windows Junction points for static files
-Route::get('/storage/company-logos/{filename}', function ($filename) {
-    $path = storage_path('app/public/company-logos/' . $filename);
-    if (!file_exists($path)) {
+    if (!file_exists($fullPath) || is_dir($fullPath)) {
         abort(404);
     }
-    $mime = mime_content_type($path) ?: 'image/png';
-    return response()->file($path, ['Content-Type' => $mime]);
-});
 
-// Serve public profile photos directly
-Route::get('/profile_photos/{filename}', function ($filename) {
-    $path = public_path('profile_photos/' . $filename);
-    if (!file_exists($path)) {
-        abort(404);
-    }
-    $ext = pathinfo($path, PATHINFO_EXTENSION);
-    $mime = match(strtolower($ext)) {
+    $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+    $mime = match($ext) {
         'png' => 'image/png',
         'jpg', 'jpeg' => 'image/jpeg',
         'gif' => 'image/gif',
         'webp' => 'image/webp',
-        default => 'image/png'
+        'pdf' => 'application/pdf',
+        'svg' => 'image/svg+xml',
+        default => mime_content_type($fullPath) ?: 'application/octet-stream',
     };
-    return response()->file($path, [
+
+    return response()->file($fullPath, [
         'Content-Type' => $mime,
-        'Content-Disposition' => 'inline',
+        'Cache-Control' => 'public, max-age=86400',
     ]);
-});
+})->where('path', '.*');
 
-// Serve profile photos
-Route::get('/storage/profile_photos/{filename}', function ($filename) {
-    $path = storage_path('app/public/profile_photos/' . $filename);
-    if (!file_exists($path)) {
-        $altPath = storage_path('app/public/' . $filename);
-        if (file_exists($altPath)) {
-            $path = $altPath;
-        } else {
-            return response()->json(['error' => 'File not found', 'checked' => $path], 404);
-        }
-    }
-    $ext = pathinfo($path, PATHINFO_EXTENSION);
-    $mime = match(strtolower($ext)) {
-        'png' => 'image/png',
-        'jpg', 'jpeg' => 'image/jpeg',
-        'gif' => 'image/gif',
-        'webp' => 'image/webp',
-        default => 'image/png'
-    };
-    return response()->file($path, [
-        'Content-Type' => $mime,
-        'Content-Disposition' => 'inline',
-    ]);
-});
-
-// Serve any other public storage file generically
-Route::get('/storage/settings/{filename}', function ($filename) {
-    $path = storage_path('app/public/settings/' . $filename);
-    if (!file_exists($path)) {
-        abort(404);
-    }
-    $mime = mime_content_type($path) ?: 'image/png';
-    return response()->file($path, ['Content-Type' => $mime]);
-});
-
-
-Route::get('/storage/resumes/{studentId}/{filename}', function ($studentId, $filename) {
-    $directory = storage_path('app/public/resumes/' . $studentId);
-    if (!is_dir($directory)) {
-        abort(404);
-    }
-    
-    $files = scandir($directory);
-    foreach ($files as $file) {
-        if (strtolower($file) === strtolower($filename)) {
-            return response()->file($directory . '/' . $file, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $file . '"'
-            ]);
-        }
-    }
-    abort(404);
-});
 
 Route::get('/db-test', function () {
     try {

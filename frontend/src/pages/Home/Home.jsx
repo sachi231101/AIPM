@@ -7,8 +7,10 @@ import CompanyCard from "../../components/CompanyCard/CompanyCard";
 import { jobService, companyService, contactService } from "../../services/api";
 import { useCachedData } from "../../hooks/useCachedData";
 import { getCompanyLogo, handleLogoError } from "../../utils/logoHelper";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function Home() {
+  const { user } = useAuth();
   const [registering, setRegistering] = useState(false);
 
   const { data: rawJobsResponse } = useCachedData(
@@ -95,9 +97,15 @@ export default function Home() {
                 Aadya Placements connects trained professionals and upskilled learners with leading companies across India. Register today, access placement drives, and launch your career.
               </p>
               <div className="d-flex flex-wrap gap-3">
-                <Link to="/student/register" className="btn btn-warning btn-lg fw-semibold px-4">
-                  <i className="bi bi-person-plus-fill me-2"></i>Register as Student
-                </Link>
+                {user ? (
+                  <Link to="/student/profile" className="btn btn-warning btn-lg fw-semibold px-4">
+                    <i className="bi bi-person-fill me-2"></i>My Profile
+                  </Link>
+                ) : (
+                  <Link to="/student/register" className="btn btn-warning btn-lg fw-semibold px-4">
+                    <i className="bi bi-person-plus-fill me-2"></i>Register as Student
+                  </Link>
+                )}
                 <Link to="/placement-drives" className="btn btn-outline-light btn-lg px-4">
                   <i className="bi bi-briefcase me-2"></i>Browse Jobs
                 </Link>
@@ -357,9 +365,15 @@ export default function Home() {
           <h2 className="fw-bold mb-3">Ready to Start Your Placement Journey?</h2>
           <p className="lead text-white-75 mb-4">Join 1,200+ students already registered on Aadya Placements</p>
           <div className="d-flex justify-content-center gap-3 flex-wrap">
-            <Link to="/student/register" className="btn btn-warning btn-lg fw-semibold">
-              <i className="bi bi-rocket-takeoff me-2"></i>Get Started Free
-            </Link>
+            {user ? (
+              <Link to="/student/profile" className="btn btn-warning btn-lg fw-semibold">
+                <i className="bi bi-person-fill me-2"></i>My Profile
+              </Link>
+            ) : (
+              <Link to="/student/register" className="btn btn-warning btn-lg fw-semibold">
+                <i className="bi bi-rocket-takeoff me-2"></i>Get Started Free
+              </Link>
+            )}
             <Link to="/contact" className="btn btn-outline-light btn-lg">
               <i className="bi bi-chat-dots me-2"></i>Contact Us
             </Link>

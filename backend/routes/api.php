@@ -40,6 +40,12 @@ Route::get('/jobs/{id}',    [JobController::class, 'show']);
 // Company Public Job Submission & Listing
 Route::get('/companies',            [CompanyController::class, 'index']);
 Route::post('/company/job-request', [CompanyController::class, 'submitJob']);
+Route::post('/company/register',    [CompanyController::class, 'register']);
+Route::post('/company/login',       [CompanyController::class, 'login']);
+Route::get('/company/profile',      [CompanyController::class, 'getProfile']);
+Route::put('/company/profile',      [CompanyController::class, 'updateProfile']);
+Route::get('/company/jobs',         [CompanyController::class, 'getJobs']);
+Route::post('/company/jobs',        [CompanyController::class, 'createJob']);
 
 // Public Institute Listing (for registration dropdown)
 Route::get('/institutes', [InstituteController::class, 'index']);

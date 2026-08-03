@@ -139,13 +139,13 @@ export default function ApplyResumeModal({ job, student, onConfirm, onClose, loa
                             <div>
                               <span className="fw-semibold d-block small">
                                 <i className="bi bi-pencil-square text-success me-1"></i>
-                                {res.title || "AI Built Resume"}
+                                {res.title || "Built Resume"}
                                 {res.is_default && (
                                   <span className="badge bg-success ms-2" style={{ fontSize: "0.65rem" }}>Default</span>
                                 )}
                               </span>
                               <small className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                Created in AI Resume Builder
+                                Created in Resume Builder
                               </small>
                             </div>
                           </div>
@@ -166,7 +166,7 @@ export default function ApplyResumeModal({ job, student, onConfirm, onClose, loa
 
                   {!hasUploaded && builtResumes.length === 0 && (
                     <div className="alert alert-warning small mb-0">
-                      No resume found. Please create one in the AI Resume Builder or upload a PDF first.
+                      No resume found. Please create one in the Resume Builder or upload a PDF first.
                     </div>
                   )}
                 </div>

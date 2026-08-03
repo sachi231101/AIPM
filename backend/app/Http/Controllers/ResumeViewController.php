@@ -41,6 +41,16 @@ class ResumeViewController extends Controller
         // Construct profile-specific content if no resume row exists yet for this profile
         if ($resume) {
             $content = $resume->content ?? [];
+            if (is_array($content)) {
+                if (empty($content['personal']['photo']) && !empty($student->profile_photo)) {
+                    $content['personal']['photo'] = (str_starts_with($student->profile_photo, 'http') || str_starts_with($student->profile_photo, 'data:'))
+                        ? $student->profile_photo
+                        : \Illuminate\Support\Facades\Storage::disk('public')->url($student->profile_photo);
+                }
+                if (!isset($content['personal']['showPhoto'])) {
+                    $content['personal']['showPhoto'] = !empty($content['personal']['photo']);
+                }
+            }
         } else {
             $profile = null;
             if ($request->filled('profile_id')) {

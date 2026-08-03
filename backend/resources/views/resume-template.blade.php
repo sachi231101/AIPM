@@ -26,7 +26,10 @@
             ? $rawPhoto
             : \Illuminate\Support\Facades\Storage::disk('public')->url($rawPhoto);
     }
-    $showPhoto = isset($personal['showPhoto']) ? !empty($personal['showPhoto']) : !empty($photo);
+    $showPhoto = isset($personal['showPhoto']) ? ($personal['showPhoto'] !== false && $personal['showPhoto'] !== 'false' && $personal['showPhoto'] !== 0 && $personal['showPhoto'] !== '0') : !empty($photo);
+    if (empty($photo)) {
+        $showPhoto = false;
+    }
     
     $settings = $content['settings'] ?? [];
     $templateKey = strtolower($settings['template'] ?? 'modern');

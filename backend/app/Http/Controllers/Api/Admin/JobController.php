@@ -88,7 +88,7 @@ class JobController extends Controller
     // PUT /api/admin/jobs/{id}/approve
     public function approve(int $id): JsonResponse
     {
-        return $this->changeStatus($id, 'approved');
+        return $this->changeStatus($id, 'published');
     }
 
     // PUT /api/admin/jobs/{id}/reject
@@ -106,13 +106,7 @@ class JobController extends Controller
     // PUT /api/admin/jobs/{id}/publish
     public function publish(Request $request, int $id): JsonResponse
     {
-        $job = PlacementJob::findOrFail($id);
-        $job->update(['status' => 'published']);
-
-        return response()->json([
-            'message' => 'Job published successfully.',
-            'data'    => $job,
-        ]);
+        return $this->changeStatus($id, 'published');
     }
 
     // ───────── Private helper ─────────
@@ -121,9 +115,19 @@ class JobController extends Controller
         $job = PlacementJob::findOrFail($id);
         $job->update(['status' => $status]);
 
+        if ($status === 'published' || $status === 'approved') {
+            if ($job->company) {
+                $job->company->update(['status' => 'approved']);
+            }
+            $allInstituteIds = \App\Models\Institute::pluck('id')->toArray();
+            if (!empty($allInstituteIds)) {
+                $job->institutes()->sync($allInstituteIds);
+            }
+        }
+
         return response()->json([
-            'message' => "Job status changed to {$status}.",
-            'data'    => $job,
+            'message' => "Job status updated to " . ucfirst($status) . " successfully! 🎉",
+            'data'    => $job->load('company'),
         ]);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Models\Company;
 use App\Models\PlacementJob;
 use App\Models\Student;
 use App\Models\User;
@@ -48,6 +49,8 @@ class DashboardController extends Controller
                 'total_students'     => Student::count(),
                 'pending_students'   => Student::where('approval_status', 'pending')->count(),
                 'approved_students'  => Student::where('approval_status', 'approved')->count(),
+                'total_companies'    => Company::count(),
+                'recent_companies'   => Company::latest()->limit(5)->get(),
                 'total_jobs'         => PlacementJob::count(),
                 'pending_jobs'       => PlacementJob::pending()->count(),
                 'published_jobs'     => PlacementJob::published()->count(),

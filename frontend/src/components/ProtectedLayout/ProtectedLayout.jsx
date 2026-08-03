@@ -8,11 +8,15 @@ export default function ProtectedLayout({ children, requiredRole, requiredPermis
   if (loading) return <Loading />;
 
   if (!user) {
-    return <Navigate to={requiredRole === "admin" ? "/admin/login" : "/student/login"} replace />;
+    if (requiredRole === "admin") return <Navigate to="/admin/login" replace />;
+    if (requiredRole === "company") return <Navigate to="/company/login" replace />;
+    return <Navigate to="/student/login" replace />;
   }
 
   if (requiredRole && role !== requiredRole) {
     if (!(requiredRole === "admin" && role === "subadmin")) {
+      if (role === "company") return <Navigate to="/company/dashboard" replace />;
+      if (role === "student") return <Navigate to="/student/dashboard" replace />;
       return <Navigate to="/" replace />;
     }
   }

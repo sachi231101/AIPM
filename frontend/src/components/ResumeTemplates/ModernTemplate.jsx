@@ -15,7 +15,7 @@ export default function ModernTemplate({ resume }) {
       {/* Header */}
       <div className="d-flex align-items-center justify-content-between border-bottom pb-4 mb-4" style={{ borderColor: accent }}>
         <div className="d-flex align-items-center gap-3">
-          {personal?.showPhoto && personal?.photo && (
+          {(personal?.showPhoto !== false && personal?.photo) && (
             <img src={normalizePhotoUrl(personal.photo)} alt={personal.fullName} className="rounded-circle object-fit-cover shadow-sm" style={{ width: 72, height: 72, border: `2px solid ${accent}` }} />
           )}
           <div>

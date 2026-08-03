@@ -1,96 +1,44 @@
 <?php
 
-// Serve resume PDFs directly to bypass Windows PHP built-in server junction/routing bugs
+// Serve static storage files directly to bypass Windows PHP built-in server junction/routing limitations
 if (isset($_SERVER['REQUEST_URI'])) {
     $uriPath = rawurldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
     
-    // Match /storage/company-logos/{filename}
-    if (preg_match('|^/storage/company-logos/([^/]+)$|i', $uriPath, $matches)) {
-        $filename = $matches[1];
-        $filePath = __DIR__ . '/storage/app/public/company-logos/' . $filename;
-        if (file_exists($filePath)) {
-            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-            $mimeMap = [
-                'png'  => 'image/png',
-                'jpg'  => 'image/jpeg',
-                'jpeg' => 'image/jpeg',
-                'webp' => 'image/webp',
-                'svg'  => 'image/svg+xml',
-                'gif'  => 'image/gif',
-            ];
-            $mime = $mimeMap[$ext] ?? 'image/png';
-            header('Content-Type: ' . $mime);
-            header('Content-Length: ' . filesize($filePath));
-            header('Cache-Control: public, max-age=86400');
-            readfile($filePath);
-            exit;
-        }
-    }
-
-    // Match /storage/settings/{filename}
-    if (preg_match('|^/storage/settings/([^/]+)$|i', $uriPath, $matches)) {
-        $filename = $matches[1];
-        $filePath = __DIR__ . '/storage/app/public/settings/' . $filename;
-        if (file_exists($filePath)) {
-            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-            $mimeMap = [
-                'png'  => 'image/png',
-                'jpg'  => 'image/jpeg',
-                'jpeg' => 'image/jpeg',
-                'webp' => 'image/webp',
-                'svg'  => 'image/svg+xml',
-            ];
-            $mime = $mimeMap[$ext] ?? 'image/png';
-            header('Content-Type: ' . $mime);
-            header('Content-Length: ' . filesize($filePath));
-            header('Cache-Control: public, max-age=86400');
-            readfile($filePath);
-            exit;
-        }
-    }
-
-    // Match /storage/resumes/{studentId}/{filename}
-    if (preg_match('|^/storage/resumes/([^/]+)/([^/]+)$|i', $uriPath, $matches)) {
-        $studentId = $matches[1];
-        $filename = $matches[2];
-        $directory = __DIR__ . '/storage/app/public/resumes/' . $studentId;
+    if (str_starts_with($uriPath, '/storage/')) {
+        $relativePath = ltrim(substr($uriPath, 8), '/');
         
-        if (is_dir($directory)) {
-            $files = scandir($directory);
-            foreach ($files as $file) {
-                if (strtolower($file) === strtolower($filename)) {
-                    $filePath = $directory . '/' . $file;
-                    header('Content-Type: application/pdf');
-                    header('Content-Disposition: inline; filename="' . $file . '"');
-                    header('Content-Length: ' . filesize($filePath));
-                    readfile($filePath);
-                    exit;
-                }
-            }
-        }
-    }
-    
-    // Match /storage/resumes/{filename}
-    if (preg_match('|^/storage/resumes/([^/]+)$|i', $uriPath, $matches)) {
-        $filename = $matches[1];
-        $directory = __DIR__ . '/storage/app/public/resumes';
-        
-        if (is_dir($directory)) {
-            $files = scandir($directory);
-            foreach ($files as $file) {
-                if (strtolower($file) === strtolower($filename)) {
-                    $filePath = $directory . '/' . $file;
-                    header('Content-Type: application/pdf');
-                    header('Content-Disposition: inline; filename="' . $file . '"');
-                    header('Content-Length: ' . filesize($filePath));
-                    readfile($filePath);
-                    exit;
-                }
+        $candidates = [
+            __DIR__ . '/storage/app/public/' . $relativePath,
+            __DIR__ . '/storage/app/public/profile_photos/' . $relativePath,
+            __DIR__ . '/public/storage/' . $relativePath,
+            __DIR__ . '/public/profile_photos/' . $relativePath,
+            __DIR__ . '/public/' . $relativePath,
+        ];
+
+        foreach ($candidates as $filePath) {
+            if (file_exists($filePath) && !is_dir($filePath)) {
+                $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                $mimeMap = [
+                    'png'  => 'image/png',
+                    'jpg'  => 'image/jpeg',
+                    'jpeg' => 'image/jpeg',
+                    'webp' => 'image/webp',
+                    'svg'  => 'image/svg+xml',
+                    'gif'  => 'image/gif',
+                    'pdf'  => 'application/pdf',
+                ];
+                $mime = $mimeMap[$ext] ?? (mime_content_type($filePath) ?: 'application/octet-stream');
+                header('Access-Control-Allow-Origin: *');
+                header('Access-Control-Allow-Methods: GET, OPTIONS');
+                header('Content-Type: ' . $mime);
+                header('Content-Length: ' . filesize($filePath));
+                header('Cache-Control: public, max-age=86400');
+                readfile($filePath);
+                exit;
             }
         }
     }
 }
-
 
 define('LARAVEL_START', microtime(true));
 

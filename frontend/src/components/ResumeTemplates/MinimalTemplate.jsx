@@ -22,7 +22,7 @@ export default function MinimalTemplate({ resume }) {
             {personal?.showGithub && personal?.github && <span> • {personal.github}</span>}
           </div>
         </div>
-        {personal?.showPhoto && personal?.photo && (
+        {(personal?.showPhoto !== false && personal?.photo) && (
           <img
             src={normalizePhotoUrl(personal.photo)}
             alt={personal.fullName}

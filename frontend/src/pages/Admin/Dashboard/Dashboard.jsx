@@ -243,21 +243,21 @@ export default function AdminDashboard() {
       />
 
       {/* Stat Cards */}
-      <div className="row g-4 mb-4">
-        <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Total Students" value={stats.total_students.toLocaleString()} icon="bi-people-fill" color="primary" />
+      <div className="row g-3 mb-4">
+        <div className="col-6 col-md-4 col-lg-2.4">
+          <StatCard title="Total Students" value={(stats.total_students || 0).toLocaleString()} icon="bi-people-fill" color="primary" />
         </div>
-        <div className="col-6 col-md-4 col-lg-2-4">
+        <div className="col-6 col-md-4 col-lg-2.4">
           <StatCard title="Pending Review" value={stats.pending_students || 0} icon="bi-clock-history" color="warning" />
         </div>
-        <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Approved Students" value={stats.approved_students || 0} icon="bi-patch-check-fill" color="success" />
+        <div className="col-6 col-md-4 col-lg-2.4">
+          <StatCard title="Companies" value={stats.total_companies || 0} icon="bi-buildings-fill" color="info" />
         </div>
-        <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Published Jobs" value={stats.published_jobs} icon="bi-check-circle-fill" color="success" />
+        <div className="col-6 col-md-4 col-lg-2.4">
+          <StatCard title="Published Jobs" value={stats.published_jobs || 0} icon="bi-briefcase-fill" color="success" />
         </div>
-        <div className="col-6 col-md-4 col-lg-2-4">
-          <StatCard title="Total Applications" value={stats.total_applications.toLocaleString()} icon="bi-file-earmark-check-fill" color="primary" />
+        <div className="col-6 col-md-4 col-lg-2.4">
+          <StatCard title="Applications" value={(stats.total_applications || 0).toLocaleString()} icon="bi-file-earmark-check-fill" color="primary" />
         </div>
       </div>
 

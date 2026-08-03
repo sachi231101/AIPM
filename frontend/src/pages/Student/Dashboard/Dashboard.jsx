@@ -8,10 +8,13 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import { studentService, jobService, applicationService } from "../../../services/api";
 import { getCompanyLogo } from "../../../utils/logoHelper";
 
+import { normalizePhotoUrl } from "../../../utils/resumeStorage";
+
 import { useCachedData } from "../../../hooks/useCachedData";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [imgError, setImgError] = useState(false);
 
   const { data: profileRes, loading: loadingProfile } = useCachedData("student_profile", studentService.getProfile);
   const { data: jobsRes, loading: loadingJobs } = useCachedData("public_jobs", jobService.getAll);
@@ -178,7 +181,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* AI Resume Builder Banner */}
+      {/* Resume Builder Banner */}
       <div className="card border-0 shadow-sm mb-4" style={{ background: "linear-gradient(135deg, #0F4C81 0%, #1565C0 100%)", color: "white" }}>
         <div className="card-body p-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
           <div>
@@ -201,12 +204,13 @@ export default function Dashboard() {
             <div className="card-body p-4">
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <div className="d-flex align-items-center gap-3">
-                  {(student.profile_photo || student.profilePhoto) ? (
+                  {(student.profile_photo || student.profilePhoto) && !imgError ? (
                     <img 
-                      src={student.profile_photo || student.profilePhoto} 
+                      src={normalizePhotoUrl(student.profile_photo || student.profilePhoto)} 
                       alt={student.name} 
                       className="rounded-circle border border-primary border-2 p-1" 
                       style={{ width: 48, height: 48, objectFit: "cover" }} 
+                      onError={() => setImgError(true)}
                     />
                   ) : (
                     <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: 48, height: 48, fontSize: 18 }}>
