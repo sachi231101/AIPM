@@ -57,7 +57,9 @@ Route::middleware(['auth:sanctum', 'role:student'])->group(function () {
 
     Route::get('/student/profile',          [StudentController::class, 'show']);
     Route::put('/student/profile',          [StudentController::class, 'update']);
+    Route::post('/student/profile/photo',   [StudentController::class, 'uploadPhoto']);
     Route::post('/student/resume',          [StudentController::class, 'uploadResume']);
+
 
     Route::post('/apply',                   [ApplicationController::class, 'apply']);
     Route::get('/student/applications',     [ApplicationController::class, 'myApplications']);

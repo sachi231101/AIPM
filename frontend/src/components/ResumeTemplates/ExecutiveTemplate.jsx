@@ -1,3 +1,5 @@
+import { normalizePhotoUrl } from "../../utils/resumeStorage";
+
 export default function ExecutiveTemplate({ resume }) {
   if (!resume) return null;
   const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
@@ -12,7 +14,7 @@ export default function ExecutiveTemplate({ resume }) {
         {/* Photo */}
         {personal?.showPhoto && personal?.photo && (
           <div className="text-center">
-            <img src={personal.photo} alt={personal.fullName} className="rounded-circle border border-3 border-white object-fit-cover shadow" style={{ width: 110, height: 110 }} />
+            <img src={normalizePhotoUrl(personal.photo)} alt={personal.fullName} className="rounded-circle border border-3 border-white object-fit-cover shadow" style={{ width: 110, height: 110 }} />
           </div>
         )}
 

@@ -70,6 +70,9 @@ export const studentService = {
   reject: (id) => api.put(`/admin/students/${id}/reject`),
   getProfile: (params) => api.get("/student/profile", { params }),
   updateProfile: (data) => api.put("/student/profile", data),
+  uploadProfilePhoto: (formData) => api.post("/student/profile/photo", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }),
   uploadResume: (formData) => api.post("/student/resume", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   }),

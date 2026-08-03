@@ -22,7 +22,9 @@
     $rawPhoto = $personal['photo'] ?? $student->profile_photo ?? '';
     $photo = '';
     if (!empty($rawPhoto)) {
-        $photo = (str_starts_with($rawPhoto, 'http') || str_starts_with($rawPhoto, 'data:')) ? $rawPhoto : url('/' . ltrim($rawPhoto, '/'));
+        $photo = (str_starts_with($rawPhoto, 'http') || str_starts_with($rawPhoto, 'data:'))
+            ? $rawPhoto
+            : \Illuminate\Support\Facades\Storage::disk('public')->url($rawPhoto);
     }
     $showPhoto = isset($personal['showPhoto']) ? !empty($personal['showPhoto']) : !empty($photo);
     

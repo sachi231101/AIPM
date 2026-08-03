@@ -67,27 +67,25 @@ class StudentController extends Controller
                 @list(, $fileData) = explode(',', $fileData);
                 if ($fileData) {
                     $decoded = base64_decode($fileData);
-                    $dir = public_path('profile_photos');
-                    if (!file_exists($dir)) {
-                        mkdir($dir, 0777, true);
+                    // Delete old photo from Storage
+                    if ($student->profile_photo && !str_starts_with($student->profile_photo, 'http') && !str_starts_with($student->profile_photo, 'data:')) {
+                        Storage::disk('public')->delete($student->profile_photo);
                     }
-                    $relPath = 'profile_photos/student_' . $student->id . '_' . time() . '.png';
-                    $fullPath = public_path($relPath);
-
-                    if ($student->profile_photo && !str_starts_with($student->profile_photo, 'http') && file_exists(public_path($student->profile_photo))) {
-                        @unlink(public_path($student->profile_photo));
-                    }
-
-                    file_put_contents($fullPath, $decoded);
-                    $studentParentData['profile_photo'] = $relPath;
+                    // Save to Storage::disk('public') like company logo
+                    $storagePath = 'profile_photos/student_' . $student->id . '_' . time() . '.png';
+                    Storage::disk('public')->put($storagePath, $decoded);
+                    $studentParentData['profile_photo'] = $storagePath;
                 }
             } elseif (str_starts_with($photoData, 'http://') || str_starts_with($photoData, 'https://')) {
+                // Extract storage path from URL — strip /storage/ prefix
                 $parsedPath = parse_url($photoData, PHP_URL_PATH);
-                $studentParentData['profile_photo'] = ltrim($parsedPath, '/');
+                $storagePath = ltrim(str_replace('/storage/', '', $parsedPath), '/');
+                $studentParentData['profile_photo'] = $storagePath;
             } else {
                 $studentParentData['profile_photo'] = $photoData;
             }
         }
+
 
         if (!empty($studentParentData)) {
             $student->update($studentParentData);
@@ -109,6 +107,37 @@ class StudentController extends Controller
         return response()->json([
             'message' => 'Profile updated successfully.',
             'data'    => $this->formatProfile($user->fresh(), $student->fresh(), $activeProfile->fresh()),
+        ]);
+    }
+
+    // ───────── POST /api/student/profile/photo ─────────
+
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,jpg,png,gif,webp|max:5120',
+        ]);
+
+        $user    = $request->user();
+        $student = $user->student;
+
+        // Delete old photo if stored in Storage disk
+        if (
+            $student->profile_photo &&
+            !str_starts_with($student->profile_photo, 'http') &&
+            !str_starts_with($student->profile_photo, 'data:')
+        ) {
+            Storage::disk('public')->delete($student->profile_photo);
+        }
+
+        // Store using Storage::disk('public') — same as company logo
+        $path = $request->file('photo')->store('profile_photos', 'public');
+
+        $student->update(['profile_photo' => $path]);
+
+        return response()->json([
+            'message'   => 'Profile photo updated successfully.',
+            'photo_url' => Storage::disk('public')->url($path),
         ]);
     }
 
@@ -178,7 +207,11 @@ class StudentController extends Controller
             'approval_status'     => $student->approval_status ?? 'approved',
             'institute_id'        => $student->institute_id,
             'institute'           => $student->institute?->name ?? $student->other_institute_name,
-            'profile_photo'       => $student->profile_photo ? (str_starts_with($student->profile_photo, 'http') || str_starts_with($student->profile_photo, 'data:') ? $student->profile_photo : url('/' . ltrim($student->profile_photo, '/'))) : null,
+            'profile_photo'       => $student->profile_photo
+                ? (str_starts_with($student->profile_photo, 'http') || str_starts_with($student->profile_photo, 'data:')
+                    ? $student->profile_photo
+                    : Storage::disk('public')->url($student->profile_photo))
+                : null,
 
             // Active Career Profile Data (100% isolated strictly to activeProfile)
             'active_profile_id'   => $activeProfile->id,

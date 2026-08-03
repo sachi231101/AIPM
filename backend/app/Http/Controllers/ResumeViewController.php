@@ -60,7 +60,11 @@ class ResumeViewController extends Controller
                     'linkedin'          => $profile->linkedin ?: ($student->linkedin ?? ''),
                     'github'            => $profile->github ?: ($student->github ?? ''),
                     'portfolio'         => $profile->portfolio ?: ($student->portfolio ?? ''),
-                    'photo'             => $student->profile_photo ? (str_starts_with($student->profile_photo, 'http') || str_starts_with($student->profile_photo, 'data:') ? $student->profile_photo : url('/' . ltrim($student->profile_photo, '/'))) : '',
+                    'photo'             => $student->profile_photo
+                        ? (str_starts_with($student->profile_photo, 'http') || str_starts_with($student->profile_photo, 'data:')
+                            ? $student->profile_photo
+                            : \Illuminate\Support\Facades\Storage::disk('public')->url($student->profile_photo))
+                        : '',
                     'showPhoto'         => !empty($student->profile_photo),
                 ],
                 'summary'   => $profile->summary ?: '',

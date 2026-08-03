@@ -8,6 +8,7 @@ import {
   saveResume,
   createDefaultResume,
   mergeProfileIntoResume,
+  normalizePhotoUrl,
   createNewResume,
   duplicateResume,
   deleteResume,
@@ -33,7 +34,6 @@ const STEP_NAMES = [
   "Certifications",
   "Achievements",
   "Languages",
-  "Resume Settings",
   "Review & Generate",
 ];
 
@@ -79,6 +79,7 @@ export default function ResumeBuilder() {
   const [coverLetterText, setCoverLetterText] = useState("");
   const [targetRole, setTargetRole] = useState(activeProfile?.target_role || "Full Stack Developer");
   const [newSkillInput, setNewSkillInput] = useState({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Fetch student profile & pre-fill Master Resume for activeProfile
   useEffect(() => {
@@ -135,6 +136,41 @@ export default function ResumeBuilder() {
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch profile information.");
+    }
+  };
+
+  // Upload profile photo from within the resume builder
+  const handleResumePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024 * 5) {
+      toast.error("Photo must be smaller than 5MB.");
+      return;
+    }
+    // Show preview instantly
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      handlePersonalChange("photo", reader.result);
+      handlePersonalChange("showPhoto", true);
+    };
+    reader.readAsDataURL(file);
+    // Upload to backend so it's saved on the profile
+    try {
+      setUploadingPhoto(true);
+      const formData = new FormData();
+      formData.append("photo", file);
+      const res = await studentService.uploadProfilePhoto(formData);
+      const newUrl = res.data?.photo_url;
+      if (newUrl) {
+        handlePersonalChange("photo", newUrl);
+        handlePersonalChange("showPhoto", true);
+      }
+      toast.success("Profile photo saved to your account! 📸");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to save photo.");
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -404,7 +440,7 @@ export default function ResumeBuilder() {
             </div>
           </div>
 
-          {/* Small Live Resume Preview in Sidebar */}
+          {/* Live Resume Preview (Responsive for Mobile & Desktop) */}
           <div className="card border-0 shadow-sm mb-3">
             <div className="card-body p-2">
               <div className="d-flex align-items-center justify-content-between mb-2 px-1">
@@ -431,6 +467,7 @@ export default function ResumeBuilder() {
               </button>
             </div>
           </div>
+
 
           {/* Select Template Style directly in Sidebar */}
           <div className="card border-0 shadow-sm mb-3">
@@ -514,6 +551,70 @@ export default function ResumeBuilder() {
               {currentStep === 0 && (
                 <div>
                   <h5 className="fw-bold text-primary mb-3"><i className="bi bi-person me-2"></i>Personal Information</h5>
+
+                  {/* Photo Upload Widget */}
+                  <div className="card border bg-light mb-4 rounded-3">
+                    <div className="card-body p-3">
+                      <div className="d-flex align-items-center gap-4">
+                        {/* Photo preview circle */}
+                        <div
+                          className="rounded-circle overflow-hidden d-flex align-items-center justify-content-center flex-shrink-0 border border-2"
+                          style={{ width: 80, height: 80, background: "#e9ecef", borderColor: "#dee2e6" }}
+                        >
+                          {uploadingPhoto ? (
+                            <span className="spinner-border spinner-border-sm text-primary"></span>
+                          ) : activeResume.personal?.photo ? (
+                            <img
+                              src={normalizePhotoUrl(activeResume.personal.photo)}
+                              alt="Profile"
+                              className="w-100 h-100"
+                              style={{ objectFit: "cover" }}
+                            />
+                          ) : (
+                            <i className="bi bi-person-fill text-secondary fs-2"></i>
+                          )}
+                        </div>
+                        {/* Upload info */}
+                        <div className="flex-grow-1">
+                          <p className="fw-semibold mb-1 small text-dark">Profile Photo for Resume</p>
+                          <p className="text-muted mb-2" style={{ fontSize: "0.78rem" }}>
+                            {activeResume.personal?.photo
+                              ? "Photo loaded from your profile. You can update it below."
+                              : "No photo yet. Upload to include your photo in the resume."}
+                          </p>
+                          <label
+                            htmlFor="resumePhotoInput"
+                            className={`btn btn-sm ${ uploadingPhoto ? "btn-secondary disabled" : "btn-outline-primary" } fw-semibold`}
+                            style={{ cursor: uploadingPhoto ? "not-allowed" : "pointer" }}
+                          >
+                            {uploadingPhoto ? (
+                              <><span className="spinner-border spinner-border-sm me-1"></span>Uploading...</>
+                            ) : (
+                              <><i className="bi bi-camera me-1"></i>{activeResume.personal?.photo ? "Change Photo" : "Upload Photo"}</>
+                            )}
+                            <input
+                              id="resumePhotoInput"
+                              type="file"
+                              accept="image/*"
+                              className="d-none"
+                              disabled={uploadingPhoto}
+                              onChange={handleResumePhotoChange}
+                            />
+                          </label>
+                          {activeResume.personal?.photo && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger ms-2"
+                              onClick={() => { handlePersonalChange("photo", ""); handlePersonalChange("showPhoto", false); }}
+                            >
+                              <i className="bi bi-trash me-1"></i>Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label small text-muted">Full Name</label>
@@ -960,72 +1061,9 @@ export default function ResumeBuilder() {
                 </div>
               )}
 
-              {/* STEP 10: Settings */}
+
+              {/* STEP 10: Review & Generate */}
               {currentStep === 9 && (
-                <div>
-                  <div className="d-flex align-items-center justify-content-between mb-3">
-                    <h5 className="fw-bold text-primary mb-0"><i className="bi bi-palette2 me-2"></i>Resume Layout & Template Examples</h5>
-                    <button className="btn btn-primary btn-sm fw-semibold" onClick={() => setShowTemplateGallery(true)}>
-                      <i className="bi bi-grid-fill me-1"></i> Open Full Gallery & Examples
-                    </button>
-                  </div>
-
-                  <div className="row g-3 mb-4">
-                    {TEMPLATE_DEFINITIONS.map((tpl) => {
-                      const isSelected = (activeResume.settings?.template || "modern") === tpl.id;
-                      return (
-                        <div key={tpl.id} className="col-md-6 col-lg-4">
-                          <div
-                            className={`card border-2 h-100 shadow-sm rounded-3 cursor-pointer overflow-hidden ${
-                              isSelected ? "border-primary bg-primary bg-opacity-10" : "border-light-subtle bg-white"
-                            }`}
-                            style={{ cursor: "pointer" }}
-                            onClick={() => handleUpdateResume({ ...activeResume, settings: { ...activeResume.settings, template: tpl.id } })}
-                          >
-                            <div className="bg-white p-2 border-bottom">
-                              <RealResumeThumbnail templateId={tpl.id} resumeData={activeResume} />
-                            </div>
-                            <div className="card-body p-3">
-                              <div className="d-flex align-items-center justify-content-between mb-1">
-                                <span className="fw-bold small text-dark">{tpl.name}</span>
-                                {isSelected && <span className="badge bg-primary">Active</span>}
-                              </div>
-                              <small className="text-muted d-block mb-2" style={{ fontSize: "0.75rem" }}>
-                                {tpl.category}
-                              </small>
-                              <button
-                                type="button"
-                                className={`btn btn-xs w-100 ${isSelected ? "btn-primary fw-bold" : "btn-outline-primary"}`}
-                                style={{ fontSize: "0.75rem" }}
-                              >
-                                {isSelected ? "Active Selected" : "Use This Template"}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="row g-4">
-                    <div className="col-md-6">
-                      <label className="form-label small text-muted fw-bold">Accent Theme Color</label>
-                      <div className="d-flex align-items-center gap-2">
-                        <input
-                          type="color"
-                          className="form-control form-control-color"
-                          value={activeResume.settings?.accentColor || "#0F4C81"}
-                          onChange={(e) => handleUpdateResume({ ...activeResume, settings: { ...activeResume.settings, accentColor: e.target.value } })}
-                        />
-                        <span className="small text-muted font-monospace">{activeResume.settings?.accentColor || "#0F4C81"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 11: Review & Generate */}
-              {currentStep === 10 && (
                 <div>
                   <h5 className="fw-bold text-success mb-3"><i className="bi bi-check-circle me-2"></i>Review & Generate Resume</h5>
                   <div className="alert alert-success d-flex align-items-center gap-3 mb-4">
@@ -1094,10 +1132,13 @@ export default function ResumeBuilder() {
 
       {/* ─── LIVE PREVIEW MODAL ───────────────────────────────────────────── */}
       {showPreviewModal && (
-        <div className="modal fade show d-block bg-dark bg-opacity-75" tabIndex="-1">
-          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: "90vw" }}>
-            <div className="modal-content border-0 shadow-lg">
-              <div className="modal-body p-3">
+        <div className="modal fade show d-block bg-dark bg-opacity-75" tabIndex="-1" style={{ zIndex: 1055 }}>
+          <div
+            className="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+            style={{ maxWidth: "min(90vw, 900px)", margin: "0.5rem auto" }}
+          >
+            <div className="modal-content border-0 shadow-lg" style={{ maxHeight: "95vh" }}>
+              <div className="modal-body p-0 p-sm-2 overflow-auto">
                 <ResumePreview resume={activeResume} onClose={() => setShowPreviewModal(false)} />
               </div>
             </div>
