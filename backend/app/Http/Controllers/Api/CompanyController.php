@@ -202,11 +202,16 @@ class CompanyController extends Controller
         $company = $request->user();
         $companyId = ($company && $company instanceof Company) ? $company->id : $request->query('company_id');
 
-        $query = PlacementJob::withCount('applications')->latest();
+        $query = PlacementJob::with('company')->withCount('applications')->latest();
         if ($companyId) {
             $query->where('company_id', $companyId);
         }
-        $jobs = $query->get();
+        $jobs = $query->get()->map(function ($job) {
+            $logo = $job->company?->logo_path;
+            $logoUrl = $logo ? (str_starts_with($logo, 'data:') || str_starts_with($logo, 'http') ? $logo : url('/storage/' . $logo)) : null;
+            $job->company_logo = $logoUrl;
+            return $job;
+        });
 
         return response()->json([
             'status' => 'success',

@@ -250,12 +250,39 @@ export default function CompanyDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {jobs.slice(0, 5).map((job) => (
-                    <tr key={job.id}>
-                      <td className="ps-4">
-                        <div className="fw-bold text-dark">{job.title}</div>
-                        <div className="text-muted small">{job.location}</div>
-                      </td>
+                  {jobs.slice(0, 5).map((job) => {
+                    const logoSrc = job.company_logo || job.company?.logo_path;
+
+                    return (
+                      <tr key={job.id}>
+                        <td className="ps-4">
+                          <div className="d-flex align-items-center gap-2.5">
+                            <div
+                              className="rounded-2 bg-light border d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0"
+                              style={{ width: 34, height: 34 }}
+                            >
+                              {logoSrc ? (
+                                <img
+                                  src={logoSrc}
+                                  alt="Logo"
+                                  className="w-100 h-100 object-fit-contain p-0.5"
+                                  onError={(e) => {
+                                    e.target.style.display = "none";
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = "block";
+                                  }}
+                                />
+                              ) : null}
+                              <i
+                                className="bi bi-buildings text-primary small"
+                                style={{ display: logoSrc ? "none" : "block" }}
+                              ></i>
+                            </div>
+                            <div>
+                              <div className="fw-bold text-dark">{job.title}</div>
+                              <div className="text-muted small">{job.location}</div>
+                            </div>
+                          </div>
+                        </td>
                       <td>
                         <span className="badge bg-light text-dark border font-monospace">
                           {job.applicationsCount} Candidates
@@ -269,9 +296,9 @@ export default function CompanyDashboard() {
                         >
                           {job.status === "published" ? "ACTIVE" : "DRAFT"}
                         </span>
-                      </td>
-                    </tr>
-                  ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
