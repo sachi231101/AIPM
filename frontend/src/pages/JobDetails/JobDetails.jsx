@@ -22,6 +22,7 @@ export default function JobDetails() {
   const role = user?.role;
   const [applying, setApplying] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [justApplied, setJustApplied] = useState(false);
 
   const { data: jobRes, loading: loadingJob } = useCachedData(
     `job_details_${id}`,
@@ -84,7 +85,14 @@ export default function JobDetails() {
 
   const approvalStatus = student?.approval_status || user?.approval_status || "approved";
 
+  const isAlreadyApplied = isApplied || justApplied;
+
   const handleOpenConfirmModal = () => {
+    if (isAlreadyApplied) {
+      toast.info("You have already applied for this placement drive.");
+      return;
+    }
+
     if (approvalStatus !== "approved") {
       if (approvalStatus === "rejected") {
         toast.error("Your account status is rejected. You cannot apply for placement drives.");
@@ -106,12 +114,19 @@ export default function JobDetails() {
     try {
       setApplying(true);
       await applicationService.apply({ job_id: job.id });
-      setIsApplied(true);
+      setJustApplied(true);
       setShowConfirmModal(false);
       toast.success(`Successfully applied for ${job.title} at ${job.company}! 🎉`);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to submit application.");
+      const msg = err.response?.data?.message || "Failed to submit application.";
+      if (err.response?.status === 409) {
+        setJustApplied(true);
+        setShowConfirmModal(false);
+        toast.info(msg);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setApplying(false);
     }
@@ -209,7 +224,7 @@ export default function JobDetails() {
                 </div>
               ) : role === "student" ? (
                 <div>
-                  {isApplied ? (
+                  {isAlreadyApplied ? (
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                       <div>
                         <h6 className="fw-bold text-success mb-1">

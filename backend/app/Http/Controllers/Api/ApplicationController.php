@@ -67,28 +67,55 @@ class ApplicationController extends Controller
             $profile = $student->getOrCreateDefaultProfile();
         }
 
-        // Check profile completion for this specific profile
-        $course = $profile->course ?? $student->course;
-        $branch = $profile->branch ?? $student->branch;
-        $batch  = $profile->batch ?? $student->batch;
+        // Resolve student's Resume Builder data dynamically (if available)
+        $resume = \App\Models\StudentResume::where('student_id', $student->id)
+            ->where(function ($q) use ($profile, $request) {
+                if ($request->resume_key) {
+                    $q->where('resume_key', $request->resume_key);
+                } elseif ($profile) {
+                    $q->where('student_profile_id', $profile->id);
+                }
+            })
+            ->orderByDesc('is_default')
+            ->first();
 
-        $incompleteFields = [];
-        if (blank($course))           $incompleteFields[] = 'Course';
-        if (blank($branch))           $incompleteFields[] = 'Branch';
-        if (blank($batch))            $incompleteFields[] = 'Batch';
-        if (blank($student->dob))     $incompleteFields[] = 'Date of Birth';
-        if (blank($student->gender))  $incompleteFields[] = 'Gender';
-        if (blank($student->address)) $incompleteFields[] = 'Address';
-
-        if (!empty($incompleteFields)) {
-            return response()->json([
-                'message' => 'Your profile "' . $profile->profile_name . '" is incomplete. Please complete missing details (' . implode(', ', $incompleteFields) . ') before applying.'
-            ], 422);
+        if (!$resume) {
+            $resume = \App\Models\StudentResume::where('student_id', $student->id)->latest()->first();
         }
 
-        // Check profile-level resume
-        $hasUploadedResume = filled($profile->resume_path);
-        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
+        $resumeContent = $resume?->content ?? [];
+        $educationList = is_array($resumeContent['education'] ?? null) ? $resumeContent['education'] : [];
+        $firstEdu      = count($educationList) > 0 ? $educationList[0] : null;
+
+        $builderCourse = $firstEdu['degree'] ?? ($firstEdu['course'] ?? null);
+        $builderBranch = $firstEdu['field'] ?? ($firstEdu['branch'] ?? ($firstEdu['specialization'] ?? null));
+        $builderBatch  = $firstEdu['year'] ?? ($firstEdu['batch'] ?? ($firstEdu['passingYear'] ?? null));
+        $builderCgpa   = $firstEdu['gpa'] ?? ($firstEdu['cgpa'] ?? ($firstEdu['percentage'] ?? null));
+
+        $course = $profile->course ?: ($student->course ?: $builderCourse);
+        $branch = $profile->branch ?: ($student->branch ?: $builderBranch);
+        $batch  = $profile->batch ?: ($student->batch ?: $builderBatch);
+        $cgpa   = $profile->cgpa ?: ($student->cgpa ?: $builderCgpa);
+
+        if ($course || $branch || $batch || $cgpa) {
+            $profile->update(array_filter([
+                'course' => $course,
+                'branch' => $branch,
+                'batch'  => $batch,
+                'cgpa'   => $cgpa,
+            ]));
+
+            $student->update(array_filter([
+                'course' => $course,
+                'branch' => $branch,
+                'batch'  => $batch,
+                'cgpa'   => $cgpa,
+            ]));
+        }
+
+        // Check profile-level or student-level resume
+        $hasUploadedResume = filled($profile->resume_path) || filled($student->resume_path);
+        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
 
         if (!$hasUploadedResume && !$hasCreatedResume) {
             return response()->json([
@@ -105,13 +132,13 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'You have already applied for this placement drive.'], 409);
         }
 
-        $resumeType = $request->resume_type ?? ($hasUploadedResume ? 'uploaded' : 'builder');
+        $resumeType = $request->resume_type ?? ($hasCreatedResume ? 'builder' : 'uploaded');
         $resumeKey  = $request->resume_key;
 
         if ($resumeType === 'builder' && !$resumeKey) {
             $defaultResume = \App\Models\StudentResume::where('student_id', $student->id)
-                ->where('student_profile_id', $profile->id)
                 ->orderByDesc('is_default')
+                ->latest()
                 ->first();
             $resumeKey = $defaultResume?->resume_key ?? 'master';
         }

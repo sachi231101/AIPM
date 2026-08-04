@@ -11,6 +11,7 @@ class Application extends Model
 
     protected $fillable = [
         'student_id',
+        'student_profile_id',
         'job_id',
         'resume_path',
         'resume_type',
@@ -26,6 +27,11 @@ class Application extends Model
     public function student(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    public function profile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(StudentProfile::class, 'student_profile_id');
     }
 
     public function job(): \Illuminate\Database\Eloquent\Relations\BelongsTo
