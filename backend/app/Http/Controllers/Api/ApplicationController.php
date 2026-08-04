@@ -113,9 +113,9 @@ class ApplicationController extends Controller
             ]));
         }
 
-        // Check profile-level resume
-        $hasUploadedResume = filled($profile->resume_path);
-        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
+        // Check profile-level or student-level resume
+        $hasUploadedResume = filled($profile->resume_path) || filled($student->resume_path);
+        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
 
         if (!$hasUploadedResume && !$hasCreatedResume) {
             return response()->json([
@@ -132,13 +132,13 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'You have already applied for this placement drive.'], 409);
         }
 
-        $resumeType = $request->resume_type ?? ($hasUploadedResume ? 'uploaded' : 'builder');
+        $resumeType = $request->resume_type ?? ($hasCreatedResume ? 'builder' : 'uploaded');
         $resumeKey  = $request->resume_key;
 
         if ($resumeType === 'builder' && !$resumeKey) {
             $defaultResume = \App\Models\StudentResume::where('student_id', $student->id)
-                ->where('student_profile_id', $profile->id)
                 ->orderByDesc('is_default')
+                ->latest()
                 ->first();
             $resumeKey = $defaultResume?->resume_key ?? 'master';
         }

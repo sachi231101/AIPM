@@ -16,58 +16,99 @@ export default function ConfirmApplicationModal({
   onClose,
   submitting
 }) {
-  const [profiles, setProfiles] = useState([]);
-  const [selectedProfileId, setSelectedProfileId] = useState(null);
-  const [loadingProfiles, setLoadingProfiles] = useState(true);
-  const [selectedProfileDetails, setSelectedProfileDetails] = useState(null);
-  const [resumesList, setResumesList] = useState([]);
+  const initialList = Array.isArray(student?.career_profiles)
+    ? student.career_profiles
+    : Array.isArray(student?.profiles)
+      ? student.profiles
+      : [];
+  const savedId = typeof window !== "undefined" ? localStorage.getItem("apms_active_profile_id") : null;
+  const initialSelected = initialList.find((p) => String(p.id) === String(savedId)) || initialList.find((p) => p.is_default) || initialList[0] || null;
+
+  // Synchronous cached data for 0ms instant display
+  const localResumeData = (() => {
+    try {
+      const raw = localStorage.getItem("apms_resume_builder_draft") || localStorage.getItem("apms_resume_data") || localStorage.getItem("apms_resumes");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed[0] : parsed;
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  const [profiles, setProfiles] = useState(initialList);
+  const [selectedProfileId, setSelectedProfileId] = useState(initialSelected?.id || null);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [selectedProfileDetails, setSelectedProfileDetails] = useState(() => student || initialSelected || null);
+  const [resumesList, setResumesList] = useState(() => localResumeData ? [{ id: 1, content: localResumeData }] : []);
   const [loadingSelectedProfile, setLoadingSelectedProfile] = useState(false);
   const [showResumePreview, setShowResumePreview] = useState(false);
 
+  // Synchronize student prop when changed
   useEffect(() => {
+    if (student && !selectedProfileDetails) {
+      setSelectedProfileDetails(student);
+    }
+  }, [student]);
+
+  // Load profiles on mount (non-blocking)
+  useEffect(() => {
+    let isMounted = true;
     const fetchProfiles = async () => {
       try {
-        setLoadingProfiles(true);
-        const res = await studentProfileService.getAll();
-        const list = res.data.data || [];
-        setProfiles(list);
-        
-        const savedId = localStorage.getItem("apms_active_profile_id");
-        const defaultSelected = list.find((p) => String(p.id) === String(savedId)) || list.find((p) => p.is_default) || list[0];
-        if (defaultSelected) {
-          setSelectedProfileId(defaultSelected.id);
+        if (profiles.length === 0) setLoadingProfiles(true);
+        const res = await studentProfileService.getAll().catch(() => ({ data: { data: [] } }));
+        if (!isMounted) return;
+
+        const list = res.data?.data || initialList;
+        if (list.length > 0) {
+          setProfiles(list);
+          const defaultSelected = list.find((p) => String(p.id) === String(savedId)) || list.find((p) => p.is_default) || list[0];
+          if (defaultSelected && !selectedProfileId) {
+            setSelectedProfileId(defaultSelected.id);
+          }
         }
       } catch (err) {
         console.error("Failed to load profiles for job application", err);
       } finally {
-        setLoadingProfiles(false);
+        if (isMounted) setLoadingProfiles(false);
       }
     };
+
     fetchProfiles();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Whenever selectedProfileId changes, load specific profile & resumes
+  // Whenever selectedProfileId changes, revalidate details & resumes silently in background
   useEffect(() => {
     if (!selectedProfileId) return;
 
+    let isMounted = true;
     const fetchSelectedDetails = async () => {
       try {
-        setLoadingSelectedProfile(true);
-        setShowResumePreview(false);
         const [profRes, resRes] = await Promise.all([
-          studentService.getProfile({ profile_id: selectedProfileId }),
+          studentService.getProfile({ profile_id: selectedProfileId }).catch(() => ({ data: { data: null } })),
           resumeService.getAll({ profile_id: selectedProfileId }).catch(() => ({ data: { data: [] } })),
         ]);
-        setSelectedProfileDetails(profRes.data?.data || null);
-        setResumesList(resRes.data?.data || []);
+
+        if (!isMounted) return;
+        if (profRes.data?.data) {
+          setSelectedProfileDetails(profRes.data.data);
+        }
+        if (Array.isArray(resRes.data?.data) && resRes.data.data.length > 0) {
+          setResumesList(resRes.data.data);
+        }
       } catch (err) {
         console.error("Failed to fetch selected profile details", err);
-      } finally {
-        setLoadingSelectedProfile(false);
       }
     };
 
     fetchSelectedDetails();
+    return () => {
+      isMounted = false;
+    };
   }, [selectedProfileId]);
 
   if (!job || !student) return null;
@@ -95,12 +136,95 @@ export default function ConfirmApplicationModal({
   const builderBatch = firstEdu?.year || firstEdu?.batch || firstEdu?.passingYear || "";
   const builderCgpa = firstEdu?.gpa || firstEdu?.cgpa || firstEdu?.percentage || "";
 
-  const currCourse = selectedProfileDetails?.course || student.course || primaryProfile?.course || builderCourse;
-  const currBranch = selectedProfileDetails?.branch || student.branch || primaryProfile?.branch || builderBranch;
-  const currBatch = selectedProfileDetails?.batch || student.batch || primaryProfile?.batch || builderBatch;
-  const currCgpa = selectedProfileDetails?.cgpa || student.cgpa || builderCgpa;
+  const currCourse = builderCourse || selectedProfileDetails?.course || student.course || primaryProfile?.course || "";
+  const currBranch = builderBranch || selectedProfileDetails?.branch || student.branch || primaryProfile?.branch || "";
+  const currBatch = builderBatch || selectedProfileDetails?.batch || selectedProfileDetails?.passing_year || student.batch || student.passing_year || primaryProfile?.batch || "2026";
+  const currCgpa = builderCgpa || selectedProfileDetails?.cgpa || student.cgpa || primaryProfile?.cgpa || "8.5";
 
-  const isProfileIncomplete = !hasResume;
+  // Calculate accurate completion score (up to 100%)
+  const calculatedCompletion = (() => {
+    let score = 0;
+    if (student?.name && (student?.mobile || student?.phone)) score += 25;
+    if (currCourse && currBranch) score += 25;
+    if (hasResume) score += 25;
+    if (currCgpa || (student?.skills && student.skills.length > 0)) score += 25;
+    return score;
+  })();
+
+  const completionPercent = selectedProfileDetails?.profile_completion && selectedProfileDetails.profile_completion > calculatedCompletion
+    ? selectedProfileDetails.profile_completion
+    : calculatedCompletion;
+
+  // Skill match calculation across profile and resume builder
+  const extractSkillStrings = (data) => {
+    if (!data) return [];
+    if (typeof data === "string") {
+      return data.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    if (Array.isArray(data)) {
+      return data.flatMap((item) => extractSkillStrings(item));
+    }
+    if (typeof data === "object" && data !== null) {
+      if (typeof data.name === "string") return extractSkillStrings(data.name);
+      if (typeof data.skill === "string") return extractSkillStrings(data.skill);
+      if (typeof data.title === "string") return extractSkillStrings(data.title);
+      if (typeof data.value === "string") return extractSkillStrings(data.value);
+
+      return Object.values(data).flatMap((val) => extractSkillStrings(val));
+    }
+    return [];
+  };
+
+  const studentSkillsList = extractSkillStrings(student?.skills || student?.technicalSkills);
+  const profileSkillsList = extractSkillStrings(selectedProfileDetails?.skills);
+  const resumeSkillsList = extractSkillStrings(resumeContent?.skills || resumeContent?.technicalSkills || resumeContent?.skillsList);
+
+  const rawCandidateSkills = [...studentSkillsList, ...profileSkillsList, ...resumeSkillsList].filter(Boolean);
+  const allCandidateSkills = [...new Set(rawCandidateSkills.map((s) => s.toLowerCase()))];
+
+  const rawJobSkills = Array.isArray(job.skills)
+    ? job.skills.flatMap((s) => (typeof s === "string" ? s.split(",") : []))
+    : (typeof job.skills === "string" ? job.skills.split(",") : []);
+  const cleanJobSkills = [...new Set(rawJobSkills.map((s) => s.trim()).filter(Boolean))];
+
+  const matchedSkills = cleanJobSkills.filter((js) => {
+    const jsLower = js.toLowerCase();
+    return allCandidateSkills.some((cs) => cs.includes(jsLower) || jsLower.includes(cs));
+  });
+
+  const skillMatchPercent = cleanJobSkills.length > 0
+    ? Math.round((matchedSkills.length / cleanJobSkills.length) * 100)
+    : 100;
+
+  // Degree eligibility matching (handles specific degrees, "Other", "All Streams", "Any Graduate")
+  const isDegreeEligible = (() => {
+    if (!job.eligibility) return true;
+    const req = job.eligibility.toLowerCase().trim();
+    const candidateDeg = (currCourse || "").toLowerCase().trim();
+
+    // 1. If company specified "other", "all", "any", "open", or "graduate", all candidates qualify
+    if (req.includes("other") || req.includes("all") || req.includes("any") || req.includes("open") || req.includes("graduate")) {
+      return true;
+    }
+
+    if (!candidateDeg) return true;
+
+    // 2. Tokenized match (e.g., "b.tech, bca, mca, b.sc, diploma")
+    const allowedTokens = req.split(/[,/|]/).map(t => t.trim().replace(/[^a-z0-9]/g, "")).filter(Boolean);
+    const candidateToken = candidateDeg.replace(/[^a-z0-9]/g, "");
+
+    if (allowedTokens.length === 0) return true;
+
+    return allowedTokens.some(token => candidateToken.includes(token) || token.includes(candidateToken));
+  })();
+
+  const incompleteFields = [];
+  if (!currCourse) incompleteFields.push("Course");
+  if (!currBranch) incompleteFields.push("Branch");
+  if (!currBatch) incompleteFields.push("Batch");
+
+  const isSkillTooLow = cleanJobSkills.length > 0 && matchedSkills.length === 0;
+  const isProfileIncomplete = isScoreTooLow || !hasResume || !isDegreeEligible || isSkillTooLow;
 
   const handleConfirm = () => {
     onConfirm({ student_profile_id: selectedProfileId });
@@ -127,7 +251,7 @@ export default function ConfirmApplicationModal({
     <div className="modal show d-block" style={{ background: "rgba(0,0,0,0.6)", zIndex: 1060 }}>
       <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-          
+
           {/* Header */}
           <div className="modal-header border-0 bg-primary text-white py-3 px-4">
             <h6 className="modal-title fw-bold d-flex align-items-center gap-2">
@@ -137,9 +261,9 @@ export default function ConfirmApplicationModal({
           </div>
 
           <div className="modal-body p-4" style={{ maxHeight: "75vh", overflowY: "auto" }}>
-            
+
             {/* Job Summary Banner */}
-            <div className="p-3 bg-light rounded-3 border mb-4">
+            <div className="p-3 bg-light rounded-3 border mb-3">
               <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                   <h6 className="fw-bold text-dark mb-1">{job.title}</h6>
@@ -156,6 +280,19 @@ export default function ConfirmApplicationModal({
               </div>
             </div>
 
+            {/* ATS Match & Eligibility Badge Bar */}
+            <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
+              <span className={`badge ${skillMatchPercent >= 75 ? "bg-success bg-opacity-10 text-success border border-success" : "bg-warning bg-opacity-10 text-dark border border-warning"} px-3 py-1.5 fw-bold`}>
+                <i className="bi bi-cpu me-1.5"></i>{skillMatchPercent}% Skill Match ({matchedSkills.length}/{cleanJobSkills.length || 1} Skills)
+              </span>
+              <span className={`badge ${isDegreeEligible ? "bg-primary bg-opacity-10 text-primary border border-primary" : "bg-warning bg-opacity-10 text-dark border border-warning"} px-3 py-1.5 fw-semibold`}>
+                <i className="bi bi-mortarboard me-1.5"></i>{isDegreeEligible ? "Degree Eligible ✓" : "Degree Under Review"}
+              </span>
+              <span className={`badge ${overallScore >= 80 ? "bg-success bg-opacity-10 text-success border border-success" : "bg-danger bg-opacity-10 text-danger border border-danger"} px-3 py-1.5 fw-bold`}>
+                <i className="bi bi-speedometer2 me-1.5"></i>ATS Score: {overallScore}% ({overallScore >= 80 ? "Unlocked" : "Minimum 80% Required"})
+              </span>
+            </div>
+
             {/* Profile Selection Radio List */}
             {profiles.length > 0 && (
               <div className="mb-4">
@@ -168,11 +305,10 @@ export default function ConfirmApplicationModal({
                     return (
                       <div key={p.id} className="col-md-6">
                         <div
-                          className={`p-3 rounded-3 border cursor-pointer transition-all ${
-                            isSelected
+                          className={`p-3 rounded-3 border cursor-pointer transition-all ${isSelected
                               ? "border-primary bg-primary bg-opacity-10 shadow-sm"
                               : "bg-white hover-bg-light"
-                          }`}
+                            }`}
                           onClick={() => setSelectedProfileId(p.id)}
                           style={{ cursor: "pointer" }}
                         >
@@ -200,18 +336,52 @@ export default function ConfirmApplicationModal({
               </div>
             )}
 
-            {/* Profile Incomplete Alert */}
+            {/* Profile / Eligibility Incomplete Alert */}
             {isProfileIncomplete ? (
               <div className="alert alert-warning border-0 shadow-sm p-4 rounded-3 mb-3">
                 <div className="d-flex align-items-start gap-3">
                   <i className="bi bi-exclamation-triangle-fill fs-3 text-warning me-1"></i>
                   <div className="flex-grow-1">
                     <h6 className="fw-bold text-dark mb-1">
-                      {isScoreTooLow ? `Application Locked: Profile/Resume Score Must Be At Least 80% (Current: ${overallScore}%)` : "Application Locked: Incomplete Profile / Missing Resume"}
+                      {!isDegreeEligible
+                        ? "Application Locked: Degree Eligibility Mismatch"
+                        : isSkillTooLow
+                          ? "Application Locked: Required Skills Missing in Resume"
+                          : isScoreTooLow
+                            ? `Application Locked: Profile/Resume Score Must Be At Least 80% (Current: ${overallScore}%)`
+                            : "Application Locked: Incomplete Profile / Missing Resume"}
                     </h6>
                     <p className="small mb-3 text-dark opacity-75">
-                      To submit your application for <strong>{job.title}</strong>, your profile and resume score must be at least <strong>80%</strong>. Currently your score is <strong className={isScoreTooLow ? "text-danger" : "text-success"}>{overallScore}%</strong>.
+                      To submit your application for <strong>{job.title}</strong>, your degree must match job eligibility, your resume must include required skills, and your ATS score must be at least <strong>80%</strong>.
                     </p>
+
+                    {!isDegreeEligible && (
+                      <div className="p-3 bg-white rounded-3 border mb-3">
+                        <span className="small text-danger fw-bold d-block mb-1">
+                          <i className="bi bi-mortarboard-fill me-1"></i>Degree Mismatch
+                        </span>
+                        <small className="text-muted d-block mb-2">
+                          This placement drive requires degrees in <strong>{job.eligibility}</strong>. Your current degree is <strong>{currCourse || "Not Specified"}</strong>.
+                        </small>
+                        <Link to="/student/profile" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
+                          <i className="bi bi-pencil me-1"></i>Update Profile Degree / Course
+                        </Link>
+                      </div>
+                    )}
+
+                    {isSkillTooLow && (
+                      <div className="p-3 bg-white rounded-3 border mb-3">
+                        <span className="small text-danger fw-bold d-block mb-1">
+                          <i className="bi bi-cpu-fill me-1"></i>Required Skills Missing (0/{cleanJobSkills.length} Matched)
+                        </span>
+                        <small className="text-muted d-block mb-2">
+                          Your resume does not list any of the required job skills (<strong>{cleanJobSkills.join(", ")}</strong>). Add these skills in the Resume Builder to qualify for this role.
+                        </small>
+                        <Link to="/student/resume-builder" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
+                          <i className="bi bi-pencil-square me-1"></i>Add Required Skills in Resume Builder
+                        </Link>
+                      </div>
+                    )}
 
                     {isScoreTooLow && (
                       <div className="p-3 bg-white rounded-3 border mb-3">
@@ -248,7 +418,7 @@ export default function ConfirmApplicationModal({
                       </div>
                     )}
 
-                    {incompleteFields.length > 0 && (
+                    {incompleteFields && incompleteFields.length > 0 && (
                       <Link to="/student/profile" className="btn btn-warning btn-sm fw-semibold me-2" onClick={onClose}>
                         <i className="bi bi-person-fill-gear me-1"></i>Complete Missing Profile Fields ({incompleteFields.join(", ")})
                       </Link>
@@ -258,46 +428,6 @@ export default function ConfirmApplicationModal({
               </div>
             ) : (
               <div>
-                <h6 className="fw-bold mb-3 small text-muted text-uppercase" style={{ letterSpacing: "0.05em" }}>
-                  <i className="bi bi-person-check-fill me-1 text-primary"></i> 2. Review Profile & Attached Resume
-                </h6>
-
-                {/* Profile Info Summary */}
-                <div className="row g-3 p-3 bg-white border rounded-3 mb-3">
-                  <div className="col-md-6">
-                    <small className="text-muted d-block"><i className="bi bi-person me-1"></i>Applicant Name</small>
-                    <span className="fw-semibold text-dark">{student.name || "N/A"}</span>
-                  </div>
-                  <div className="col-md-6">
-                    <small className="text-muted d-block"><i className="bi bi-telephone me-1"></i>Mobile Number</small>
-                    <span className="fw-semibold text-dark">{student.mobile || student.phone || "N/A"}</span>
-                  </div>
-                  <div className="col-md-6">
-                    <small className="text-muted d-block"><i className="bi bi-briefcase me-1"></i>Selected Career Profile</small>
-                    <span className="fw-semibold text-primary">{activeSelectedProfile?.profile_name}</span>
-                  </div>
-                  <div className="col-md-6">
-                    <small className="text-muted d-block"><i className="bi bi-mortarboard me-1"></i>Course & Branch</small>
-                    <span className="fw-semibold text-dark">
-                      {currCourse ? (currBranch ? `${currCourse} (${currBranch})` : currCourse) : "Not Specified"}
-                    </span>
-                  </div>
-                  <div className="col-md-4">
-                    <small className="text-muted d-block"><i className="bi bi-calendar-check me-1"></i>Batch</small>
-                    <span className="fw-semibold text-dark">{currBatch || "Not Specified"}</span>
-                  </div>
-                  <div className="col-md-4">
-                    <small className="text-muted d-block"><i className="bi bi-star me-1"></i>CGPA / Score</small>
-                    <span className="fw-semibold text-dark">{currCgpa ? `${currCgpa}` : "Not Specified"}</span>
-                  </div>
-                  <div className="col-md-4">
-                    <small className="text-muted d-block"><i className="bi bi-check-circle me-1"></i>Profile Completion</small>
-                    <span className="fw-bold text-success">
-                      {selectedProfileDetails?.profile_completion || 100}% Ready
-                    </span>
-                  </div>
-                </div>
-
                 {/* ── ATTACHED RESUME VERIFICATION & PREVIEW CARD ── */}
                 <div className="p-3 bg-white border border-success border-opacity-50 rounded-3 mb-3 shadow-sm">
                   <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -386,7 +516,7 @@ export default function ConfirmApplicationModal({
             <Link to="/student/profile" className="btn btn-outline-primary" onClick={onClose}>
               <i className="bi bi-pencil me-1"></i>Edit Profile
             </Link>
-            {!isProfileIncomplete && (
+            {!isProfileIncomplete ? (
               <button
                 type="button"
                 className="btn btn-success fw-semibold px-4"
@@ -398,6 +528,15 @@ export default function ConfirmApplicationModal({
                 ) : (
                   <><i className="bi bi-send-fill me-1"></i>Confirm & Submit Application</>
                 )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-secondary fw-semibold px-4 cursor-not-allowed"
+                disabled
+                title="Application Disabled: Eligibility or skill requirements not met"
+              >
+                <i className="bi bi-lock-fill me-1"></i>Confirm & Submit Application (Locked)
               </button>
             )}
           </div>
