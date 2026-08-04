@@ -45,43 +45,51 @@ export default function ProfessionalTemplate({ resume }) {
       )}
 
       {/* Experience */}
-      {experience && experience.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
-            Professional Experience
-          </h6>
-          {experience.map((exp) => (
-            <div key={exp.id} className="mb-3">
-              <div className="d-flex justify-content-between align-items-baseline">
-                <span className="fw-bold text-dark">{exp.designation} — <span className="fst-italic">{exp.company}</span></span>
-                <span className="small text-muted fw-semibold">{exp.startDate} to {exp.currentCompany ? "Present" : exp.endDate}</span>
+      {(() => {
+        const validExp = (experience || []).filter((exp) => exp && (exp.designation?.trim() || exp.company?.trim() || exp.responsibilities?.trim()));
+        if (validExp.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+              Professional Experience
+            </h6>
+            {validExp.map((exp) => (
+              <div key={exp.id} className="mb-3">
+                <div className="d-flex justify-content-between align-items-baseline">
+                  <span className="fw-bold text-dark">{exp.designation || "Role"} {exp.company ? <span className="fst-italic">— {exp.company}</span> : ""}</span>
+                  <span className="small text-muted fw-semibold">{exp.startDate} to {exp.currentCompany ? "Present" : exp.endDate}</span>
+                </div>
+                {exp.location && <div className="small text-muted mb-1">{exp.location} | {exp.employmentType || "Full-time"}</div>}
+                {exp.responsibilities && <p className="text-secondary small mb-1">{exp.responsibilities}</p>}
+                {exp.technologies && <p className="small text-muted mb-0"><strong>Skills Utilized:</strong> {exp.technologies}</p>}
               </div>
-              <div className="small text-muted mb-1">{exp.location} | {exp.employmentType}</div>
-              {exp.responsibilities && <p className="text-secondary small mb-1">{exp.responsibilities}</p>}
-              {exp.technologies && <p className="small text-muted mb-0"><strong>Skills Utilized:</strong> {exp.technologies}</p>}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Projects */}
-      {projects && projects.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
-            Technical Projects
-          </h6>
-          {projects.map((proj) => (
-            <div key={proj.id} className="mb-3">
-              <div className="d-flex justify-content-between">
-                <span className="fw-bold text-dark">{proj.name} ({proj.role})</span>
-                <span className="small text-muted">{proj.duration}</span>
+      {(() => {
+        const validProj = (projects || []).filter((proj) => proj && (proj.name?.trim() || proj.title?.trim() || proj.description?.trim()));
+        if (validProj.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+              Technical Projects
+            </h6>
+            {validProj.map((proj) => (
+              <div key={proj.id} className="mb-3">
+                <div className="d-flex justify-content-between">
+                  <span className="fw-bold text-dark">{proj.name || proj.title} {proj.role ? `(${proj.role})` : ""}</span>
+                  <span className="small text-muted">{proj.duration}</span>
+                </div>
+                <p className="text-secondary small mb-1">{proj.description}</p>
+                {proj.responsibilities && <p className="text-secondary small mb-1">Key Deliverables: {proj.responsibilities}</p>}
               </div>
-              <p className="text-secondary small mb-1">{proj.description}</p>
-              {proj.responsibilities && <p className="text-secondary small mb-1">Key Deliverables: {proj.responsibilities}</p>}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Education & Skills Grid */}
       <div className="row g-4 mb-4">

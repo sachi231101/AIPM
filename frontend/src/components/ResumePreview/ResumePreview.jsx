@@ -190,20 +190,31 @@ export default function ResumePreview({ resume, onClose }) {
       </div>
 
       {/* Preview Viewport */}
-      <div className="flex-grow-1 overflow-auto d-flex justify-content-center p-2">
-        <div
-          className={`preview-wrapper transition-all ${deviceMode === "mobile" ? "mobile-viewport" : ""}`}
-          style={{
-            transform: `scale(${zoom / 100})`,
-            transformOrigin: "top center",
-            width: deviceMode === "mobile" ? "380px" : "100%",
-            maxWidth: deviceMode === "mobile" ? "380px" : "850px",
-          }}
-          ref={previewRef}
-        >
-          {renderTemplate()}
-        </div>
-      </div>
+      {(() => {
+        const settings = resume.settings || {};
+        const fontFamily = settings.fontFamily || "Inter";
+        const fontSizeMap = { small: "0.85rem", medium: "0.95rem", large: "1.05rem" };
+        const lineSpacingMap = { compact: "1.2", normal: "1.5", spacious: "1.8" };
+        return (
+          <div className="flex-grow-1 overflow-auto d-flex justify-content-center p-2">
+            <div
+              className={`preview-wrapper transition-all ${deviceMode === "mobile" ? "mobile-viewport" : ""}`}
+              style={{
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: "top center",
+                width: deviceMode === "mobile" ? "380px" : "100%",
+                maxWidth: deviceMode === "mobile" ? "380px" : "850px",
+                fontFamily: fontFamily,
+                fontSize: fontSizeMap[settings.fontSize] || "0.95rem",
+                lineHeight: lineSpacingMap[settings.lineSpacing] || "1.5",
+              }}
+              ref={previewRef}
+            >
+              {renderTemplate()}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

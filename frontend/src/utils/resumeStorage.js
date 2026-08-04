@@ -179,6 +179,9 @@ export function createDefaultResume(profileData = {}) {
       showPhoto: true,
       length: "one_page", // one_page, two_pages
       paperSize: "a4", // a4, letter
+      fontFamily: "Inter", // Inter, Roboto, Outfit, Merriweather, Poppins
+      fontSize: "medium", // small, medium, large
+      lineSpacing: "normal", // compact, normal, spacious
     },
   };
 }
@@ -243,11 +246,24 @@ export function mergeProfileIntoResume(resumeObj, profileData = {}) {
     technical: (existingSkills.technical && existingSkills.technical.length > 0) ? existingSkills.technical : profileSkills,
   };
 
+  const mergedSettings = {
+    template: "modern",
+    accentColor: "#0F4C81",
+    showPhoto: true,
+    length: "one_page",
+    paperSize: "a4",
+    fontFamily: "Inter",
+    fontSize: "medium",
+    lineSpacing: "normal",
+    ...(resumeObj.settings || {}),
+  };
+
   return {
     ...resumeObj,
     personal: mergedPersonal,
     education: mergedEducation,
     skills: mergedSkills,
+    settings: mergedSettings,
   };
 }
 
@@ -328,6 +344,12 @@ export function setActiveResumeId(id, userId = "", profileId = "") {
   } catch (e) {}
 }
 
+export function getActiveResume(profileData = {}, userId = "", profileId = "") {
+  const list = getAllResumes(profileData, userId, profileId);
+  const activeId = getActiveResumeId(userId, profileId);
+  return list.find((r) => r.id === activeId) || list[0];
+}
+
 export function saveResume(resumeObj, userId = "", profileId = "") {
   if (!resumeObj || !resumeObj.id) return;
   const list = getAllResumes({}, userId, profileId);
@@ -397,6 +419,7 @@ export function calculateATSMetrics(resumeObj) {
     experience: 0,
     projects: 0,
     skills: 0,
+    actionVerbs: 0,
     formatting: 0,
   };
   const tips = [];
@@ -406,35 +429,50 @@ export function calculateATSMetrics(resumeObj) {
   if (p.email && p.email.includes("@")) breakdown.personal += 5;
   if (p.phone) breakdown.personal += 5;
   if (p.linkedin) breakdown.personal += 5;
+  if (!p.fullName) tips.push({ cat: "Personal", text: "Add your full name." });
+  if (!p.linkedin) tips.push({ cat: "Personal", text: "Add a LinkedIn profile URL to boost your professional credibility." });
 
   const s = resumeObj.summary || "";
-  if (s.length > 50) breakdown.summary += 15;
-  else if (s.length > 0) breakdown.summary += 8;
-  else tips.push("Add a professional summary statement (50+ words) to boost ATS score by 15 points.");
+  if (s.length > 80) breakdown.summary += 15;
+  else if (s.length > 20) breakdown.summary += 8;
+  else tips.push({ cat: "Summary", text: "Write a detailed 3-4 sentence professional summary statement." });
 
-  const edu = resumeObj.education || [];
+  const edu = (resumeObj.education || []).filter((e) => e && (e.degree?.trim() || e.college?.trim() || e.university?.trim() || e.specialization?.trim()));
   if (edu.length > 0) breakdown.education += 15;
-  else tips.push("Add at least 1 education entry.");
+  else tips.push({ cat: "Education", text: "Add at least 1 education entry (Degree, Branch & Institute)." });
 
-  const exp = resumeObj.experience || [];
+  const exp = (resumeObj.experience || []).filter((e) => e && (e.designation?.trim() || e.company?.trim() || e.responsibilities?.trim()));
   if (exp.length > 0) {
-    breakdown.experience += 20;
+    breakdown.experience += 15;
   } else {
-    tips.push("Add relevant work experience or internships to improve your score.");
+    tips.push({ cat: "Experience", text: "Add work experience or internships to showcase practical exposure." });
   }
 
-  const proj = resumeObj.projects || [];
+  const proj = (resumeObj.projects || []).filter((p) => p && (p.title?.trim() || p.description?.trim()));
   if (proj.length > 0) {
     breakdown.projects += 15;
   } else {
-    tips.push("Add academic or personal projects to highlight technical problem solving.");
+    tips.push({ cat: "Projects", text: "Add 2+ technical or academic projects detailing tools used." });
   }
 
   const skillsObj = resumeObj.skills || {};
-  const totalSkills = Object.values(skillsObj).flat().length;
+  const totalSkills = Object.values(skillsObj).flat().filter(Boolean).length;
   if (totalSkills >= 8) breakdown.skills += 15;
   else if (totalSkills > 0) breakdown.skills += 8;
-  else tips.push("Add at least 8 technical and soft skills.");
+  else tips.push({ cat: "Skills", text: "Add at least 8 relevant technical and soft skills." });
+
+  // Action Verbs Detection
+  const resumeText = JSON.stringify(resumeObj).toLowerCase();
+  const actionVerbs = ["spearheaded", "engineered", "developed", "architected", "optimized", "built", "implemented", "managed", "created", "designed", "launched"];
+  const matchedVerbs = actionVerbs.filter((verb) => resumeText.includes(verb));
+  if (matchedVerbs.length >= 3) {
+    breakdown.actionVerbs += 10;
+  } else if (matchedVerbs.length > 0) {
+    breakdown.actionVerbs += 5;
+    tips.push({ cat: "Action Verbs", text: "Use strong action verbs like 'Engineered', 'Spearheaded', or 'Optimized' in project descriptions." });
+  } else {
+    tips.push({ cat: "Action Verbs", text: "Incorporate powerful action verbs in your bullet points to pass ATS screening filters." });
+  }
 
   if (resumeObj.settings && resumeObj.settings.template) breakdown.formatting += 5;
 
@@ -450,6 +488,33 @@ export function calculateATSMetrics(resumeObj) {
   return { score, grade, breakdown, tips };
 }
 
+export function getOverallProfileScore(student, activeProfileId = "") {
+  if (!student) return 0;
+  const userId = student.id || student.student_id || "";
+  const profileId = activeProfileId || localStorage.getItem("apms_active_profile_id") || "default";
+
+  // Calculate ATS metrics for the current active resume
+  const activeResume = getActiveResume(student, userId, profileId);
+  const atsMetrics = calculateATSMetrics(activeResume);
+  const atsScore = atsMetrics?.score || 0;
+
+  // Calculate profile details field completeness (0-100)
+  let fieldPoints = 0;
+  if (student.name || student.fullName || student.personal?.fullName) fieldPoints += 15;
+  if (student.email || student.personal?.email) fieldPoints += 15;
+  if (student.mobile || student.phone || student.personal?.phone) fieldPoints += 15;
+  if (student.dob || student.gender) fieldPoints += 15;
+  if (student.course || student.branch) fieldPoints += 20;
+  if (student.cgpa || student.percentage) fieldPoints += 10;
+  const skillsCount = Array.isArray(student.skills) ? student.skills.length : (student.skills ? 1 : 0);
+  if (skillsCount > 0) fieldPoints += 10;
+
+  const backendCompletion = student.profile_completion || 0;
+
+  const score = Math.max(atsScore, fieldPoints, backendCompletion);
+  return Math.min(100, Math.max(0, score));
+}
+
 // ─── AI HELPER MOCKS (Produces Realistic Output) ────────────────────────────
 
 export async function aiGenerateSummary(resumeObj, jobTitle = "Software Developer") {
@@ -460,6 +525,31 @@ export async function aiGenerateSummary(resumeObj, jobTitle = "Software Develope
   const skillsList = resumeObj?.skills?.technical?.slice(0, 4).join(", ") || "problem solving and modern web technologies";
 
   return `Results-driven and motivated ${title} with a strong foundation in ${skillsList}. Experienced in building scalable applications, collaborating in agile environments, and delivering high-quality solutions. Passionate about technology innovation and continuous learning.`;
+}
+
+export async function aiRewriteSummaryWithTone(resumeObj, tone = "executive") {
+  await new Promise((res) => setTimeout(res, 700));
+  const title = resumeObj?.personal?.professionalTitle || "Software Engineer";
+  const skillsList = resumeObj?.skills?.technical?.slice(0, 3).join(", ") || "core technical capabilities";
+
+  if (tone === "technical") {
+    return `Hands-on ${title} specializing in ${skillsList}. Proven track record in designing robust system architectures, optimizing application performance, and implementing modern software development paradigms.`;
+  }
+  if (tone === "student") {
+    return `Enthusiastic and detail-oriented ${title} with academic excellence and hands-on project experience in ${skillsList}. Eager to contribute technical skills and analytical problem-solving to high-impact projects.`;
+  }
+  // Default executive
+  return `Strategic and results-oriented ${title} with expertise in ${skillsList}. Skilled at bridging technical execution with organizational goals, fostering cross-functional collaboration, and delivering scalable software solutions.`;
+}
+
+export async function aiGenerateBulletPoints(roleTitle = "Software Developer") {
+  await new Promise((res) => setTimeout(res, 600));
+  return [
+    `Engineered scalable RESTful API endpoints, reducing backend response latency by 35%.`,
+    `Architected responsive user interfaces using modern web frameworks, improving client engagement metrics.`,
+    `Spearheaded continuous integration and deployment (CI/CD) workflows, streamlining production release stability.`,
+    `Collaborated with cross-functional product teams to deliver feature requirements ahead of project deadlines.`,
+  ];
 }
 
 export async function aiImproveText(text) {
@@ -512,3 +602,4 @@ ${p.email ? `Email: ${p.email}` : ""}
 ${p.phone ? `Phone: ${p.phone}` : ""}
 `;
 }
+

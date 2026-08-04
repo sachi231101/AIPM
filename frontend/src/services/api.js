@@ -109,6 +109,7 @@ export const applicationService = {
 export const companyService = {
   getPublic: () => api.get("/companies"),
   getAll: (params) => api.get("/admin/companies", { params }),
+  inviteCompany: (data) => api.post("/admin/companies/invite", data),
   register: (data) => api.post("/company/register", data),
   login: (data) => api.post("/company/login", data),
   getProfile: (params) => api.get("/company/profile", { params }),

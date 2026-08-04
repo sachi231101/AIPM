@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { studentProfileService, studentService, resumeService } from "../../services/api";
+import { getOverallProfileScore } from "../../utils/resumeStorage";
 
 import ModernTemplate from "../ResumeTemplates/ModernTemplate";
 import ProfessionalTemplate from "../ResumeTemplates/ProfessionalTemplate";
@@ -83,6 +84,9 @@ export default function ConfirmApplicationModal({
   const resumeContent = activeMasterResume?.content || {};
   const templateKey = (resumeContent.settings?.template || "modern").toLowerCase();
 
+  const overallScore = getOverallProfileScore(selectedProfileDetails || student, selectedProfileId);
+  const isScoreTooLow = overallScore < 80;
+
   const incompleteFields = [];
   const currCourse = selectedProfileDetails?.course || student.course || primaryProfile?.course;
   const currBranch = selectedProfileDetails?.branch || student.branch || primaryProfile?.branch;
@@ -91,11 +95,8 @@ export default function ConfirmApplicationModal({
   if (!currCourse) incompleteFields.push("Course");
   if (!currBranch) incompleteFields.push("Branch");
   if (!currBatch) incompleteFields.push("Batch");
-  if (!student.dob) incompleteFields.push("Date of Birth");
-  if (!student.gender) incompleteFields.push("Gender");
-  if (!student.address) incompleteFields.push("Address");
 
-  const isProfileIncomplete = incompleteFields.length > 0 || !hasResume;
+  const isProfileIncomplete = isScoreTooLow || (!hasResume && incompleteFields.length > 0);
 
   const handleConfirm = () => {
     onConfirm({ student_profile_id: selectedProfileId });
@@ -201,15 +202,30 @@ export default function ConfirmApplicationModal({
                 <div className="d-flex align-items-start gap-3">
                   <i className="bi bi-exclamation-triangle-fill fs-3 text-warning me-1"></i>
                   <div className="flex-grow-1">
-                    <h6 className="fw-bold text-dark mb-1">Application Locked: Incomplete Profile / Missing Resume</h6>
+                    <h6 className="fw-bold text-dark mb-1">
+                      {isScoreTooLow ? `Application Locked: Profile/Resume Score Must Be At Least 80% (Current: ${overallScore}%)` : "Application Locked: Incomplete Profile / Missing Resume"}
+                    </h6>
                     <p className="small mb-3 text-dark opacity-75">
-                      To submit your application for <strong>{job.title}</strong>, you need to complete missing profile information:{" "}
-                      <strong className="text-danger">
-                        {incompleteFields.concat(!hasResume ? ["Resume Required"] : []).join(", ")}
-                      </strong>
+                      To submit your application for <strong>{job.title}</strong>, your profile and resume score must be at least <strong>80%</strong>. Currently your score is <strong className={isScoreTooLow ? "text-danger" : "text-success"}>{overallScore}%</strong>.
                     </p>
 
-                    {!hasResume && (
+                    {isScoreTooLow && (
+                      <div className="p-3 bg-white rounded-3 border mb-3">
+                        <span className="small text-danger fw-bold d-block mb-1">
+                          <i className="bi bi-speedometer2 me-1"></i>Minimum 80% Score Required
+                        </span>
+                        <small className="text-muted d-block mb-2">
+                          Update your details in the Resume Builder (experience, projects, skills, education, professional summary) to reach an ATS score of 80%+ and unlock applications.
+                        </small>
+                        <div className="d-flex gap-2 flex-wrap">
+                          <Link to="/student/resume-builder" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
+                            <i className="bi bi-pencil-square me-1"></i>Open Resume Builder & Boost Score ({overallScore}%)
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
+                    {!hasResume && !isScoreTooLow && (
                       <div className="p-3 bg-white rounded-3 border mb-3">
                         <span className="small text-danger fw-bold d-block mb-1">
                           <i className="bi bi-x-circle-fill me-1"></i>No Resume Found for "{activeSelectedProfile?.profile_name}"
@@ -219,7 +235,7 @@ export default function ConfirmApplicationModal({
                         </small>
                         <div className="d-flex gap-2 flex-wrap">
                           <Link to="/student/resume-builder" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
-                            <i className="bi bi-magic me-1"></i>Build Resume with AI Now
+                            <i className="bi bi-magic me-1"></i>Build Resume Now
                           </Link>
                           <Link to="/student/profile" className="btn btn-outline-primary btn-sm fw-semibold" onClick={onClose}>
                             <i className="bi bi-upload me-1"></i>Upload PDF Resume
@@ -230,7 +246,7 @@ export default function ConfirmApplicationModal({
 
                     {incompleteFields.length > 0 && (
                       <Link to="/student/profile" className="btn btn-warning btn-sm fw-semibold me-2" onClick={onClose}>
-                        <i className="bi bi-person-fill-gear me-1"></i>Complete Profile Details
+                        <i className="bi bi-person-fill-gear me-1"></i>Complete Missing Profile Fields ({incompleteFields.join(", ")})
                       </Link>
                     )}
                   </div>

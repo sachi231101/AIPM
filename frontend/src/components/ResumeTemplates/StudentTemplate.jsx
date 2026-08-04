@@ -51,25 +51,29 @@ export default function StudentTemplate({ resume }) {
       )}
 
       {/* Education First for Freshers */}
-      {education && education.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
-            Education & Academic Credentials
-          </h6>
-          {education.map((edu) => (
-            <div key={edu.id} className="mb-2 d-flex justify-content-between">
-              <div>
-                <span className="fw-bold text-dark">{edu.degree} — {edu.specialization}</span>
-                <div className="small text-muted">{edu.college} ({edu.university})</div>
+      {(() => {
+        const validEdu = (education || []).filter((edu) => edu && (edu.degree?.trim() || edu.college?.trim() || edu.university?.trim() || edu.specialization?.trim()));
+        if (validEdu.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+              Education & Academic Credentials
+            </h6>
+            {validEdu.map((edu) => (
+              <div key={edu.id} className="mb-2 d-flex justify-content-between">
+                <div>
+                  <span className="fw-bold text-dark">{edu.degree || "Degree"}{edu.specialization ? ` — ${edu.specialization}` : ""}</span>
+                  <div className="small text-muted">{edu.college}{edu.university ? ` (${edu.university})` : ""}</div>
+                </div>
+                <div className="text-end small">
+                  <span className="fw-semibold">{edu.startYear && `${edu.startYear} – `}{edu.endYear}</span>
+                  {edu.cgpa && <div className="text-muted">CGPA: <strong>{edu.cgpa}</strong></div>}
+                </div>
               </div>
-              <div className="text-end small">
-                <span className="fw-semibold">{edu.startYear} – {edu.endYear}</span>
-                {edu.cgpa && <div className="text-muted">CGPA / Percentage: <strong>{edu.cgpa}</strong> ({edu.percentage})</div>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Skills */}
       {allSkillItems.length > 0 && (
@@ -89,42 +93,51 @@ export default function StudentTemplate({ resume }) {
       )}
 
       {/* Academic & Personal Projects */}
-      {projects && projects.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
-            Key Projects & Applications
-          </h6>
-          {projects.map((proj) => (
-            <div key={proj.id} className="mb-3">
-              <div className="d-flex justify-content-between align-items-baseline">
-                <span className="fw-bold text-dark">{proj.name} <span className="fw-normal text-muted">({proj.role})</span></span>
-                <span className="small text-muted">{proj.duration}</span>
+      {(() => {
+        const validProj = (projects || []).filter((proj) => proj && (proj.name?.trim() || proj.title?.trim() || proj.description?.trim()));
+        if (validProj.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+              Key Projects & Applications
+            </h6>
+            {validProj.map((proj) => (
+              <div key={proj.id} className="mb-3">
+                <div className="d-flex justify-content-between align-items-baseline">
+                  <span className="fw-bold text-dark">{proj.name || proj.title} {proj.role ? <span className="fw-normal text-muted">({proj.role})</span> : ""}</span>
+                  <span className="small text-muted">{proj.duration}</span>
+                </div>
+                <p className="text-secondary small mb-1">{proj.description}</p>
+                {proj.responsibilities && <p className="text-secondary small mb-1"><strong>Key Highlights:</strong> {proj.responsibilities}</p>}
+                {proj.technologies && <div className="small text-muted"><strong>Stack:</strong> {proj.technologies}</div>}
               </div>
-              <p className="text-secondary small mb-1">{proj.description}</p>
-              {proj.responsibilities && <p className="text-secondary small mb-1"><strong>Key Highlights:</strong> {proj.responsibilities}</p>}
-              {proj.technologies && <div className="small text-muted"><strong>Stack:</strong> {proj.technologies}</div>}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Experience / Internships */}
-      {experience && experience.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
-            Internship & Practical Experience
-          </h6>
-          {experience.map((exp) => (
-            <div key={exp.id} className="mb-2">
-              <div className="d-flex justify-content-between">
-                <span className="fw-bold text-dark">{exp.designation} <span className="fw-normal text-muted">({exp.company})</span></span>
-                <span className="small text-muted">{exp.startDate} – {exp.endDate}</span>
+      {(() => {
+        const validExp = (experience || []).filter((exp) => exp && (exp.designation?.trim() || exp.company?.trim() || exp.responsibilities?.trim()));
+        if (validExp.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase border-bottom pb-1 mb-2 tracking-wider" style={{ color: accent, borderColor: "#cbd5e1" }}>
+              Internship & Practical Experience
+            </h6>
+            {validExp.map((exp) => (
+              <div key={exp.id} className="mb-2">
+                <div className="d-flex justify-content-between">
+                  <span className="fw-bold text-dark">{exp.designation || "Role"} {exp.company ? <span className="fw-normal text-muted">({exp.company})</span> : ""}</span>
+                  <span className="small text-muted">{exp.startDate} – {exp.endDate}</span>
+                </div>
+                <p className="text-secondary small mb-0">{exp.responsibilities}</p>
               </div>
-              <p className="text-secondary small mb-0">{exp.responsibilities}</p>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
+ 
 
       {/* Achievements & Certifications */}
       <div className="row g-3">

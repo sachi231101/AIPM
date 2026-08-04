@@ -8,7 +8,7 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import { studentService, jobService, applicationService } from "../../../services/api";
 import { getCompanyLogo } from "../../../utils/logoHelper";
 
-import { normalizePhotoUrl } from "../../../utils/resumeStorage";
+import { normalizePhotoUrl, getOverallProfileScore } from "../../../utils/resumeStorage";
 
 import { useCachedData } from "../../../hooks/useCachedData";
 
@@ -70,8 +70,7 @@ export default function Dashboard() {
     skills: !!(student.skills && student.skills.length > 0)
   };
 
-  const completedCount = Object.values(sections).filter(Boolean).length;
-  const profileCompletion = completedCount * 25;
+  const profileCompletion = getOverallProfileScore(student);
   student.profileCompletion = profileCompletion;
 
   const recentJobs = availableJobs.slice(0, 3);
@@ -105,9 +104,9 @@ export default function Dashboard() {
       return;
     }
 
-    if (!hasAnyResume) {
-      toast.error("Please create a resume in Resume Builder or upload a PDF first before applying.", {
-        autoClose: 4000,
+    if (profileCompletion < 80) {
+      toast.error(`Action Required: Your Resume & Profile Score is currently ${profileCompletion}%. You must reach at least 80% completion in the Resume Builder to apply for job opportunities.`, {
+        autoClose: 5000,
       });
       return;
     }
