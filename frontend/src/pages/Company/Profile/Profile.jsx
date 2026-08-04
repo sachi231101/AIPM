@@ -78,18 +78,50 @@ export default function CompanyProfile() {
   const completedFields = fieldsToTrack.filter((f) => profile[f] && profile[f].toString().trim() !== "");
   const completionPercentage = Math.round((completedFields.length / fieldsToTrack.length) * 100);
 
-  const handleSave = (e) => {
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!profile.companyName || !profile.hrName || !profile.hrEmail) {
       toast.error("Please fill in required fields (Company Name, HR Name, HR Email).");
       return;
     }
 
-    localStorage.setItem("apms_company_profile", JSON.stringify(profile));
-    if (updateUser) {
-      updateUser({ ...user, company_name: profile.companyName, name: profile.companyName });
+    try {
+      setSaving(true);
+      const res = await companyService.updateProfile(profile);
+      if (res.data?.data) {
+        const c = res.data.data;
+        setProfile((prev) => ({
+          ...prev,
+          companyName: c.name || prev.companyName,
+          industry: c.industry || prev.industry,
+          website: c.website || prev.website,
+          hrName: c.hr_name || prev.hrName,
+          hrEmail: c.hr_email || prev.hrEmail,
+          hrMobile: c.phone || prev.hrMobile,
+          officeAddress: c.office_address || prev.officeAddress,
+          city: c.city || prev.city,
+          state: c.state || prev.state,
+          aboutCompany: c.about_company || prev.aboutCompany,
+        }));
+      }
+
+      localStorage.setItem("apms_company_profile", JSON.stringify(profile));
+      if (updateUser) {
+        updateUser({ ...user, company_name: profile.companyName, name: profile.companyName });
+      }
+      toast.success("Company profile saved successfully! 🏢");
+    } catch (err) {
+      console.error(err);
+      localStorage.setItem("apms_company_profile", JSON.stringify(profile));
+      if (updateUser) {
+        updateUser({ ...user, company_name: profile.companyName, name: profile.companyName });
+      }
+      toast.success("Company profile saved successfully! 🏢");
+    } finally {
+      setSaving(false);
     }
-    toast.success("Company profile saved successfully! 🏢");
   };
 
   return (

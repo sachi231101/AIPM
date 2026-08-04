@@ -28,24 +28,44 @@ export default function CompanyJobs() {
   }, [jobs]);
 
   const handleSaveJob = (jobObj) => {
-    if (editingJob) {
-      setJobs((prev) => prev.map((j) => (j.id === jobObj.id ? jobObj : j)));
-    } else {
-      setJobs((prev) => [jobObj, ...prev]);
-    }
+    companyService.getJobs()
+      .then((res) => {
+        if (res.data?.data) setJobs(res.data.data);
+      })
+      .catch(() => {
+        if (editingJob) {
+          setJobs((prev) => prev.map((j) => (j.id === jobObj.id ? jobObj : j)));
+        } else {
+          setJobs((prev) => [jobObj, ...prev]);
+        }
+      });
   };
 
-  const handleCloseJob = (jobId) => {
+  const handleCloseJob = async (jobId) => {
     setJobs((prev) =>
       prev.map((j) => (j.id === jobId ? { ...j, status: "closed" } : j))
     );
-    toast.info("Job listing closed.");
+    try {
+      if (typeof jobId === "number" || !String(jobId).startsWith("job_")) {
+        await companyService.updateJob(jobId, { status: "closed" });
+      }
+      toast.info("Job listing closed.");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleDeleteJob = (jobId) => {
+  const handleDeleteJob = async (jobId) => {
     if (window.confirm("Are you sure you want to delete this job posting?")) {
       setJobs((prev) => prev.filter((j) => j.id !== jobId));
-      toast.success("Job posting deleted.");
+      try {
+        if (typeof jobId === "number" || !String(jobId).startsWith("job_")) {
+          await companyService.deleteJob(jobId);
+        }
+        toast.success("Job posting deleted.");
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 

@@ -29,6 +29,15 @@ export default function CompanyDashboard() {
         }
       })
       .catch(() => {});
+
+    // Fetch live backend applications for this company
+    companyService.getApplications()
+      .then((res) => {
+        if (res.data?.data) {
+          setApplications(res.data.data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -40,7 +49,7 @@ export default function CompanyDashboard() {
   }, [applications]);
 
   // Statistics calculation
-  const activeJobsCount = jobs.filter((j) => j.status === "published").length;
+  const activeJobsCount = jobs.filter((j) => j.status === "published" || j.status === "approved" || j.status === "pending").length;
   const totalAppsCount = applications.length;
   const shortlistedCount = applications.filter((a) => a.status === "shortlisted").length;
   const selectedCount = applications.filter((a) => a.status === "hired" || a.status === "selected").length;
@@ -49,10 +58,16 @@ export default function CompanyDashboard() {
     setJobs((prev) => [newJob, ...prev.filter((j) => j.id !== newJob.id)]);
   };
 
-  const handleStatusChange = (appId, newStatus) => {
+  const handleStatusChange = async (appId, newStatus) => {
     setApplications((prev) =>
       prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a))
     );
+    try {
+      await companyService.updateApplicationStatus(appId, newStatus);
+      toast.success(`Application status updated to ${newStatus}`);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (

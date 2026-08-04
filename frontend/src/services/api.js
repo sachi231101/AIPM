@@ -115,6 +115,10 @@ export const companyService = {
   updateProfile: (data) => api.put("/company/profile", data),
   getJobs: (params) => api.get("/company/jobs", { params }),
   createJob: (data) => api.post("/company/jobs", data),
+  updateJob: (id, data) => api.put(`/company/jobs/${id}`, data),
+  deleteJob: (id) => api.delete(`/company/jobs/${id}`),
+  getApplications: () => api.get("/company/applications"),
+  updateApplicationStatus: (id, status) => api.put(`/company/applications/${id}/status`, { status }),
   submitJob: (formData) => api.post("/company/job-request", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   }),

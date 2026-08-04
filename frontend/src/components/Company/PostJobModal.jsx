@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { companyService } from "../../services/api";
 
 export default function PostJobModal({ initialData, onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
     responsibilities: "• Develop high quality frontend & backend features\n• Collaborate with product managers & designers\n• Write clean, scalable, maintainable code\n• Participate in code reviews and agile sprints",
     status: "published",
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -40,7 +42,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
     setFormData((prev) => ({ ...prev, [field]: val }));
   };
 
-  const handleSave = (targetStatus) => {
+  const handleSave = async (targetStatus) => {
     if (!formData.title.trim()) {
       toast.error("Please enter a Job Title.");
       return;
@@ -50,27 +52,39 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
       return;
     }
 
-    const jobPayload = {
-      id: initialData?.id || "job_" + Date.now(),
+    const payload = {
       title: formData.title.trim(),
       location: formData.location.trim(),
       employmentType: formData.employmentType,
       experience: formData.experience,
       salary: formData.salary.trim() || "Not Disclosed",
       vacancies: parseInt(formData.vacancies) || 1,
-      deadline: formData.deadline,
+      last_date: formData.deadline,
       skills: formData.skills.split(",").map((s) => s.trim()).filter(Boolean),
       eligibleCourses: formData.eligibleCourses.split(",").map((c) => c.trim()).filter(Boolean),
       description: formData.description,
-      responsibilities: formData.responsibilities,
-      status: targetStatus, // 'published' | 'draft' | 'closed'
-      postedDate: initialData?.postedDate || new Date().toISOString().split("T")[0],
-      applicationsCount: initialData?.applicationsCount || 0,
+      status: targetStatus,
     };
 
-    onSave(jobPayload);
-    toast.success(targetStatus === "draft" ? "Job draft saved successfully!" : "Job published successfully! 🚀");
-    onClose();
+    try {
+      setLoading(true);
+      let res;
+      if (initialData?.id && !String(initialData.id).startsWith("job_")) {
+        res = await companyService.updateJob(initialData.id, payload);
+      } else {
+        res = await companyService.createJob(payload);
+      }
+
+      const savedJob = res.data?.data || payload;
+      onSave(savedJob);
+      toast.success(targetStatus === "draft" ? "Job draft saved successfully!" : "Job submitted to Admin for approval! 🚀");
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save job. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
