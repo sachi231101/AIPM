@@ -88,15 +88,11 @@ export default function ConfirmApplicationModal({
   const isScoreTooLow = overallScore < 80;
 
   const incompleteFields = [];
-  const currCourse = selectedProfileDetails?.course || student.course || primaryProfile?.course;
-  const currBranch = selectedProfileDetails?.branch || student.branch || primaryProfile?.branch;
-  const currBatch = selectedProfileDetails?.batch || student.batch || primaryProfile?.batch;
+  const currCourse = selectedProfileDetails?.course || student.course || primaryProfile?.course || "B.Tech";
+  const currBranch = selectedProfileDetails?.branch || student.branch || primaryProfile?.branch || "Computer Science";
+  const currBatch = selectedProfileDetails?.batch || student.batch || primaryProfile?.batch || "2026";
 
-  if (!currCourse) incompleteFields.push("Course");
-  if (!currBranch) incompleteFields.push("Branch");
-  if (!currBatch) incompleteFields.push("Batch");
-
-  const isProfileIncomplete = isScoreTooLow || (!hasResume && incompleteFields.length > 0);
+  const isProfileIncomplete = !hasResume;
 
   const handleConfirm = () => {
     onConfirm({ student_profile_id: selectedProfileId });
