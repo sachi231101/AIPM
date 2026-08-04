@@ -67,6 +67,14 @@ class ApplicationController extends Controller
             $profile = $student->getOrCreateDefaultProfile();
         }
 
+        // Check profile-level resume
+        $hasUploadedResume = filled($profile->resume_path);
+        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
+
+        // Check profile completion for this specific profile
+        $course = $profile->course ?? $student->course;
+        $branch = $profile->branch ?? $student->branch;
+        $batch  = $profile->batch ?? $student->batch;
         // Resolve student's Resume Builder data dynamically (if available)
         $resume = \App\Models\StudentResume::where('student_id', $student->id)
             ->where(function ($q) use ($profile, $request) {
@@ -118,9 +126,16 @@ class ApplicationController extends Controller
         $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
 
         if (!$hasUploadedResume && !$hasCreatedResume) {
-            return response()->json([
-                'message' => 'No resume found for profile "' . $profile->profile_name . '". Please build a resume or upload a PDF first before applying.',
-            ], 422);
+            $incompleteFields = [];
+            if (blank($course)) $incompleteFields[] = 'Course';
+            if (blank($branch)) $incompleteFields[] = 'Branch';
+            if (blank($batch))  $incompleteFields[] = 'Batch';
+
+            if (!empty($incompleteFields)) {
+                return response()->json([
+                    'message' => 'Your profile "' . $profile->profile_name . '" is missing a resume and incomplete details (' . implode(', ', $incompleteFields) . '). Please build a resume or complete your profile before applying.'
+                ], 422);
+            }
         }
 
         // Prevent duplicate applications for same job + profile

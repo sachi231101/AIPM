@@ -61,10 +61,10 @@ class StudentProfile extends Model
 
     public function calculateCompletion(): int
     {
-        $hasPersonalInfo = !empty($this->student?->email) && !empty($this->student?->dob) && !empty($this->student?->gender) && !empty($this->student?->address);
-        $hasAcademic = !empty($this->course) && !empty($this->branch) && !empty($this->batch);
-        $hasResume = !empty($this->resume_path) || $this->resumes()->exists();
-        $hasSkills = !empty($this->skills) && count((array)$this->skills) > 0;
+        $hasPersonalInfo = !empty($this->student?->email) || !empty($this->student?->mobile);
+        $hasAcademic     = !empty($this->course) || !empty($this->branch) || !empty($this->batch);
+        $hasResume       = !empty($this->resume_path) || $this->resumes()->exists();
+        $hasSkills       = !empty($this->skills) && count((array)$this->skills) > 0;
 
         $completed = 0;
         if ($hasPersonalInfo) $completed += 25;
