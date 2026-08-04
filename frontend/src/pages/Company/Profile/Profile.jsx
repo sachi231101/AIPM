@@ -24,11 +24,20 @@ export default function CompanyProfile() {
     };
   });
 
+  const getFullLogoUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("data:") || url.startsWith("http")) return url;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
+    const storageBase = apiBase.replace(/\/api\/?$/, "");
+    return `${storageBase}/storage/${url.replace(/^\//, "")}`;
+  };
+
   useEffect(() => {
     companyService.getProfile()
       .then((res) => {
         if (res.data?.data) {
           const c = res.data.data;
+          const logoVal = c.logo_url || c.logo_path || "";
           setProfile((prev) => ({
             ...prev,
             companyName: c.name || prev.companyName,
@@ -41,9 +50,9 @@ export default function CompanyProfile() {
             city: c.city || prev.city,
             state: c.state || prev.state,
             aboutCompany: c.about_company || prev.aboutCompany,
-            logo: c.logo_path || prev.logo,
+            logo: logoVal || prev.logo,
           }));
-          if (c.logo_path) setLogoPreview(c.logo_path);
+          if (logoVal) setLogoPreview(logoVal);
         }
       })
       .catch(() => {});
@@ -171,13 +180,23 @@ export default function CompanyProfile() {
                 style={{ width: 100, height: 100 }}
               >
                 {logoPreview ? (
-                  <img src={logoPreview} alt="Company Logo" className="w-100 h-100 object-fit-contain p-2" />
-                ) : (
-                  <div className="text-center p-2">
-                    <i className="bi bi-buildings-fill text-primary display-6 d-block mb-1"></i>
-                    <span className="small text-muted fw-semibold">Logo</span>
-                  </div>
-                )}
+                  <img
+                    src={getFullLogoUrl(logoPreview)}
+                    alt="Company Logo"
+                    className="w-100 h-100 object-fit-contain p-2"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      if (e.target.nextSibling) e.target.nextSibling.style.display = "block";
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="text-center p-2"
+                  style={{ display: logoPreview ? "none" : "block" }}
+                >
+                  <i className="bi bi-buildings-fill text-primary display-6 d-block mb-1"></i>
+                  <span className="small text-muted fw-semibold">Logo</span>
+                </div>
               </div>
 
               <div>

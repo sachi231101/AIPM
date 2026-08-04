@@ -125,9 +125,21 @@ class CompanyController extends Controller
             }
         }
 
+        if (!$company) {
+            return response()->json(['status' => 'success', 'data' => null]);
+        }
+
+        $logo = $company->logo_path;
+        $logoUrl = $logo ? (str_starts_with($logo, 'data:') || str_starts_with($logo, 'http') ? $logo : url('/storage/' . ltrim($logo, '/'))) : null;
+
+        $data = array_merge($company->toArray(), [
+            'logo_url'  => $logoUrl,
+            'logo_path' => $logoUrl ?? $company->logo_path,
+        ]);
+
         return response()->json([
             'status' => 'success',
-            'data'   => $company,
+            'data'   => $data,
         ]);
     }
 
@@ -189,10 +201,18 @@ class CompanyController extends Controller
 
         $company->save();
 
+        $logo = $company->logo_path;
+        $logoUrl = $logo ? (str_starts_with($logo, 'data:') || str_starts_with($logo, 'http') ? $logo : url('/storage/' . ltrim($logo, '/'))) : null;
+
+        $data = array_merge($company->toArray(), [
+            'logo_url'  => $logoUrl,
+            'logo_path' => $logoUrl ?? $company->logo_path,
+        ]);
+
         return response()->json([
             'status'  => 'success',
             'message' => 'Company profile updated successfully.',
-            'data'    => $company,
+            'data'    => $data,
         ]);
     }
 
@@ -202,11 +222,16 @@ class CompanyController extends Controller
         $company = $request->user();
         $companyId = ($company && $company instanceof Company) ? $company->id : $request->query('company_id');
 
-        $query = PlacementJob::withCount('applications')->latest();
+        $query = PlacementJob::with('company')->withCount('applications')->latest();
         if ($companyId) {
             $query->where('company_id', $companyId);
         }
-        $jobs = $query->get();
+        $jobs = $query->get()->map(function ($job) {
+            $logo = $job->company?->logo_path;
+            $logoUrl = $logo ? (str_starts_with($logo, 'data:') || str_starts_with($logo, 'http') ? $logo : url('/storage/' . $logo)) : null;
+            $job->company_logo = $logoUrl;
+            return $job;
+        });
 
         return response()->json([
             'status' => 'success',
@@ -275,14 +300,34 @@ class CompanyController extends Controller
         }
         $job = $jobQuery->findOrFail($id);
 
-        $job->update($request->only([
+        $updateData = $request->only([
             'title', 'description', 'eligibility', 'skills', 'experience',
-            'salary', 'location', 'openings', 'last_date', 'status'
-        ]));
+            'salary', 'location', 'openings', 'last_date'
+        ]);
+
+        $requestedStatus = $request->input('status');
+        if ($requestedStatus === 'closed') {
+            $updateData['status'] = 'closed';
+        } elseif ($requestedStatus === 'draft') {
+            $updateData['status'] = 'draft';
+        } else {
+            // Any edit or submission by company requires Admin approval
+            $updateData['status'] = 'pending';
+        }
+
+        $job->update($updateData);
+
+        // Notify Admin of job update requiring approval
+        Notification::create([
+            'type'    => 'job_updated',
+            'title'   => 'Job Posting Updated for Approval',
+            'message' => ($job->company?->name ?? 'Company') . ' updated job: "' . $job->title . '". Admin approval required before publishing.',
+            'link'    => '/admin/jobs',
+        ]);
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Job updated successfully.',
+            'message' => 'Job information saved! Submitted to Admin for approval.',
             'data'    => $job,
         ]);
     }

@@ -3,11 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { companyService } from "../../../services/api";
+import CompanyForgotPasswordModal from "../../../components/Company/CompanyForgotPasswordModal";
 
 export default function CompanyLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -66,7 +68,17 @@ export default function CompanyLogin() {
             </div>
 
             <div className="mb-4">
-              <label className="form-label small fw-semibold text-muted">Password</label>
+              <div className="d-flex align-items-center justify-content-between">
+                <label className="form-label small fw-semibold text-muted mb-1">Password</label>
+                <button
+                  type="button"
+                  className="btn btn-link p-0 small text-decoration-none text-primary fw-medium border-0 bg-transparent mb-1"
+                  style={{ fontSize: "0.8rem" }}
+                  onClick={() => setShowForgotModal(true)}
+                >
+                  Forgot password?
+                </button>
+              </div>
               <div className="input-group">
                 <span className="input-group-text bg-light"><i className="bi bi-lock text-muted"></i></span>
                 <input
@@ -101,6 +113,15 @@ export default function CompanyLogin() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <CompanyForgotPasswordModal
+          initialEmail={email}
+          onClose={() => setShowForgotModal(false)}
+          onSuccess={() => setShowForgotModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -8,6 +8,26 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
   const resume = application?.resume || application?.careerProfile || {};
   const personal = resume.personal || {};
 
+  const formatExternalUrl = (url) => {
+    if (!url || typeof url !== "string") return "#";
+    let trimmed = url.trim();
+    if (!trimmed || trimmed === "N/A" || trimmed === "null") return "#";
+    if (!/^https?:\/\//i.test(trimmed)) {
+      trimmed = `https://${trimmed}`;
+    }
+    return trimmed;
+  };
+
+  const isValidUrl = (url) => url && typeof url === "string" && url.trim() !== "" && url.trim().toLowerCase() !== "n/a" && url.trim().toLowerCase() !== "null";
+
+  const rawGithub = personal.github || student.github;
+  const rawLinkedin = personal.linkedin || student.linkedin;
+  const rawPortfolio = personal.portfolio || student.portfolio;
+
+  const githubUrl = isValidUrl(rawGithub) ? rawGithub : null;
+  const linkedinUrl = isValidUrl(rawLinkedin) ? rawLinkedin : null;
+  const portfolioUrl = isValidUrl(rawPortfolio) ? rawPortfolio : null;
+
   const handleAction = (status) => {
     if (onStatusChange) {
       onStatusChange(application.id, status);
@@ -16,13 +36,13 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
   };
 
   const handleDownload = () => {
-    toast.info("Downloading candidate resume PDF...");
-    const link = document.createElement("a");
-    link.href = personal.photo || "#";
-    link.download = `${(student.name || personal.fullName || "Resume").replace(/\s+/g, "_")}_Resume.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (application?.resume_path) {
+      window.open(application.resume_path, "_blank");
+      toast.success("Opening candidate PDF resume...");
+    } else {
+      setActiveTab("resume");
+      toast.info("Showing live dynamic resume preview.");
+    }
   };
 
   return (
@@ -50,17 +70,27 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
 
             <div className="d-flex align-items-center gap-2">
               {/* Tab Switcher */}
-              <div className="btn-group btn-group-sm bg-white bg-opacity-20 p-1 rounded-pill me-3">
+              <div className="d-flex align-items-center bg-black bg-opacity-25 p-1 rounded-pill me-3 border border-white border-opacity-25">
                 <button
                   type="button"
-                  className={`btn rounded-pill px-3 py-1 text-white fw-semibold border-0 ${activeTab === "profile" ? "bg-white text-primary" : "bg-transparent text-white"}`}
+                  className={`btn btn-sm rounded-pill px-3 py-1.5 fw-bold border-0 ${
+                    activeTab === "profile"
+                      ? "bg-white text-primary shadow-sm"
+                      : "bg-transparent text-white"
+                  }`}
+                  style={{ color: activeTab === "profile" ? "#0d6efd" : "#ffffff" }}
                   onClick={() => setActiveTab("profile")}
                 >
                   <i className="bi bi-person-badge me-1"></i> Career Profile
                 </button>
                 <button
                   type="button"
-                  className={`btn rounded-pill px-3 py-1 text-white fw-semibold border-0 ${activeTab === "resume" ? "bg-white text-primary" : "bg-transparent text-white"}`}
+                  className={`btn btn-sm rounded-pill px-3 py-1.5 fw-bold border-0 ${
+                    activeTab === "resume"
+                      ? "bg-white text-primary shadow-sm"
+                      : "bg-transparent text-white"
+                  }`}
+                  style={{ color: activeTab === "resume" ? "#0d6efd" : "#ffffff" }}
                   onClick={() => setActiveTab("resume")}
                 >
                   <i className="bi bi-file-earmark-pdf me-1"></i> Live Resume
@@ -109,16 +139,43 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
                           <i className="bi bi-geo-alt-fill text-muted me-2"></i>
                           <span>{personal.location || "Bengaluru, India"}</span>
                         </div>
-                        {personal.github && (
+                        {githubUrl && (
                           <div className="mb-2">
-                            <i className="bi bi-github text-muted me-2"></i>
-                            <a href={personal.github} target="_blank" rel="noreferrer" className="text-decoration-none">GitHub Profile</a>
+                            <i className="bi bi-github text-dark me-2"></i>
+                            <a
+                              href={formatExternalUrl(githubUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-decoration-none text-primary fw-semibold"
+                            >
+                              GitHub Profile <i className="bi bi-box-arrow-up-right ms-1 small"></i>
+                            </a>
                           </div>
                         )}
-                        {personal.linkedin && (
+                        {linkedinUrl && (
                           <div className="mb-2">
-                            <i className="bi bi-linkedin text-muted me-2"></i>
-                            <a href={personal.linkedin} target="_blank" rel="noreferrer" className="text-decoration-none">LinkedIn Profile</a>
+                            <i className="bi bi-linkedin text-primary me-2"></i>
+                            <a
+                              href={formatExternalUrl(linkedinUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-decoration-none text-primary fw-semibold"
+                            >
+                              LinkedIn Profile <i className="bi bi-box-arrow-up-right ms-1 small"></i>
+                            </a>
+                          </div>
+                        )}
+                        {portfolioUrl && (
+                          <div className="mb-2">
+                            <i className="bi bi-globe text-success me-2"></i>
+                            <a
+                              href={formatExternalUrl(portfolioUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-decoration-none text-primary fw-semibold"
+                            >
+                              Portfolio Website <i className="bi bi-box-arrow-up-right ms-1 small"></i>
+                            </a>
                           </div>
                         )}
                       </div>

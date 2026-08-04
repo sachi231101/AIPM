@@ -42,6 +42,7 @@ export default function AdminJobDetails() {
             ? `http://${window.location.hostname}:8000/storage/${backendJob.company.logo_path}`
             : "https://placehold.co/100x100?text=" + encodeURIComponent(backendJob.company?.name || "Job"),
           location: backendJob.location,
+          employmentType: backendJob.employment_type || backendJob.employmentType || "Full Time",
           salary: backendJob.salary,
           experience: backendJob.experience,
           openings: backendJob.openings,
@@ -49,6 +50,7 @@ export default function AdminJobDetails() {
           lastDate: backendJob.last_date,
           status: statusMap[backendJob.status] || "Pending",
           description: backendJob.description,
+          responsibilities: backendJob.responsibilities || "",
           eligibility: backendJob.eligibility,
           skills: backendJob.skills || [],
         };
@@ -117,7 +119,14 @@ export default function AdminJobDetails() {
                 <div className="flex-grow-1">
                   <div className="d-flex align-items-start justify-content-between gap-2">
                     <div>
-                      <h4 className="fw-bold mb-1">{job.title}</h4>
+                      <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <h4 className="fw-bold mb-0">{job.title}</h4>
+                        {job.employmentType && (
+                          <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 small fw-semibold">
+                            {job.employmentType}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-primary fw-semibold mb-0">{job.company}</p>
                     </div>
                     <span className={`badge bg-${statusColors[job.status] || "secondary"} px-3 py-2`}>{job.status}</span>
@@ -145,7 +154,14 @@ export default function AdminJobDetails() {
               </div>
 
               <h6 className="fw-bold mb-2">Description</h6>
-              <p className="text-muted mb-4">{job.description}</p>
+              <p className="text-muted mb-4" style={{ whiteSpace: "pre-line" }}>{job.description}</p>
+
+              {job.responsibilities && (
+                <>
+                  <h6 className="fw-bold mb-2">Roles & Responsibilities</h6>
+                  <p className="text-muted mb-4" style={{ whiteSpace: "pre-line" }}>{job.responsibilities}</p>
+                </>
+              )}
 
               <h6 className="fw-bold mb-2">Eligibility Criteria</h6>
               <p className="text-muted mb-4">{job.eligibility}</p>

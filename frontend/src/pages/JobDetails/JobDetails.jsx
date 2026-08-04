@@ -22,6 +22,7 @@ export default function JobDetails() {
   const role = user?.role;
   const [applying, setApplying] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [justApplied, setJustApplied] = useState(false);
 
   const { data: jobRes, loading: loadingJob } = useCachedData(
     `job_details_${id}`,
@@ -47,6 +48,7 @@ export default function JobDetails() {
     company: backendJob.company?.name || "Unknown Company",
     companyLogo: getCompanyLogo(backendJob.company?.logo_path, backendJob.company?.name),
     location: backendJob.location,
+    employmentType: backendJob.employment_type || backendJob.employmentType || "Full Time",
     salary: backendJob.salary,
     experience: backendJob.experience,
     openings: backendJob.openings,
@@ -54,6 +56,7 @@ export default function JobDetails() {
     lastDate: backendJob.last_date,
     status: statusMap[backendJob.status] || "Published",
     description: backendJob.description,
+    responsibilities: backendJob.responsibilities,
     eligibility: backendJob.eligibility,
     skills: backendJob.skills || [],
   } : null;
@@ -84,7 +87,14 @@ export default function JobDetails() {
 
   const approvalStatus = student?.approval_status || user?.approval_status || "approved";
 
+  const isAlreadyApplied = isApplied || justApplied;
+
   const handleOpenConfirmModal = () => {
+    if (isAlreadyApplied) {
+      toast.info("You have already applied for this placement drive.");
+      return;
+    }
+
     if (approvalStatus !== "approved") {
       if (approvalStatus === "rejected") {
         toast.error("Your account status is rejected. You cannot apply for placement drives.");
@@ -106,12 +116,19 @@ export default function JobDetails() {
     try {
       setApplying(true);
       await applicationService.apply({ job_id: job.id });
-      setIsApplied(true);
+      setJustApplied(true);
       setShowConfirmModal(false);
       toast.success(`Successfully applied for ${job.title} at ${job.company}! 🎉`);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to submit application.");
+      const msg = err.response?.data?.message || "Failed to submit application.";
+      if (err.response?.status === 409) {
+        setJustApplied(true);
+        setShowConfirmModal(false);
+        toast.info(msg);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setApplying(false);
     }
@@ -150,7 +167,14 @@ export default function JobDetails() {
                   <div className="flex-grow-1">
                     <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
                       <div>
-                        <h2 className="fw-bold mb-1">{job.title}</h2>
+                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                          <h2 className="fw-bold mb-0">{job.title}</h2>
+                          {job.employmentType && (
+                            <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1.5 small fw-semibold">
+                              {job.employmentType}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-primary fw-semibold mb-0">{job.company}</p>
                       </div>
                       <span className={`badge bg-${statusColors[job.status] || "secondary"} px-3 py-2`}>
@@ -171,9 +195,19 @@ export default function JobDetails() {
             <div className="card border-0 shadow-sm mb-4">
               <div className="card-body p-4">
                 <h5 className="fw-bold mb-3"><i className="bi bi-file-text me-2 text-primary"></i>Job Description</h5>
-                <p className="text-muted">{job.description}</p>
+                <p className="text-muted mb-0" style={{ whiteSpace: "pre-line" }}>{job.description}</p>
               </div>
             </div>
+
+            {/* Roles & Responsibilities */}
+            {job.responsibilities && (
+              <div className="card border-0 shadow-sm mb-4">
+                <div className="card-body p-4">
+                  <h5 className="fw-bold mb-3"><i className="bi bi-list-task me-2 text-primary"></i>Roles & Responsibilities</h5>
+                  <p className="text-muted mb-0" style={{ whiteSpace: "pre-line" }}>{job.responsibilities}</p>
+                </div>
+              </div>
+            )}
 
             {/* Eligibility */}
             <div className="card border-0 shadow-sm mb-4">
@@ -209,7 +243,7 @@ export default function JobDetails() {
                 </div>
               ) : role === "student" ? (
                 <div>
-                  {isApplied ? (
+                  {isAlreadyApplied ? (
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                       <div>
                         <h6 className="fw-bold text-success mb-1">

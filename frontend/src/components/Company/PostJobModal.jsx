@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { companyService } from "../../services/api";
+import { clearCache } from "../../hooks/useCachedData";
 
 export default function PostJobModal({ initialData, onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -27,10 +28,12 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
         employmentType: initialData.employmentType || "Full Time",
         experience: initialData.experience || "0-2 Years",
         salary: initialData.salary || "",
-        vacancies: initialData.vacancies || 1,
-        deadline: initialData.deadline || "",
+        vacancies: initialData.vacancies || initialData.openings || 1,
+        deadline: initialData.deadline || initialData.last_date || "",
         skills: Array.isArray(initialData.skills) ? initialData.skills.join(", ") : (initialData.skills || ""),
-        eligibleCourses: Array.isArray(initialData.eligibleCourses) ? initialData.eligibleCourses.join(", ") : (initialData.eligibleCourses || "B.Tech, BCA, MCA"),
+        eligibleCourses: Array.isArray(initialData.eligibleCourses) 
+          ? initialData.eligibleCourses.join(", ") 
+          : (initialData.eligibility || initialData.eligibleCourses || "B.Tech, BCA, MCA"),
         description: initialData.description || "",
         responsibilities: initialData.responsibilities || "",
         status: initialData.status || "published",
@@ -56,13 +59,17 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
       title: formData.title.trim(),
       location: formData.location.trim(),
       employmentType: formData.employmentType,
+      employment_type: formData.employmentType,
       experience: formData.experience,
       salary: formData.salary.trim() || "Not Disclosed",
       vacancies: parseInt(formData.vacancies) || 1,
+      openings: parseInt(formData.vacancies) || 1,
       last_date: formData.deadline,
       skills: formData.skills.split(",").map((s) => s.trim()).filter(Boolean),
       eligibleCourses: formData.eligibleCourses.split(",").map((c) => c.trim()).filter(Boolean),
+      eligibility: formData.eligibleCourses,
       description: formData.description,
+      responsibilities: formData.responsibilities,
       status: targetStatus,
     };
 
@@ -76,6 +83,12 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
       }
 
       const savedJob = res.data?.data || payload;
+      clearCache("public_jobs");
+      clearCache("admin_jobs");
+      if (initialData?.id) {
+        clearCache(`job_details_${initialData.id}`);
+      }
+
       onSave(savedJob);
       toast.success(targetStatus === "draft" ? "Job draft saved successfully!" : "Job submitted to Admin for approval! 🚀");
       onClose();
@@ -100,6 +113,13 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
           </div>
 
           <div className="modal-body p-4 bg-light">
+            <div className="alert alert-info py-2 px-3 mb-3 small d-flex align-items-center gap-2 rounded-3 border-0 bg-info bg-opacity-10 text-dark">
+              <i className="bi bi-info-circle-fill text-info fs-5"></i>
+              <span>
+                <strong>Admin Approval Required:</strong> All job details will be saved and submitted to Placement Cell Admin for review before being published to candidates.
+              </span>
+            </div>
+
             <form onSubmit={(e) => e.preventDefault()}>
               <div className="row g-3">
                 {/* Job Title */}
@@ -250,15 +270,21 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                 type="button"
                 className="btn btn-outline-primary fw-semibold"
                 onClick={() => handleSave("draft")}
+                disabled={loading}
               >
                 <i className="bi bi-bookmark me-1"></i> Save Draft
               </button>
               <button
                 type="button"
                 className="btn btn-primary fw-bold px-4"
-                onClick={() => handleSave("published")}
+                onClick={() => handleSave("pending")}
+                disabled={loading}
               >
-                <i className="bi bi-send-fill me-1"></i> Publish Job
+                {loading ? (
+                  <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</>
+                ) : (
+                  <><i className="bi bi-shield-check me-1"></i> Save & Submit for Approval</>
+                )}
               </button>
             </div>
           </div>
