@@ -100,6 +100,13 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
           </div>
 
           <div className="modal-body p-4 bg-light">
+            <div className="alert alert-info py-2 px-3 mb-3 small d-flex align-items-center gap-2 rounded-3 border-0 bg-info bg-opacity-10 text-dark">
+              <i className="bi bi-info-circle-fill text-info fs-5"></i>
+              <span>
+                <strong>Admin Approval Required:</strong> All job details will be saved and submitted to Placement Cell Admin for review before being published to candidates.
+              </span>
+            </div>
+
             <form onSubmit={(e) => e.preventDefault()}>
               <div className="row g-3">
                 {/* Job Title */}
@@ -250,15 +257,21 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                 type="button"
                 className="btn btn-outline-primary fw-semibold"
                 onClick={() => handleSave("draft")}
+                disabled={loading}
               >
                 <i className="bi bi-bookmark me-1"></i> Save Draft
               </button>
               <button
                 type="button"
                 className="btn btn-primary fw-bold px-4"
-                onClick={() => handleSave("published")}
+                onClick={() => handleSave("pending")}
+                disabled={loading}
               >
-                <i className="bi bi-send-fill me-1"></i> Publish Job
+                {loading ? (
+                  <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</>
+                ) : (
+                  <><i className="bi bi-shield-check me-1"></i> Save & Submit for Approval</>
+                )}
               </button>
             </div>
           </div>

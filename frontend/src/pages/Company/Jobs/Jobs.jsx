@@ -162,14 +162,18 @@ export default function CompanyJobs() {
                   <td>
                     <span
                       className={`badge rounded-pill px-3 py-1 ${
-                        job.status === "published"
+                        job.status === "published" || job.status === "approved"
                           ? "bg-success"
                           : job.status === "draft"
                           ? "bg-warning text-dark"
-                          : "bg-secondary"
+                          : "bg-warning bg-opacity-25 text-dark border border-warning"
                       }`}
                     >
-                      {job.status === "published" || job.status === "approved" ? "ACTIVE" : (job.status ? job.status.toUpperCase() : "PENDING")}
+                      {job.status === "published" || job.status === "approved"
+                        ? "ACTIVE"
+                        : job.status === "pending"
+                        ? "PENDING APPROVAL"
+                        : (job.status ? job.status.toUpperCase() : "PENDING")}
                     </span>
                   </td>
                   <td className="small text-muted">{job.postedDate}</td>

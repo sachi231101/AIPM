@@ -280,14 +280,34 @@ class CompanyController extends Controller
         }
         $job = $jobQuery->findOrFail($id);
 
-        $job->update($request->only([
+        $updateData = $request->only([
             'title', 'description', 'eligibility', 'skills', 'experience',
-            'salary', 'location', 'openings', 'last_date', 'status'
-        ]));
+            'salary', 'location', 'openings', 'last_date'
+        ]);
+
+        $requestedStatus = $request->input('status');
+        if ($requestedStatus === 'closed') {
+            $updateData['status'] = 'closed';
+        } elseif ($requestedStatus === 'draft') {
+            $updateData['status'] = 'draft';
+        } else {
+            // Any edit or submission by company requires Admin approval
+            $updateData['status'] = 'pending';
+        }
+
+        $job->update($updateData);
+
+        // Notify Admin of job update requiring approval
+        Notification::create([
+            'type'    => 'job_updated',
+            'title'   => 'Job Posting Updated for Approval',
+            'message' => ($job->company?->name ?? 'Company') . ' updated job: "' . $job->title . '". Admin approval required before publishing.',
+            'link'    => '/admin/jobs',
+        ]);
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Job updated successfully.',
+            'message' => 'Job information saved! Submitted to Admin for approval.',
             'data'    => $job,
         ]);
     }
