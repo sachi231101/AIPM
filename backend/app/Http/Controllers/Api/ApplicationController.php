@@ -67,33 +67,26 @@ class ApplicationController extends Controller
             $profile = $student->getOrCreateDefaultProfile();
         }
 
+        // Check profile-level resume
+        $hasUploadedResume = filled($profile->resume_path);
+        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
+
         // Check profile completion for this specific profile
         $course = $profile->course ?? $student->course;
         $branch = $profile->branch ?? $student->branch;
         $batch  = $profile->batch ?? $student->batch;
 
-        $incompleteFields = [];
-        if (blank($course))           $incompleteFields[] = 'Course';
-        if (blank($branch))           $incompleteFields[] = 'Branch';
-        if (blank($batch))            $incompleteFields[] = 'Batch';
-        if (blank($student->dob))     $incompleteFields[] = 'Date of Birth';
-        if (blank($student->gender))  $incompleteFields[] = 'Gender';
-        if (blank($student->address)) $incompleteFields[] = 'Address';
-
-        if (!empty($incompleteFields)) {
-            return response()->json([
-                'message' => 'Your profile "' . $profile->profile_name . '" is incomplete. Please complete missing details (' . implode(', ', $incompleteFields) . ') before applying.'
-            ], 422);
-        }
-
-        // Check profile-level resume
-        $hasUploadedResume = filled($profile->resume_path);
-        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
-
         if (!$hasUploadedResume && !$hasCreatedResume) {
-            return response()->json([
-                'message' => 'No resume found for profile "' . $profile->profile_name . '". Please build a resume or upload a PDF first before applying.',
-            ], 422);
+            $incompleteFields = [];
+            if (blank($course)) $incompleteFields[] = 'Course';
+            if (blank($branch)) $incompleteFields[] = 'Branch';
+            if (blank($batch))  $incompleteFields[] = 'Batch';
+
+            if (!empty($incompleteFields)) {
+                return response()->json([
+                    'message' => 'Your profile "' . $profile->profile_name . '" is missing a resume and incomplete details (' . implode(', ', $incompleteFields) . '). Please build a resume or complete your profile before applying.'
+                ], 422);
+            }
         }
 
         // Prevent duplicate applications for same job + profile

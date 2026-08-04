@@ -118,6 +118,7 @@ Route::middleware(['auth:sanctum', 'role:admin,subadmin'])->prefix('admin')->gro
         Route::post('/send-to-company',         [AdminApplicationController::class, 'sendToCompany']);
 
         Route::get('/companies',                [\App\Http\Controllers\Api\Admin\CompanyController::class, 'index']);
+        Route::post('/companies/invite',         [\App\Http\Controllers\Api\Admin\CompanyController::class, 'invite']);
     });
 
     // Student Management (Students Permission)

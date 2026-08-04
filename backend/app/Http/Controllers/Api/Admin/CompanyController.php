@@ -33,4 +33,22 @@ class CompanyController extends Controller
 
         return response()->json(['data' => $data]);
     }
+
+    public function invite(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'company_name' => 'nullable|string|max:255',
+            'hr_email'     => 'required|email|max:255',
+            'message'      => 'nullable|string',
+        ]);
+
+        $loginUrl = url('/company');
+
+        return response()->json([
+            'message'   => 'Company invitation link generated successfully.',
+            'login_url' => $loginUrl,
+            'data'      => $validated,
+        ]);
+    }
 }
+
