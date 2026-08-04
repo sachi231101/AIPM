@@ -48,6 +48,7 @@ export default function JobDetails() {
     company: backendJob.company?.name || "Unknown Company",
     companyLogo: getCompanyLogo(backendJob.company?.logo_path, backendJob.company?.name),
     location: backendJob.location,
+    employmentType: backendJob.employment_type || backendJob.employmentType || "Full Time",
     salary: backendJob.salary,
     experience: backendJob.experience,
     openings: backendJob.openings,
@@ -55,6 +56,7 @@ export default function JobDetails() {
     lastDate: backendJob.last_date,
     status: statusMap[backendJob.status] || "Published",
     description: backendJob.description,
+    responsibilities: backendJob.responsibilities,
     eligibility: backendJob.eligibility,
     skills: backendJob.skills || [],
   } : null;
@@ -165,7 +167,14 @@ export default function JobDetails() {
                   <div className="flex-grow-1">
                     <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
                       <div>
-                        <h2 className="fw-bold mb-1">{job.title}</h2>
+                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                          <h2 className="fw-bold mb-0">{job.title}</h2>
+                          {job.employmentType && (
+                            <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1.5 small fw-semibold">
+                              {job.employmentType}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-primary fw-semibold mb-0">{job.company}</p>
                       </div>
                       <span className={`badge bg-${statusColors[job.status] || "secondary"} px-3 py-2`}>
@@ -186,9 +195,19 @@ export default function JobDetails() {
             <div className="card border-0 shadow-sm mb-4">
               <div className="card-body p-4">
                 <h5 className="fw-bold mb-3"><i className="bi bi-file-text me-2 text-primary"></i>Job Description</h5>
-                <p className="text-muted">{job.description}</p>
+                <p className="text-muted mb-0" style={{ whiteSpace: "pre-line" }}>{job.description}</p>
               </div>
             </div>
+
+            {/* Roles & Responsibilities */}
+            {job.responsibilities && (
+              <div className="card border-0 shadow-sm mb-4">
+                <div className="card-body p-4">
+                  <h5 className="fw-bold mb-3"><i className="bi bi-list-task me-2 text-primary"></i>Roles & Responsibilities</h5>
+                  <p className="text-muted mb-0" style={{ whiteSpace: "pre-line" }}>{job.responsibilities}</p>
+                </div>
+              </div>
+            )}
 
             {/* Eligibility */}
             <div className="card border-0 shadow-sm mb-4">
