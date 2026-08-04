@@ -87,10 +87,18 @@ export default function ConfirmApplicationModal({
   const overallScore = getOverallProfileScore(selectedProfileDetails || student, selectedProfileId);
   const isScoreTooLow = overallScore < 80;
 
-  const incompleteFields = [];
-  const currCourse = selectedProfileDetails?.course || student.course || primaryProfile?.course || "B.Tech";
-  const currBranch = selectedProfileDetails?.branch || student.branch || primaryProfile?.branch || "Computer Science";
-  const currBatch = selectedProfileDetails?.batch || student.batch || primaryProfile?.batch || "2026";
+  const eduList = Array.isArray(resumeContent.education) ? resumeContent.education : [];
+  const firstEdu = eduList.length > 0 ? eduList[0] : null;
+
+  const builderCourse = firstEdu?.degree || firstEdu?.course || "";
+  const builderBranch = firstEdu?.field || firstEdu?.branch || firstEdu?.specialization || "";
+  const builderBatch = firstEdu?.year || firstEdu?.batch || firstEdu?.passingYear || "";
+  const builderCgpa = firstEdu?.gpa || firstEdu?.cgpa || firstEdu?.percentage || "";
+
+  const currCourse = selectedProfileDetails?.course || student.course || primaryProfile?.course || builderCourse;
+  const currBranch = selectedProfileDetails?.branch || student.branch || primaryProfile?.branch || builderBranch;
+  const currBatch = selectedProfileDetails?.batch || student.batch || primaryProfile?.batch || builderBatch;
+  const currCgpa = selectedProfileDetails?.cgpa || student.cgpa || builderCgpa;
 
   const isProfileIncomplete = !hasResume;
 
@@ -271,16 +279,16 @@ export default function ConfirmApplicationModal({
                   <div className="col-md-6">
                     <small className="text-muted d-block"><i className="bi bi-mortarboard me-1"></i>Course & Branch</small>
                     <span className="fw-semibold text-dark">
-                      {currCourse ? `${currCourse} (${currBranch || "N/A"})` : "N/A"}
+                      {currCourse ? (currBranch ? `${currCourse} (${currBranch})` : currCourse) : "Not Specified"}
                     </span>
                   </div>
                   <div className="col-md-4">
                     <small className="text-muted d-block"><i className="bi bi-calendar-check me-1"></i>Batch</small>
-                    <span className="fw-semibold text-dark">{currBatch || "N/A"}</span>
+                    <span className="fw-semibold text-dark">{currBatch || "Not Specified"}</span>
                   </div>
                   <div className="col-md-4">
                     <small className="text-muted d-block"><i className="bi bi-star me-1"></i>CGPA / Score</small>
-                    <span className="fw-semibold text-dark">{selectedProfileDetails?.cgpa || student.cgpa || "N/A"}</span>
+                    <span className="fw-semibold text-dark">{currCgpa ? `${currCgpa}` : "Not Specified"}</span>
                   </div>
                   <div className="col-md-4">
                     <small className="text-muted d-block"><i className="bi bi-check-circle me-1"></i>Profile Completion</small>

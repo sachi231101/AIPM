@@ -67,25 +67,50 @@ class ApplicationController extends Controller
             $profile = $student->getOrCreateDefaultProfile();
         }
 
-        // Resolve profile course, branch, batch with sensible fallback defaults
-        $course = $profile->course ?: ($student->course ?: 'B.Tech');
-        $branch = $profile->branch ?: ($student->branch ?: 'Computer Science');
-        $batch  = $profile->batch ?: ($student->batch ?: '2026');
+        // Resolve student's Resume Builder data dynamically (if available)
+        $resume = \App\Models\StudentResume::where('student_id', $student->id)
+            ->where(function ($q) use ($profile, $request) {
+                if ($request->resume_key) {
+                    $q->where('resume_key', $request->resume_key);
+                } elseif ($profile) {
+                    $q->where('student_profile_id', $profile->id);
+                }
+            })
+            ->orderByDesc('is_default')
+            ->first();
 
-        if (blank($profile->course) || blank($profile->branch) || blank($profile->batch)) {
-            $profile->update([
-                'course' => $course,
-                'branch' => $branch,
-                'batch'  => $batch,
-            ]);
+        if (!$resume) {
+            $resume = \App\Models\StudentResume::where('student_id', $student->id)->latest()->first();
         }
 
-        if (blank($student->course) || blank($student->branch) || blank($student->batch)) {
-            $student->update([
+        $resumeContent = $resume?->content ?? [];
+        $educationList = is_array($resumeContent['education'] ?? null) ? $resumeContent['education'] : [];
+        $firstEdu      = count($educationList) > 0 ? $educationList[0] : null;
+
+        $builderCourse = $firstEdu['degree'] ?? ($firstEdu['course'] ?? null);
+        $builderBranch = $firstEdu['field'] ?? ($firstEdu['branch'] ?? ($firstEdu['specialization'] ?? null));
+        $builderBatch  = $firstEdu['year'] ?? ($firstEdu['batch'] ?? ($firstEdu['passingYear'] ?? null));
+        $builderCgpa   = $firstEdu['gpa'] ?? ($firstEdu['cgpa'] ?? ($firstEdu['percentage'] ?? null));
+
+        $course = $profile->course ?: ($student->course ?: $builderCourse);
+        $branch = $profile->branch ?: ($student->branch ?: $builderBranch);
+        $batch  = $profile->batch ?: ($student->batch ?: $builderBatch);
+        $cgpa   = $profile->cgpa ?: ($student->cgpa ?: $builderCgpa);
+
+        if ($course || $branch || $batch || $cgpa) {
+            $profile->update(array_filter([
                 'course' => $course,
                 'branch' => $branch,
                 'batch'  => $batch,
-            ]);
+                'cgpa'   => $cgpa,
+            ]));
+
+            $student->update(array_filter([
+                'course' => $course,
+                'branch' => $branch,
+                'batch'  => $batch,
+                'cgpa'   => $cgpa,
+            ]));
         }
 
         // Check profile-level resume
