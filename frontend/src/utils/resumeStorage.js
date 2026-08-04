@@ -6,15 +6,90 @@ const ACTIVE_RESUME_KEY = "apms_active_resume_id";
 // Normalize a photo URL — handles absolute http URLs, base64, /storage/... paths, and relative paths
 export function normalizePhotoUrl(url) {
   if (!url) return "";
-  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  if (url.startsWith("data:")) return url;
+
+  const getBackendRoot = () => {
+    const apiBase = import.meta.env?.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
+    try {
+      const parsed = new URL(apiBase);
+      return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+      return `http://${window.location.hostname}:8000`;
+    }
+  };
+
+  const backendRoot = getBackendRoot();
+
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    try {
+      const parsed = new URL(url);
+      return `${backendRoot}${parsed.pathname}`;
+    } catch {
+      return url;
+    }
+  }
+
   let path = url;
   if (!path.startsWith("/storage/") && !path.startsWith("storage/")) {
     path = `/storage/${path.replace(/^\//, "")}`;
   } else if (!path.startsWith("/")) {
     path = `/${path}`;
   }
-  return `http://${window.location.hostname}:8000${path}`;
+  return `${backendRoot}${path}`;
 }
+
+// Convert any image URL (http/relative) to a Base64 Data URL for robust canvas/PDF rendering
+export function convertImageToBase64(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve("");
+    if (url.startsWith("data:")) return resolve(url);
+
+    const fullUrl = normalizePhotoUrl(url);
+
+    // Method 1: HTML5 Image + Canvas
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width || 100;
+        canvas.height = img.naturalHeight || img.height || 100;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL("image/png");
+        if (dataUrl && dataUrl.startsWith("data:image")) {
+          return resolve(dataUrl);
+        }
+      } catch (e) {
+        // Canvas tainted or CORS error, proceed to fallback
+      }
+      fallbackFetch();
+    };
+    img.onerror = () => {
+      fallbackFetch();
+    };
+
+    const cacheBustUrl = fullUrl.includes("?") ? `${fullUrl}&_cb=${Date.now()}` : `${fullUrl}?_cb=${Date.now()}`;
+    img.src = cacheBustUrl;
+
+    function fallbackFetch() {
+      fetch(fullUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error("HTTP error " + res.status);
+          return res.blob();
+        })
+        .then((blob) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result || fullUrl);
+          reader.onerror = () => resolve(fullUrl);
+          reader.readAsDataURL(blob);
+        })
+        .catch(() => resolve(fullUrl));
+    }
+  });
+}
+
+
 
 // Default blank resume structure (uses strictly student profile data, NO mock data)
 export function createDefaultResume(profileData = {}) {

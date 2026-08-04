@@ -8,8 +8,14 @@ import { authService } from "../../../services/api";
 import OtpInput from "../../../components/OtpInput/OtpInput";
 
 export default function Register() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/student/profile");
+    }
+  }, [user, navigate]);
   
   // Form step: "details" | "otp"
   const [step, setStep] = useState("details");

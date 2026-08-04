@@ -8,6 +8,7 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import ResumeUpload from "../../../components/ResumeUpload/ResumeUpload";
 import ProfileSwitcher from "../../../components/ProfileSwitcher/ProfileSwitcher";
 import { studentService, resumeService } from "../../../services/api";
+import { normalizePhotoUrl } from "../../../utils/resumeStorage";
 
 export default function Profile() {
   const { user, login } = useAuth();
@@ -23,43 +24,6 @@ export default function Profile() {
   const [builderResumes, setBuilderResumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [imgError, setImgError] = useState(false);
-
-  // Derive backend root URL from the same VITE_API_BASE_URL used by axios.
-  // e.g. "http://192.168.1.5:8000/api" → "http://192.168.1.5:8000"
-  //      "https://yourdomain.com/api"  → "https://yourdomain.com"
-  const BACKEND_ROOT = (() => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
-    try {
-      const parsed = new URL(apiBase);
-      return `${parsed.protocol}//${parsed.host}`;
-    } catch {
-      return `http://${window.location.hostname}:8000`;
-    }
-  })();
-
-  // Normalize a photo URL — handles http, base64, /storage/ paths, and relative paths.
-  // Always rebuilds the host from BACKEND_ROOT so it works on local dev AND production.
-  const normalizePhotoUrl = (url) => {
-    if (!url) return "";
-    if (url.startsWith("data:")) return url;
-    // Full URL from Storage::url() — strip the host, rebuild with correct BACKEND_ROOT
-    if (url.startsWith("http")) {
-      try {
-        const parsed = new URL(url);
-        return `${BACKEND_ROOT}${parsed.pathname}`;
-      } catch {
-        return url;
-      }
-    }
-    // Relative path like "profile_photos/xxx.png" or "/storage/profile_photos/xxx.png"
-    let path = url;
-    if (!path.startsWith("/storage/") && !path.startsWith("storage/")) {
-      path = `/storage/${path.replace(/^\//, "")}`;
-    } else if (!path.startsWith("/")) {
-      path = `/${path}`;
-    }
-    return `${BACKEND_ROOT}${path}`;
-  };
 
   // Load profile data scoped to active profile
   const fetchProfile = async () => {
@@ -145,7 +109,6 @@ export default function Profile() {
       setPhotoBase64(reader.result);
     };
     reader.readAsDataURL(file);
-    toast.info("Photo preview updated! Click 'Save Career Profile' to save.");
   };
 
   const handleCancelEditing = () => {
@@ -256,7 +219,7 @@ export default function Profile() {
         breadcrumbs={[{ label: "Dashboard", to: "/student/dashboard" }, { label: "Profile" }]}
         action={
           <Link to="/student/resume-builder" className="btn btn-warning btn-sm fw-bold d-flex align-items-center gap-2 text-dark shadow-sm">
-            <i className="bi bi-file-earmark-person"></i> Open AI Resume Builder
+            <i className="bi bi-file-earmark-person"></i> Open Resume Builder
           </Link>
         }
       />
@@ -491,7 +454,7 @@ export default function Profile() {
                 <h6 className="fw-bold text-muted small text-uppercase mb-3 d-flex align-items-center justify-content-between" style={{ letterSpacing: "0.05em" }}>
                   <span>3. Resume Documents ({activeProfile?.profile_name})</span>
                   <Link to="/student/resume-builder" className="btn btn-xs btn-outline-warning text-dark fw-bold" style={{ fontSize: "0.75rem" }}>
-                    <i className="bi bi-pencil-square me-1"></i>Open AI Resume Builder
+                    <i className="bi bi-pencil-square me-1"></i>Open Resume Builder
                   </Link>
                 </h6>
 
@@ -518,7 +481,7 @@ export default function Profile() {
                     </div>
                   ) : null}
 
-                  {/* Built AI Resume Status Box */}
+                  {/* Built Resume Status Box */}
                   <div className="p-3 bg-white rounded-3 border shadow-sm mb-3">
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                       <div className="d-flex align-items-center gap-3">
@@ -527,7 +490,7 @@ export default function Profile() {
                         </div>
                         <div>
                           <div className="d-flex align-items-center gap-2">
-                            <span className="fw-bold text-dark">AI Built Master Resume</span>
+                            <span className="fw-bold text-dark">Master Resume</span>
                             {hasCreatedResume && (
                               <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-0.5">
                                 ✓ Created & Active

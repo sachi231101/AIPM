@@ -12,7 +12,7 @@ export default function ExecutiveTemplate({ resume }) {
       {/* Left Sidebar */}
       <div className="p-4 text-white d-flex flex-column gap-4" style={{ width: "32%", backgroundColor: accent, minHeight: "100%" }}>
         {/* Photo */}
-        {personal?.showPhoto && personal?.photo && (
+        {(personal?.showPhoto !== false && personal?.photo) && (
           <div className="text-center">
             <img src={normalizePhotoUrl(personal.photo)} alt={personal.fullName} className="rounded-circle border border-3 border-white object-fit-cover shadow" style={{ width: 110, height: 110 }} />
           </div>

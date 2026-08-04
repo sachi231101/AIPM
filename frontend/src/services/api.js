@@ -109,6 +109,12 @@ export const applicationService = {
 export const companyService = {
   getPublic: () => api.get("/companies"),
   getAll: (params) => api.get("/admin/companies", { params }),
+  register: (data) => api.post("/company/register", data),
+  login: (data) => api.post("/company/login", data),
+  getProfile: (params) => api.get("/company/profile", { params }),
+  updateProfile: (data) => api.put("/company/profile", data),
+  getJobs: (params) => api.get("/company/jobs", { params }),
+  createJob: (data) => api.post("/company/jobs", data),
   submitJob: (formData) => api.post("/company/job-request", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   }),

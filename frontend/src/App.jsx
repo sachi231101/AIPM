@@ -17,6 +17,7 @@ import ProtectedLayout from "./components/ProtectedLayout/ProtectedLayout";
 import PublicLayout from "./layouts/PublicLayout";
 import StudentLayout from "./layouts/StudentLayout";
 import AdminLayout from "./layouts/AdminLayout";
+import CompanyLayout from "./layouts/CompanyLayout";
 
 // Public Pages
 import Home from "./pages/Home/Home";
@@ -37,6 +38,14 @@ import ResumeBuilder from "./pages/Student/ResumeBuilder/ResumeBuilder";
 
 // Company Pages
 import SubmitJob from "./pages/Company/SubmitJob/SubmitJob";
+import ForCompanies from "./pages/Company/ForCompanies/ForCompanies";
+import CompanyLogin from "./pages/Company/Login/Login";
+import CompanyRegister from "./pages/Company/Register/Register";
+import CompanyDashboard from "./pages/Company/Dashboard/Dashboard";
+import CompanyProfile from "./pages/Company/Profile/Profile";
+import CompanyJobs from "./pages/Company/Jobs/Jobs";
+import CompanyApplications from "./pages/Company/Applications/Applications";
+import CompanySettings from "./pages/Company/Settings/Settings";
 
 // Admin Pages
 import AdminLogin from "./pages/Admin/Login/Login";
@@ -65,6 +74,9 @@ export default function App() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/placement-drives" element={<PlacementDrives />} />
                 <Route path="/job/:id" element={<JobDetails />} />
+                <Route path="/for-companies" element={<ForCompanies />} />
+                <Route path="/company/landing" element={<ForCompanies />} />
+                <Route path="/company/for-companies" element={<ForCompanies />} />
                 <Route path="/company/submit-job" element={<SubmitJob />} />
               </Route>
 
@@ -73,6 +85,8 @@ export default function App() {
               <Route path="/student/register" element={<Register />} />
               <Route path="/student/forgot-password" element={<ForgotPassword />} />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/company/login" element={<CompanyLogin />} />
+              <Route path="/company/register" element={<CompanyRegister />} />
 
               {/* ── STUDENT DASHBOARD (Protected + StudentLayout) ────────────── */}
               <Route
@@ -89,6 +103,21 @@ export default function App() {
                 <Route path="/student/applied-jobs" element={<AppliedJobs />} />
                 <Route path="/student/applied" element={<AppliedJobs />} />
                 <Route path="/student/resume-builder" element={<ResumeBuilder />} />
+              </Route>
+
+              {/* ── COMPANY DASHBOARD (Protected + CompanyLayout) ────────────── */}
+              <Route
+                element={
+                  <ProtectedLayout requiredRole="company">
+                    <CompanyLayout />
+                  </ProtectedLayout>
+                }
+              >
+                <Route path="/company/dashboard" element={<CompanyDashboard />} />
+                <Route path="/company/profile" element={<CompanyProfile />} />
+                <Route path="/company/jobs" element={<CompanyJobs />} />
+                <Route path="/company/applications" element={<CompanyApplications />} />
+                <Route path="/company/settings" element={<CompanySettings />} />
               </Route>
 
               {/* ── ADMIN PANEL (Protected + AdminLayout) ────────────────────── */}

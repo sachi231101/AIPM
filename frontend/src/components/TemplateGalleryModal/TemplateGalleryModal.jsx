@@ -48,7 +48,7 @@ const FALLBACK_SAMPLE_RESUME = {
   projects: [
     {
       id: "p1",
-      title: "AI Resume Builder & Placement Portal",
+      title: "Resume Builder & Placement Portal",
       techStack: "React.js, Node.js, MySQL, Bootstrap",
       description: "Built an intelligent ATS resume generator and job portal supporting real-time template switching.",
     }

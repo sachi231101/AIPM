@@ -11,7 +11,7 @@ export default function ProfessionalTemplate({ resume }) {
     <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-serif" style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
       {/* Header Banner */}
       <div className="text-center pb-4 mb-4 border-bottom border-2" style={{ borderColor: accent }}>
-        {personal?.showPhoto && personal?.photo && (
+        {(personal?.showPhoto !== false && personal?.photo) && (
           <div className="mb-3">
             <img
               src={normalizePhotoUrl(personal.photo)}

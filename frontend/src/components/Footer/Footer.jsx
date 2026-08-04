@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function Footer() {
+  const { user } = useAuth();
   return (
     <footer className="apms-footer text-white mt-auto">
       <div className="container py-5">
@@ -44,10 +46,20 @@ export default function Footer() {
           <div className="col-6 col-md-4 col-lg-2">
             <h6 className="fw-semibold text-warning mb-3">Students</h6>
             <ul className="list-unstyled">
-              <li><Link to="/student/login" className="footer-link">Login</Link></li>
-              <li><Link to="/student/register" className="footer-link">Register</Link></li>
-              <li><Link to="/student/dashboard" className="footer-link">Dashboard</Link></li>
-              <li><Link to="/student/jobs" className="footer-link">Browse Jobs</Link></li>
+              {user ? (
+                <>
+                  <li><Link to="/student/profile" className="footer-link">My Profile</Link></li>
+                  <li><Link to="/student/dashboard" className="footer-link">Dashboard</Link></li>
+                  <li><Link to="/student/resume-builder" className="footer-link">Resume Builder</Link></li>
+                  <li><Link to="/placement-drives" className="footer-link">Browse Jobs</Link></li>
+                </>
+              ) : (
+                <>
+                  <li><Link to="/student/login" className="footer-link">Login</Link></li>
+                  <li><Link to="/student/register" className="footer-link">Register</Link></li>
+                  <li><Link to="/placement-drives" className="footer-link">Browse Jobs</Link></li>
+                </>
+              )}
             </ul>
           </div>
 

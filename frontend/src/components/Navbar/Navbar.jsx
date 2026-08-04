@@ -61,7 +61,7 @@ export default function Navbar() {
               <NavLink className="nav-link" to="/contact">Contact</NavLink>
             </li>
             <li className="nav-item">
-              <NavLink className="nav-link" to="/company/submit-job">For Companies</NavLink>
+              <NavLink className="nav-link" to="/for-companies">For Companies</NavLink>
             </li>
           </ul>
 
@@ -82,6 +82,25 @@ export default function Navbar() {
                   <li><Link className="dropdown-item" to="/student/resume-builder"><i className="bi bi-file-earmark-person me-2 text-primary"></i>Resume Builder</Link></li>
                   <li><Link className="dropdown-item" to="/placement-drives"><i className="bi bi-briefcase me-2"></i>Jobs</Link></li>
                   <li><Link className="dropdown-item" to="/student/applied"><i className="bi bi-check2-circle me-2"></i>Applied Jobs</Link></li>
+                  <li><hr className="dropdown-divider" /></li>
+                  <li><button className="dropdown-item text-danger" onClick={handleLogout}><i className="bi bi-box-arrow-right me-2"></i>Logout</button></li>
+                </ul>
+              </div>
+            ) : user && role === "company" ? (
+              <div className="dropdown">
+                <button
+                  className="btn btn-outline-primary btn-sm dropdown-toggle d-flex align-items-center gap-2"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                >
+                  <i className="bi bi-buildings-fill"></i>
+                  {user.company_name || user.name?.split(" ")[0]}
+                </button>
+                <ul className="dropdown-menu dropdown-menu-start dropdown-menu-lg-end shadow">
+                  <li><Link className="dropdown-item" to="/company/dashboard"><i className="bi bi-speedometer2 me-2"></i>Dashboard</Link></li>
+                  <li><Link className="dropdown-item" to="/company/profile"><i className="bi bi-buildings me-2"></i>Company Profile</Link></li>
+                  <li><Link className="dropdown-item" to="/company/jobs"><i className="bi bi-briefcase me-2"></i>Jobs</Link></li>
+                  <li><Link className="dropdown-item" to="/company/applications"><i className="bi bi-file-earmark-check me-2"></i>Applications</Link></li>
                   <li><hr className="dropdown-divider" /></li>
                   <li><button className="dropdown-item text-danger" onClick={handleLogout}><i className="bi bi-box-arrow-right me-2"></i>Logout</button></li>
                 </ul>

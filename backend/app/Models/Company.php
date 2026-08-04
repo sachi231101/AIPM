@@ -17,6 +17,12 @@ class Company extends Model
         'website',
         'logo_path',
         'industry',
+        'password',
+        'office_address',
+        'city',
+        'state',
+        'about_company',
+        'status',
     ];
 
     public function jobs(): \Illuminate\Database\Eloquent\Relations\HasMany

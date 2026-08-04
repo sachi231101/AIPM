@@ -9,6 +9,7 @@ import {
   createDefaultResume,
   mergeProfileIntoResume,
   normalizePhotoUrl,
+  convertImageToBase64,
   createNewResume,
   duplicateResume,
   deleteResume,
@@ -80,6 +81,50 @@ export default function ResumeBuilder() {
   const [targetRole, setTargetRole] = useState(activeProfile?.target_role || "Full Stack Developer");
   const [newSkillInput, setNewSkillInput] = useState({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [stepErrors, setStepErrors] = useState({});
+  const [viewingDoc, setViewingDoc] = useState(null); // { url, name }
+
+  // Validate mandatory Personal Information fields
+  const validatePersonalInfo = () => {
+    const personal = activeResume?.personal || {};
+    const errors = {};
+
+    if (!personal.fullName?.trim()) {
+      errors.fullName = "Full Name is mandatory";
+    }
+    if (!personal.professionalTitle?.trim()) {
+      errors.professionalTitle = "Professional Title is mandatory";
+    }
+    if (!personal.email?.trim()) {
+      errors.email = "Email Address is mandatory";
+    }
+    if (!personal.phone?.trim()) {
+      errors.phone = "Phone Number is mandatory";
+    }
+    if (!personal.location?.trim()) {
+      errors.location = "Location / City is mandatory";
+    }
+
+    setStepErrors(errors);
+    return errors;
+  };
+
+  const handleGoToStep = (targetStep) => {
+    // If moving forward or leaving step 0
+    if (currentStep === 0 || targetStep > currentStep) {
+      const errors = validatePersonalInfo();
+      const firstErrorKey = Object.keys(errors)[0];
+      if (firstErrorKey) {
+        const el = document.getElementById(`field_${firstErrorKey}`);
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
+    }
+    setCurrentStep(targetStep);
+  };
 
   // Fetch student profile & pre-fill Master Resume for activeProfile
   useEffect(() => {
@@ -93,28 +138,41 @@ export default function ResumeBuilder() {
       })
       .then((res) => {
         const dbResumes = res.data?.data || [];
+        let loadedResume = null;
         if (dbResumes.length > 0) {
           const first = dbResumes[0].content || {};
           const merged = mergeProfileIntoResume(first, profileData);
-          const masterRes = {
+          loadedResume = {
             ...merged,
             id: dbResumes[0].resume_key || "master",
             title: "Master Resume",
           };
-          setActiveResume(masterRes);
-          saveResume(masterRes, user?.id, activeId);
+          setActiveResume(loadedResume);
+          saveResume(loadedResume, user?.id, activeId);
         } else {
-          const freshResume = createDefaultResume(profileData);
-          freshResume.id = "master";
-          freshResume.title = "Master Resume";
-          setActiveResume(freshResume);
-          saveResume(freshResume, user?.id, activeId);
+          loadedResume = createDefaultResume(profileData);
+          loadedResume.id = "master";
+          loadedResume.title = "Master Resume";
+          setActiveResume(loadedResume);
+          saveResume(loadedResume, user?.id, activeId);
           resumeService.save({
             student_profile_id: activeId,
             resume_key: "master",
             title: "Master Resume",
-            content: freshResume,
+            content: loadedResume,
           }).catch(() => {});
+        }
+
+        // Convert photo to Base64 in background for flawless PDF generation
+        if (loadedResume?.personal?.photo && !loadedResume.personal.photo.startsWith("data:")) {
+          convertImageToBase64(loadedResume.personal.photo).then((b64) => {
+            if (b64 && b64.startsWith("data:image")) {
+              setActiveResume((prev) => prev ? {
+                ...prev,
+                personal: { ...prev.personal, photo: b64, showPhoto: true }
+              } : prev);
+            }
+          });
         }
       })
       .catch(() => {
@@ -147,31 +205,50 @@ export default function ResumeBuilder() {
       toast.error("Photo must be smaller than 5MB.");
       return;
     }
-    // Show preview instantly
+    // Show preview instantly & keep Base64 in state for 100% reliable live preview & PDF download
     const reader = new FileReader();
-    reader.onloadend = () => {
-      handlePersonalChange("photo", reader.result);
-      handlePersonalChange("showPhoto", true);
+    reader.onloadend = async () => {
+      const base64Data = reader.result;
+
+      // Update photo and showPhoto atomically in one state update
+      const updated = {
+        ...activeResume,
+        personal: {
+          ...activeResume.personal,
+          photo: base64Data,
+          showPhoto: true,
+        },
+      };
+      handleUpdateResume(updated);
+
+      // Upload to backend in background so it's persisted to profile
+      try {
+        setUploadingPhoto(true);
+        const formData = new FormData();
+        formData.append("photo", file);
+        const photoRes = await studentService.uploadProfilePhoto(formData);
+        if (photoRes.data?.photo_url) {
+          const serverPhotoUrl = photoRes.data.photo_url;
+          // Keep base64 or server url synced atomically
+          const finalUpdated = {
+            ...updated,
+            personal: {
+              ...updated.personal,
+              photo: base64Data || serverPhotoUrl,
+              showPhoto: true,
+            },
+          };
+          handleUpdateResume(finalUpdated);
+        }
+        toast.success("Profile photo saved to your account! 📸");
+      } catch (err) {
+        console.error(err);
+        toast.error(err.response?.data?.message || "Failed to save photo to backend.");
+      } finally {
+        setUploadingPhoto(false);
+      }
     };
     reader.readAsDataURL(file);
-    // Upload to backend so it's saved on the profile
-    try {
-      setUploadingPhoto(true);
-      const formData = new FormData();
-      formData.append("photo", file);
-      const res = await studentService.uploadProfilePhoto(formData);
-      const newUrl = res.data?.photo_url;
-      if (newUrl) {
-        handlePersonalChange("photo", newUrl);
-        handlePersonalChange("showPhoto", true);
-      }
-      toast.success("Profile photo saved to your account! 📸");
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Failed to save photo.");
-    } finally {
-      setUploadingPhoto(false);
-    }
   };
 
   // Autosave when activeResume changes (syncs to both profile-scoped localStorage & database)
@@ -207,16 +284,16 @@ export default function ResumeBuilder() {
   const handleAddEdu = () => {
     const newEdu = {
       id: "edu_" + Date.now(),
-      degree: "B.Tech",
-      specialization: "Computer Science",
-      college: "Aadya Institute",
-      university: "Bangalore University",
-      location: "Bengaluru",
-      startYear: "2021",
-      endYear: "2025",
-      cgpa: "8.5",
-      percentage: "85%",
-      currentlyStudying: true,
+      degree: "",
+      specialization: "",
+      college: "",
+      university: "",
+      location: "",
+      startYear: "",
+      endYear: "",
+      cgpa: "",
+      percentage: "",
+      currentlyStudying: false,
     };
     handleUpdateResume({ ...activeResume, education: [...(activeResume.education || []), newEdu] });
   };
@@ -235,15 +312,15 @@ export default function ResumeBuilder() {
   const handleAddExp = () => {
     const newExp = {
       id: "exp_" + Date.now(),
-      company: "Company Name",
-      designation: "Role Title",
+      company: "",
+      designation: "",
       employmentType: "Full-time",
-      location: "Bengaluru",
-      startDate: "2024-01",
-      endDate: "2024-06",
+      location: "",
+      startDate: "",
+      endDate: "",
       currentCompany: false,
-      responsibilities: "Key responsibilities and achievements.",
-      technologies: "React, Node.js",
+      responsibilities: "",
+      technologies: "",
     };
     handleUpdateResume({ ...activeResume, experience: [...(activeResume.experience || []), newExp] });
   };
@@ -262,14 +339,14 @@ export default function ResumeBuilder() {
   const handleAddProject = () => {
     const newProj = {
       id: "proj_" + Date.now(),
-      name: "Project Title",
-      role: "Developer",
-      duration: "2 Months",
-      technologies: "JavaScript, HTML, CSS",
+      name: "",
+      role: "",
+      duration: "",
+      technologies: "",
       githubLink: "",
       liveDemo: "",
-      description: "Short project summary.",
-      responsibilities: "Key contributions.",
+      description: "",
+      responsibilities: "",
     };
     handleUpdateResume({ ...activeResume, projects: [...(activeResume.projects || []), newProj] });
   };
@@ -312,18 +389,55 @@ export default function ResumeBuilder() {
   const handleAddCert = () => {
     const newCert = {
       id: "cert_" + Date.now(),
-      name: "Certification Name",
-      organization: "Issuing Organization",
-      issueDate: "2024-01",
+      name: "",
+      organization: "",
+      issueDate: "",
       credentialUrl: "",
+      fileName: "",
       description: "",
     };
     handleUpdateResume({ ...activeResume, certifications: [...(activeResume.certifications || []), newCert] });
   };
 
+  const handleCertFileChange = (certId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Certificate file must be smaller than 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result;
+      const list = (activeResume.certifications || []).map((c) =>
+        c.id === certId
+          ? { ...c, credentialUrl: dataUrl, fileName: file.name }
+          : c
+      );
+      handleUpdateResume({ ...activeResume, certifications: list });
+      toast.success(`Certificate "${file.name}" attached successfully! 📄`);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCertChange = (id, field, val) => {
     const list = (activeResume.certifications || []).map((c) => (c.id === id ? { ...c, [field]: val } : c));
     handleUpdateResume({ ...activeResume, certifications: list });
+  };
+
+  const handleRemoveCertFile = (certId) => {
+    const list = (activeResume.certifications || []).map((c) =>
+      c.id === certId ? { ...c, credentialUrl: "", fileName: "" } : c
+    );
+    handleUpdateResume({ ...activeResume, certifications: list });
+    toast.info("Attached certificate document removed.");
+  };
+
+  const handleViewCertDocument = (url, name) => {
+    if (!url) return;
+    setViewingDoc({ url, name: name || "Certificate Document" });
   };
 
   const handleRemoveCert = (id) => {
@@ -335,11 +449,11 @@ export default function ResumeBuilder() {
   const handleAddAchievement = () => {
     const newAch = {
       id: "ach_" + Date.now(),
-      category: "Hackathons",
-      title: "Achievement Title",
-      issuer: "Organization",
-      date: "2024-02",
-      description: "Brief details",
+      category: "Awards",
+      title: "",
+      issuer: "",
+      date: "",
+      description: "",
     };
     handleUpdateResume({ ...activeResume, achievements: [...(activeResume.achievements || []), newAch] });
   };
@@ -356,7 +470,7 @@ export default function ResumeBuilder() {
 
   // Languages handlers
   const handleAddLang = () => {
-    const newLang = { id: "lang_" + Date.now(), language: "English", proficiency: "Professional" };
+    const newLang = { id: "lang_" + Date.now(), language: "", proficiency: "Professional" };
     handleUpdateResume({ ...activeResume, languages: [...(activeResume.languages || []), newLang] });
   };
 
@@ -526,7 +640,7 @@ export default function ResumeBuilder() {
                       className={`d-flex align-items-center gap-2 cursor-pointer px-2 py-1 rounded transition-all ${
                         isActive ? "bg-primary text-white fw-bold" : isCompleted ? "text-success fw-medium" : "text-muted"
                       }`}
-                      onClick={() => setCurrentStep(idx)}
+                      onClick={() => handleGoToStep(idx)}
                     >
                       <span
                         className={`rounded-circle d-inline-flex align-items-center justify-content-center ${
@@ -605,7 +719,17 @@ export default function ResumeBuilder() {
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-danger ms-2"
-                              onClick={() => { handlePersonalChange("photo", ""); handlePersonalChange("showPhoto", false); }}
+                              onClick={() => {
+                                const updated = {
+                                  ...activeResume,
+                                  personal: {
+                                    ...activeResume.personal,
+                                    photo: "",
+                                    showPhoto: false,
+                                  },
+                                };
+                                handleUpdateResume(updated);
+                              }}
                             >
                               <i className="bi bi-trash me-1"></i>Remove
                             </button>
@@ -617,48 +741,113 @@ export default function ResumeBuilder() {
 
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label small text-muted">Full Name</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.fullName || ""} onChange={(e) => handlePersonalChange("fullName", e.target.value)} />
+                      <label className="form-label small text-muted fw-semibold">
+                        Full Name <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        id="field_fullName"
+                        type="text"
+                        className={`form-control ${stepErrors.fullName ? "is-invalid border-danger" : ""}`}
+                        value={activeResume.personal?.fullName || ""}
+                        onChange={(e) => {
+                          handlePersonalChange("fullName", e.target.value);
+                          if (stepErrors.fullName) setStepErrors((prev) => ({ ...prev, fullName: null }));
+                        }}
+                        placeholder="e.g. John Doe"
+                      />
+                      {stepErrors.fullName && <div className="invalid-feedback d-block text-danger small mt-1"><i className="bi bi-exclamation-circle me-1"></i>{stepErrors.fullName}</div>}
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-muted">Professional Title</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.professionalTitle || ""} onChange={(e) => handlePersonalChange("professionalTitle", e.target.value)} />
+                      <label className="form-label small text-muted fw-semibold">
+                        Professional Title <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        id="field_professionalTitle"
+                        type="text"
+                        className={`form-control ${stepErrors.professionalTitle ? "is-invalid border-danger" : ""}`}
+                        value={activeResume.personal?.professionalTitle || ""}
+                        onChange={(e) => {
+                          handlePersonalChange("professionalTitle", e.target.value);
+                          if (stepErrors.professionalTitle) setStepErrors((prev) => ({ ...prev, professionalTitle: null }));
+                        }}
+                        placeholder="e.g. Full Stack Engineer"
+                      />
+                      {stepErrors.professionalTitle && <div className="invalid-feedback d-block text-danger small mt-1"><i className="bi bi-exclamation-circle me-1"></i>{stepErrors.professionalTitle}</div>}
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-muted">Email Address</label>
-                      <input type="email" className="form-control" value={activeResume.personal?.email || ""} onChange={(e) => handlePersonalChange("email", e.target.value)} />
+                      <label className="form-label small text-muted fw-semibold">
+                        Email Address <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        id="field_email"
+                        type="email"
+                        className={`form-control ${stepErrors.email ? "is-invalid border-danger" : ""}`}
+                        value={activeResume.personal?.email || ""}
+                        onChange={(e) => {
+                          handlePersonalChange("email", e.target.value);
+                          if (stepErrors.email) setStepErrors((prev) => ({ ...prev, email: null }));
+                        }}
+                        placeholder="e.g. john.doe@example.com"
+                      />
+                      {stepErrors.email && <div className="invalid-feedback d-block text-danger small mt-1"><i className="bi bi-exclamation-circle me-1"></i>{stepErrors.email}</div>}
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-muted">Phone Number</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.phone || ""} onChange={(e) => handlePersonalChange("phone", e.target.value)} />
+                      <label className="form-label small text-muted fw-semibold">
+                        Phone Number <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        id="field_phone"
+                        type="text"
+                        className={`form-control ${stepErrors.phone ? "is-invalid border-danger" : ""}`}
+                        value={activeResume.personal?.phone || ""}
+                        onChange={(e) => {
+                          handlePersonalChange("phone", e.target.value);
+                          if (stepErrors.phone) setStepErrors((prev) => ({ ...prev, phone: null }));
+                        }}
+                        placeholder="e.g. +91 9876543210"
+                      />
+                      {stepErrors.phone && <div className="invalid-feedback d-block text-danger small mt-1"><i className="bi bi-exclamation-circle me-1"></i>{stepErrors.phone}</div>}
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-muted">Location / City</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.location || ""} onChange={(e) => handlePersonalChange("location", e.target.value)} />
+                      <label className="form-label small text-muted fw-semibold">
+                        Location / City <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        id="field_location"
+                        type="text"
+                        className={`form-control ${stepErrors.location ? "is-invalid border-danger" : ""}`}
+                        value={activeResume.personal?.location || ""}
+                        onChange={(e) => {
+                          handlePersonalChange("location", e.target.value);
+                          if (stepErrors.location) setStepErrors((prev) => ({ ...prev, location: null }));
+                        }}
+                        placeholder="e.g. Bengaluru, Karnataka"
+                      />
+                      {stepErrors.location && <div className="invalid-feedback d-block text-danger small mt-1"><i className="bi bi-exclamation-circle me-1"></i>{stepErrors.location}</div>}
                     </div>
                     <div className="col-md-6">
                       <label className="form-label small text-muted">LinkedIn URL</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.linkedin || ""} onChange={(e) => handlePersonalChange("linkedin", e.target.value)} />
+                      <input type="text" className="form-control" value={activeResume.personal?.linkedin || ""} onChange={(e) => handlePersonalChange("linkedin", e.target.value)} placeholder="https://linkedin.com/in/username" />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label small text-muted">GitHub URL</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.github || ""} onChange={(e) => handlePersonalChange("github", e.target.value)} />
+                      <input type="text" className="form-control" value={activeResume.personal?.github || ""} onChange={(e) => handlePersonalChange("github", e.target.value)} placeholder="https://github.com/username" />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label small text-muted">Portfolio / Website</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.portfolio || ""} onChange={(e) => handlePersonalChange("portfolio", e.target.value)} />
+                      <input type="text" className="form-control" value={activeResume.personal?.portfolio || ""} onChange={(e) => handlePersonalChange("portfolio", e.target.value)} placeholder="https://myportfolio.com" />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label small text-muted">LeetCode URL</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.leetcode || ""} onChange={(e) => handlePersonalChange("leetcode", e.target.value)} />
+                      <input type="text" className="form-control" value={activeResume.personal?.leetcode || ""} onChange={(e) => handlePersonalChange("leetcode", e.target.value)} placeholder="https://leetcode.com/username" />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label small text-muted">HackerRank URL</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.hackerrank || ""} onChange={(e) => handlePersonalChange("hackerrank", e.target.value)} />
+                      <input type="text" className="form-control" value={activeResume.personal?.hackerrank || ""} onChange={(e) => handlePersonalChange("hackerrank", e.target.value)} placeholder="https://hackerrank.com/username" />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label small text-muted">CodeChef URL</label>
-                      <input type="text" className="form-control" value={activeResume.personal?.codechef || ""} onChange={(e) => handlePersonalChange("codechef", e.target.value)} />
+                      <input type="text" className="form-control" value={activeResume.personal?.codechef || ""} onChange={(e) => handlePersonalChange("codechef", e.target.value)} placeholder="https://codechef.com/users/username" />
                     </div>
                   </div>
 
@@ -729,35 +918,35 @@ export default function ResumeBuilder() {
                         <div className="row g-3">
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Degree</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.degree} onChange={(e) => handleEduChange(edu.id, "degree", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.degree || ""} onChange={(e) => handleEduChange(edu.id, "degree", e.target.value)} placeholder="e.g. B.Tech / B.E." />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Specialization / Branch</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.specialization} onChange={(e) => handleEduChange(edu.id, "specialization", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.specialization || ""} onChange={(e) => handleEduChange(edu.id, "specialization", e.target.value)} placeholder="e.g. Computer Science & Engineering" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">College / Institute</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.college} onChange={(e) => handleEduChange(edu.id, "college", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.college || ""} onChange={(e) => handleEduChange(edu.id, "college", e.target.value)} placeholder="e.g. Aadya Institute of Technology" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">University / Board</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.university} onChange={(e) => handleEduChange(edu.id, "university", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.university || ""} onChange={(e) => handleEduChange(edu.id, "university", e.target.value)} placeholder="e.g. Bangalore University / VTU" />
                           </div>
                           <div className="col-md-3">
                             <label className="form-label small text-muted">Start Year</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.startYear} onChange={(e) => handleEduChange(edu.id, "startYear", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.startYear || ""} onChange={(e) => handleEduChange(edu.id, "startYear", e.target.value)} placeholder="e.g. 2021" />
                           </div>
                           <div className="col-md-3">
                             <label className="form-label small text-muted">End Year</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.endYear} onChange={(e) => handleEduChange(edu.id, "endYear", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.endYear || ""} onChange={(e) => handleEduChange(edu.id, "endYear", e.target.value)} placeholder="e.g. 2025" />
                           </div>
                           <div className="col-md-3">
                             <label className="form-label small text-muted">CGPA</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.cgpa} onChange={(e) => handleEduChange(edu.id, "cgpa", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.cgpa || ""} onChange={(e) => handleEduChange(edu.id, "cgpa", e.target.value)} placeholder="e.g. 8.5" />
                           </div>
                           <div className="col-md-3">
                             <label className="form-label small text-muted">Percentage</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.percentage} onChange={(e) => handleEduChange(edu.id, "percentage", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={edu.percentage || ""} onChange={(e) => handleEduChange(edu.id, "percentage", e.target.value)} placeholder="e.g. 85%" />
                           </div>
                         </div>
                       </div>
@@ -788,15 +977,15 @@ export default function ResumeBuilder() {
                         <div className="row g-3">
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Company Name</label>
-                            <input type="text" className="form-control form-control-sm" value={exp.company} onChange={(e) => handleExpChange(exp.id, "company", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={exp.company || ""} onChange={(e) => handleExpChange(exp.id, "company", e.target.value)} placeholder="e.g. TechCorp Solutions" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Designation / Role</label>
-                            <input type="text" className="form-control form-control-sm" value={exp.designation} onChange={(e) => handleExpChange(exp.id, "designation", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={exp.designation || ""} onChange={(e) => handleExpChange(exp.id, "designation", e.target.value)} placeholder="e.g. Software Engineer Intern" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Employment Type</label>
-                            <select className="form-select form-select-sm" value={exp.employmentType} onChange={(e) => handleExpChange(exp.id, "employmentType", e.target.value)}>
+                            <select className="form-select form-select-sm" value={exp.employmentType || "Full-time"} onChange={(e) => handleExpChange(exp.id, "employmentType", e.target.value)}>
                               <option value="Internship">Internship</option>
                               <option value="Full-time">Full-time</option>
                               <option value="Part-time">Part-time</option>
@@ -805,11 +994,11 @@ export default function ResumeBuilder() {
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Technologies Used</label>
-                            <input type="text" className="form-control form-control-sm" value={exp.technologies} onChange={(e) => handleExpChange(exp.id, "technologies", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={exp.technologies || ""} onChange={(e) => handleExpChange(exp.id, "technologies", e.target.value)} placeholder="e.g. React, Node.js, MySQL" />
                           </div>
                           <div className="col-12">
                             <label className="form-label small text-muted">Responsibilities & Achievements</label>
-                            <textarea className="form-control form-control-sm" rows={3} value={exp.responsibilities} onChange={(e) => handleExpChange(exp.id, "responsibilities", e.target.value)}></textarea>
+                            <textarea className="form-control form-control-sm" rows={3} value={exp.responsibilities || ""} onChange={(e) => handleExpChange(exp.id, "responsibilities", e.target.value)} placeholder="Describe key responsibilities and achievements..."></textarea>
                           </div>
                         </div>
                       </div>
@@ -840,23 +1029,23 @@ export default function ResumeBuilder() {
                         <div className="row g-3">
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Project Name</label>
-                            <input type="text" className="form-control form-control-sm" value={proj.name} onChange={(e) => handleProjChange(proj.id, "name", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={proj.name || ""} onChange={(e) => handleProjChange(proj.id, "name", e.target.value)} placeholder="e.g. AI Placement Management Portal" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Role</label>
-                            <input type="text" className="form-control form-control-sm" value={proj.role} onChange={(e) => handleProjChange(proj.id, "role", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={proj.role || ""} onChange={(e) => handleProjChange(proj.id, "role", e.target.value)} placeholder="e.g. Full Stack Developer" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">GitHub Link</label>
-                            <input type="text" className="form-control form-control-sm" value={proj.githubLink} onChange={(e) => handleProjChange(proj.id, "githubLink", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={proj.githubLink || ""} onChange={(e) => handleProjChange(proj.id, "githubLink", e.target.value)} placeholder="https://github.com/username/project" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Live Demo Link</label>
-                            <input type="text" className="form-control form-control-sm" value={proj.liveDemo} onChange={(e) => handleProjChange(proj.id, "liveDemo", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={proj.liveDemo || ""} onChange={(e) => handleProjChange(proj.id, "liveDemo", e.target.value)} placeholder="https://myprojectdemo.com" />
                           </div>
                           <div className="col-12">
                             <label className="form-label small text-muted">Project Description & Key Bullet Points</label>
-                            <textarea className="form-control form-control-sm" rows={3} value={proj.description} onChange={(e) => handleProjChange(proj.id, "description", e.target.value)}></textarea>
+                            <textarea className="form-control form-control-sm" rows={3} value={proj.description || ""} onChange={(e) => handleProjChange(proj.id, "description", e.target.value)} placeholder="Brief summary of the project, features built, and key contributions..."></textarea>
                           </div>
                         </div>
                       </div>
@@ -943,14 +1132,14 @@ export default function ResumeBuilder() {
               {currentStep === 6 && (
                 <div>
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="fw-bold text-primary mb-0"><i className="bi bi-patch-check me-2"></i>Certifications</h5>
+                    <h5 className="fw-bold text-primary mb-0"><i className="bi bi-patch-check me-2"></i>Certifications & Documents</h5>
                     <button className="btn btn-primary btn-sm" onClick={handleAddCert}>
                       <i className="bi bi-plus-lg me-1"></i> Add Certification
                     </button>
                   </div>
 
                   {(activeResume.certifications || []).map((c, idx) => (
-                    <div key={c.id} className="card border mb-3">
+                    <div key={c.id} className="card border mb-3 shadow-sm rounded-3">
                       <div className="card-body p-3">
                         <div className="d-flex justify-content-between mb-2">
                           <span className="fw-bold text-dark">Certification #{idx + 1}</span>
@@ -961,19 +1150,69 @@ export default function ResumeBuilder() {
                         <div className="row g-3">
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Certification Name</label>
-                            <input type="text" className="form-control form-control-sm" value={c.name} onChange={(e) => handleCertChange(c.id, "name", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={c.name || ""} onChange={(e) => handleCertChange(c.id, "name", e.target.value)} placeholder="e.g. AWS Certified Developer" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Issuing Organization</label>
-                            <input type="text" className="form-control form-control-sm" value={c.organization} onChange={(e) => handleCertChange(c.id, "organization", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={c.organization || ""} onChange={(e) => handleCertChange(c.id, "organization", e.target.value)} placeholder="e.g. Amazon Web Services" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Issue Date</label>
-                            <input type="month" className="form-control form-control-sm" value={c.issueDate} onChange={(e) => handleCertChange(c.id, "issueDate", e.target.value)} />
+                            <input type="month" className="form-control form-control-sm" value={c.issueDate || ""} onChange={(e) => handleCertChange(c.id, "issueDate", e.target.value)} />
                           </div>
+
+                          {/* Certificate Document Upload */}
                           <div className="col-md-6">
-                            <label className="form-label small text-muted">Credential URL</label>
-                            <input type="text" className="form-control form-control-sm" value={c.credentialUrl} onChange={(e) => handleCertChange(c.id, "credentialUrl", e.target.value)} />
+                            <label className="form-label small text-muted fw-semibold">
+                              Upload Certificate (PDF / Image)
+                            </label>
+                            {c.credentialUrl && c.credentialUrl.startsWith("data:") ? (
+                              <div className="p-2 bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div className="d-flex align-items-center gap-2 overflow-hidden">
+                                  <i className="bi bi-file-earmark-check-fill text-success fs-5 flex-shrink-0"></i>
+                                  <span className="fw-semibold text-success small text-truncate" style={{ maxWidth: "160px" }}>
+                                    {c.fileName || "Certificate Attached"}
+                                  </span>
+                                </div>
+                                <div className="d-flex align-items-center gap-1">
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-outline-success fw-semibold"
+                                    onClick={() => handleViewCertDocument(c.credentialUrl, c.fileName)}
+                                  >
+                                    <i className="bi bi-eye me-1"></i> View
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-outline-danger"
+                                    title="Remove uploaded file"
+                                    onClick={() => handleRemoveCertFile(c.id)}
+                                  >
+                                    <i className="bi bi-trash"></i>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="form-control form-control-sm"
+                                onChange={(e) => handleCertFileChange(c.id, e)}
+                              />
+                            )}
+                          </div>
+
+                          <div className="col-12">
+                            <label className="form-label small text-muted">
+                              Or Credential Verification Link <span className="fst-italic text-muted">(Optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={c.credentialUrl && !c.credentialUrl.startsWith("data:") ? c.credentialUrl : ""}
+                              onChange={(e) => handleCertChange(c.id, "credentialUrl", e.target.value)}
+                              placeholder="https://credential-verification-link.com"
+                            />
                           </div>
                         </div>
                       </div>
@@ -1004,7 +1243,7 @@ export default function ResumeBuilder() {
                         <div className="row g-3">
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Category</label>
-                            <select className="form-select form-select-sm" value={ach.category} onChange={(e) => handleAchChange(ach.id, "category", e.target.value)}>
+                            <select className="form-select form-select-sm" value={ach.category || "Awards"} onChange={(e) => handleAchChange(ach.id, "category", e.target.value)}>
                               <option value="Awards">Awards</option>
                               <option value="Hackathons">Hackathons</option>
                               <option value="Coding Competitions">Coding Competitions</option>
@@ -1015,15 +1254,15 @@ export default function ResumeBuilder() {
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Title / Honor</label>
-                            <input type="text" className="form-control form-control-sm" value={ach.title} onChange={(e) => handleAchChange(ach.id, "title", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={ach.title || ""} onChange={(e) => handleAchChange(ach.id, "title", e.target.value)} placeholder="e.g. 1st Place in Smart India Hackathon" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Issuer / Host</label>
-                            <input type="text" className="form-control form-control-sm" value={ach.issuer} onChange={(e) => handleAchChange(ach.id, "issuer", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={ach.issuer || ""} onChange={(e) => handleAchChange(ach.id, "issuer", e.target.value)} placeholder="e.g. Ministry of Education" />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Description</label>
-                            <input type="text" className="form-control form-control-sm" value={ach.description} onChange={(e) => handleAchChange(ach.id, "description", e.target.value)} />
+                            <input type="text" className="form-control form-control-sm" value={ach.description || ""} onChange={(e) => handleAchChange(ach.id, "description", e.target.value)} placeholder="Brief details about the achievement..." />
                           </div>
                         </div>
                       </div>
@@ -1045,7 +1284,7 @@ export default function ResumeBuilder() {
                   {(activeResume.languages || []).map((l, idx) => (
                     <div key={l.id} className="card border mb-2">
                       <div className="card-body p-3 d-flex align-items-center gap-3">
-                        <input type="text" className="form-control form-control-sm" value={l.language} onChange={(e) => handleLangChange(l.id, "language", e.target.value)} placeholder="Language Name" />
+                        <input type="text" className="form-control form-control-sm" value={l.language || ""} onChange={(e) => handleLangChange(l.id, "language", e.target.value)} placeholder="e.g. English, Kannada, Hindi" />
                         <select className="form-select form-select-sm" value={l.proficiency} onChange={(e) => handleLangChange(l.id, "proficiency", e.target.value)}>
                           <option value="Native">Native</option>
                           <option value="Professional">Professional</option>
@@ -1119,7 +1358,7 @@ export default function ResumeBuilder() {
                 ) : (
                   <button
                     className="btn btn-primary"
-                    onClick={() => setCurrentStep((s) => Math.min(STEP_NAMES.length - 1, s + 1))}
+                    onClick={() => handleGoToStep(currentStep + 1)}
                   >
                     Next <i className="bi bi-arrow-right ms-1"></i>
                   </button>
@@ -1159,6 +1398,73 @@ export default function ResumeBuilder() {
           }
           onClose={() => setShowTemplateGallery(false)}
         />
+      )}
+
+      {/* ─── DOCUMENT PREVIEW MODAL ───────────────────────────────────────── */}
+      {viewingDoc && (
+        <div className="modal d-block bg-dark bg-opacity-75" tabIndex="-1" style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content shadow-lg border-0">
+              <div className="modal-header bg-primary text-white py-2">
+                <h6 className="modal-title fw-bold d-flex align-items-center">
+                  <i className="bi bi-file-earmark-medical me-2"></i>
+                  {viewingDoc.name || "Certificate Document"}
+                </h6>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setViewingDoc(null)}
+                ></button>
+              </div>
+              <div className="modal-body p-3 text-center bg-light" style={{ maxHeight: "75vh", overflowY: "auto" }}>
+                {viewingDoc.url?.startsWith("data:image/") || viewingDoc.url?.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i) ? (
+                  <img
+                    src={viewingDoc.url}
+                    alt={viewingDoc.name || "Certificate"}
+                    className="img-fluid rounded shadow-sm border"
+                    style={{ maxHeight: "65vh", objectFit: "contain" }}
+                  />
+                ) : viewingDoc.url?.startsWith("data:application/pdf") || viewingDoc.url?.endsWith(".pdf") ? (
+                  <iframe
+                    src={viewingDoc.url}
+                    title={viewingDoc.name || "Certificate PDF"}
+                    width="100%"
+                    height="500px"
+                    className="border rounded shadow-sm"
+                  ></iframe>
+                ) : (
+                  <div className="py-4">
+                    <i className="bi bi-file-earmark-text text-primary display-4 mb-2 d-block"></i>
+                    <p className="fw-semibold text-dark mb-2">{viewingDoc.name}</p>
+                    <a
+                      href={viewingDoc.url}
+                      download={viewingDoc.name || "certificate"}
+                      className="btn btn-primary btn-sm"
+                    >
+                      <i className="bi bi-download me-1"></i> Download Document
+                    </a>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer py-2 bg-white d-flex justify-content-between">
+                <a
+                  href={viewingDoc.url}
+                  download={viewingDoc.name || "certificate"}
+                  className="btn btn-sm btn-outline-primary fw-semibold"
+                >
+                  <i className="bi bi-download me-1"></i> Download
+                </a>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setViewingDoc(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

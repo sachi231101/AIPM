@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { convertImageToBase64 } from "../../utils/resumeStorage";
 import ModernTemplate from "../ResumeTemplates/ModernTemplate";
 import ProfessionalTemplate from "../ResumeTemplates/ProfessionalTemplate";
 import MinimalTemplate from "../ResumeTemplates/MinimalTemplate";
@@ -69,8 +70,37 @@ export default function ResumePreview({ resume, onClose }) {
       clone.style.webkitFontSmoothing = "antialiased";
       clone.style.textRendering = "optimizeLegibility";
 
+      // Convert all images in clone to base64 Data URIs so html2canvas captures them 100% reliably
+      const images = Array.from(clone.querySelectorAll("img"));
+      await Promise.all(
+        images.map(async (img) => {
+          const src = img.getAttribute("src") || img.src;
+          if (!src || src.startsWith("data:")) return;
+          try {
+            const base64 = await convertImageToBase64(src);
+            if (base64 && base64.startsWith("data:image")) {
+              img.setAttribute("src", base64);
+              img.src = base64;
+            }
+          } catch (e) {
+            console.warn("Could not convert image to base64 for PDF export:", e);
+          }
+        })
+      );
+
       tempContainer.appendChild(clone);
       document.body.appendChild(tempContainer);
+
+      // Wait for all images in clone to be completely loaded in DOM
+      await Promise.all(
+        Array.from(clone.querySelectorAll("img")).map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
 
       const filename = `${(resume.personal?.fullName || "Resume").replace(/\s+/g, "_")}_Resume.pdf`;
       const opt = {
