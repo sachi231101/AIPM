@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import ViewStudentProfileModal from "../../../components/Company/ViewStudentProfileModal";
+import { companyService } from "../../../services/api";
 import { toast } from "react-toastify";
 
 export default function CompanyApplications() {
@@ -12,14 +13,31 @@ export default function CompanyApplications() {
   });
 
   useEffect(() => {
+    companyService.getApplications()
+      .then((res) => {
+        if (res.data?.data) {
+          setApplications(res.data.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem("apms_company_applications", JSON.stringify(applications));
   }, [applications]);
 
-  const handleStatusChange = (appId, newStatus) => {
+  const handleStatusChange = async (appId, newStatus) => {
     setApplications((prev) =>
       prev.map((a) => (a.id === appId ? { ...a, status: newStatus } : a))
     );
-    toast.success(`Application marked as ${newStatus.toUpperCase()}`);
+    try {
+      if (typeof appId === "number" || !String(appId).startsWith("app_")) {
+        await companyService.updateApplicationStatus(appId, newStatus);
+      }
+      toast.success(`Application marked as ${newStatus.toUpperCase()}`);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleDownloadResume = (studentName) => {

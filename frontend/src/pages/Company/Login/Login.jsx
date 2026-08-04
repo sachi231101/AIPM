@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
+import { companyService } from "../../../services/api";
 
 export default function CompanyLogin() {
   const [email, setEmail] = useState("");
@@ -19,22 +20,15 @@ export default function CompanyLogin() {
 
     try {
       setLoading(true);
-      // Construct company user profile
-      const companyUser = {
-        id: "company_" + Date.now(),
-        name: email.split("@")[0].toUpperCase() + " Corp",
-        company_name: email.split("@")[0].toUpperCase() + " Corp",
-        email: email,
-        role: "company",
-      };
-      const token = "company_token_" + Date.now();
+      const res = await companyService.login({ email, password });
+      const { user, token } = res.data.data;
 
-      login(companyUser, "company", token);
+      login(user, "company", token);
       toast.success("Welcome to Company Recruiter Portal! 🏢");
       navigate("/company/dashboard");
     } catch (err) {
       console.error(err);
-      toast.error("Login failed. Please check credentials.");
+      toast.error(err.response?.data?.message || "Login failed. Please check credentials.");
     } finally {
       setLoading(false);
     }

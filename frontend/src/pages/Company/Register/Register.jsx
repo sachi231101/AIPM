@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
+import { companyService } from "../../../services/api";
 
 export default function CompanyRegister() {
   const [formData, setFormData] = useState({
@@ -21,47 +22,35 @@ export default function CompanyRegister() {
     setFormData((prev) => ({ ...prev, [field]: val }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.companyName || !formData.hrName || !formData.hrEmail || !formData.password) {
       toast.error("Please fill in all required registration fields.");
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      const companyUser = {
-        id: "company_" + Date.now(),
-        name: formData.companyName,
+    try {
+      setLoading(true);
+      const res = await companyService.register({
         company_name: formData.companyName,
-        industry: formData.industry,
         hr_name: formData.hrName,
-        email: formData.hrEmail,
-        hr_mobile: formData.hrMobile,
-        website: formData.website,
-        role: "company",
-        status: "approved",
-      };
-      const token = "company_token_" + Date.now();
-
-      // Save initial company profile to localStorage
-      localStorage.setItem("apms_company_profile", JSON.stringify({
-        companyName: formData.companyName,
+        hr_email: formData.hrEmail,
+        password: formData.password,
         industry: formData.industry,
+        phone: formData.hrMobile,
         website: formData.website,
-        hrName: formData.hrName,
-        hrEmail: formData.hrEmail,
-        hrMobile: formData.hrMobile,
-        city: "Bengaluru",
-        state: "Karnataka",
-        aboutCompany: `${formData.companyName} is a leading ${formData.industry} firm focused on driving innovation and hiring top talent.`,
-      }));
+      });
 
-      login(companyUser, "company", token);
+      const { user, token } = res.data.data;
+      login(user, "company", token);
       toast.success("Company registration successful! Please complete your profile to post jobs.");
       navigate("/company/profile");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Registration failed. Please check your inputs.");
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (

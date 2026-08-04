@@ -37,15 +37,23 @@ Route::post('/admin/login',      [AdminAuthController::class, 'login']);
 Route::get('/jobs',         [JobController::class, 'index']);
 Route::get('/jobs/{id}',    [JobController::class, 'show']);
 
-// Company Public Job Submission & Listing
+// Company Auth & Public Routes
 Route::get('/companies',            [CompanyController::class, 'index']);
 Route::post('/company/job-request', [CompanyController::class, 'submitJob']);
 Route::post('/company/register',    [CompanyController::class, 'register']);
 Route::post('/company/login',       [CompanyController::class, 'login']);
-Route::get('/company/profile',      [CompanyController::class, 'getProfile']);
-Route::put('/company/profile',      [CompanyController::class, 'updateProfile']);
-Route::get('/company/jobs',         [CompanyController::class, 'getJobs']);
-Route::post('/company/jobs',        [CompanyController::class, 'createJob']);
+
+// Company Protected Routes (Sanctum)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/company/profile',                   [CompanyController::class, 'getProfile']);
+    Route::put('/company/profile',                   [CompanyController::class, 'updateProfile']);
+    Route::get('/company/jobs',                      [CompanyController::class, 'getJobs']);
+    Route::post('/company/jobs',                     [CompanyController::class, 'createJob']);
+    Route::put('/company/jobs/{id}',                 [CompanyController::class, 'updateJob']);
+    Route::delete('/company/jobs/{id}',              [CompanyController::class, 'deleteJob']);
+    Route::get('/company/applications',              [CompanyController::class, 'getApplications']);
+    Route::put('/company/applications/{id}/status',   [CompanyController::class, 'updateApplicationStatus']);
+});
 
 // Public Institute Listing (for registration dropdown)
 Route::get('/institutes', [InstituteController::class, 'index']);

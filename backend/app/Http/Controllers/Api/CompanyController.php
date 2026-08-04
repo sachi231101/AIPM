@@ -21,25 +21,25 @@ class CompanyController extends Controller
         $validated = $request->validate([
             'company_name' => 'required|string|max:255',
             'hr_name'      => 'required|string|max:255',
-            'hr_email'     => 'required|email|max:255',
+            'hr_email'     => 'required|email|max:255|unique:companies,hr_email',
             'password'     => 'required|string|min:6',
             'industry'     => 'nullable|string',
             'phone'        => 'nullable|string',
             'website'      => 'nullable|string',
         ]);
 
-        $company = Company::updateOrCreate(
-            ['hr_email' => $validated['hr_email']],
-            [
-                'name'       => $validated['company_name'],
-                'hr_name'    => $validated['hr_name'],
-                'phone'      => $validated['phone'] ?? null,
-                'website'    => $validated['website'] ?? null,
-                'industry'   => $validated['industry'] ?? 'Technology & Software',
-                'password'   => Hash::make($validated['password']),
-                'status'     => 'approved',
-            ]
-        );
+        $company = Company::create([
+            'name'     => $validated['company_name'],
+            'hr_name'  => $validated['hr_name'],
+            'hr_email' => $validated['hr_email'],
+            'phone'    => $validated['phone'] ?? null,
+            'website'  => $validated['website'] ?? null,
+            'industry' => $validated['industry'] ?? 'Technology & Software',
+            'password' => Hash::make($validated['password']),
+            'status'   => 'approved',
+        ]);
+
+        $token = $company->createToken('company_token')->plainTextToken;
 
         // Notify Admin of new company registration
         Notification::create([
@@ -58,10 +58,14 @@ class CompanyController extends Controller
                     'id'           => $company->id,
                     'name'         => $company->name,
                     'company_name' => $company->name,
+                    'hr_name'      => $company->hr_name,
                     'email'        => $company->hr_email,
+                    'phone'        => $company->phone,
+                    'website'      => $company->website,
+                    'industry'     => $company->industry,
                     'role'         => 'company',
                 ],
-                'token'   => 'company_token_' . $company->id . '_' . time(),
+                'token'   => $token,
             ]
         ], 201);
     }
@@ -76,22 +80,14 @@ class CompanyController extends Controller
 
         $company = Company::where('hr_email', $validated['email'])->first();
 
-        if (!$company) {
-            $company = Company::create([
-                'name'     => explode('@', $validated['email'])[0] . ' Corp',
-                'hr_name'  => 'HR Representative',
-                'hr_email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'status'   => 'approved',
-            ]);
-
-            Notification::create([
-                'type'    => 'new_company',
-                'title'   => 'New Company Logged In',
-                'message' => 'Company "' . $company->name . '" registered and logged in.',
-                'link'    => '/admin/companies',
-            ]);
+        if (!$company || !Hash::check($validated['password'], $company->password)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Invalid email address or password.',
+            ], 401);
         }
+
+        $token = $company->createToken('company_token')->plainTextToken;
 
         return response()->json([
             'status'  => 'success',
@@ -102,10 +98,14 @@ class CompanyController extends Controller
                     'id'           => $company->id,
                     'name'         => $company->name,
                     'company_name' => $company->name,
+                    'hr_name'      => $company->hr_name,
                     'email'        => $company->hr_email,
+                    'phone'        => $company->phone,
+                    'website'      => $company->website,
+                    'industry'     => $company->industry,
                     'role'         => 'company',
                 ],
-                'token'   => 'company_token_' . $company->id . '_' . time(),
+                'token'   => $token,
             ]
         ]);
     }
@@ -113,8 +113,17 @@ class CompanyController extends Controller
     // ───────── GET /api/company/profile ─────────
     public function getProfile(Request $request): JsonResponse
     {
-        $email = $request->query('email') ?? $request->user()?->email;
-        $company = Company::where('hr_email', $email)->first() ?? Company::first();
+        $company = $request->user();
+
+        if (!$company || !($company instanceof Company)) {
+            $email = $request->query('email') ?? $request->query('hr_email');
+            if ($email) {
+                $company = Company::where('hr_email', $email)->first();
+            }
+            if (!$company) {
+                $company = Company::first();
+            }
+        }
 
         return response()->json([
             'status' => 'success',
@@ -125,28 +134,57 @@ class CompanyController extends Controller
     // ───────── PUT /api/company/profile ─────────
     public function updateProfile(Request $request): JsonResponse
     {
-        $email = $request->input('hr_email') ?? $request->user()?->email;
-        $company = Company::where('hr_email', $email)->first();
+        $company = $request->user();
+
+        if (!$company || !($company instanceof Company)) {
+            $email = $request->input('hr_email') ?? $request->input('hrEmail') ?? $request->input('email');
+            if ($email) {
+                $company = Company::where('hr_email', $email)->first();
+            }
+            if (!$company) {
+                $company = Company::first();
+            }
+        }
 
         if (!$company) {
             $company = new Company();
+            $company->status = 'approved';
         }
 
         $company->fill([
-            'name'           => $request->input('companyName') ?? $request->input('name') ?? $company->name,
-            'industry'       => $request->input('industry', $company->industry),
-            'website'        => $request->input('website', $company->website),
-            'hr_name'        => $request->input('hrName') ?? $request->input('hr_name') ?? $company->hr_name,
-            'hr_email'       => $request->input('hrEmail') ?? $request->input('hr_email') ?? $company->hr_email,
+            'name'           => $request->input('companyName') ?? $request->input('name') ?? $company->name ?? 'Company Name',
+            'industry'       => $request->input('industry') ?? $company->industry ?? 'Technology & Software',
+            'website'        => $request->input('website') ?? $company->website,
+            'hr_name'        => $request->input('hrName') ?? $request->input('hr_name') ?? $company->hr_name ?? 'HR Representative',
+            'hr_email'       => $request->input('hrEmail') ?? $request->input('hr_email') ?? $company->hr_email ?? 'hr@company.com',
             'phone'          => $request->input('hrMobile') ?? $request->input('phone') ?? $company->phone,
             'office_address' => $request->input('officeAddress') ?? $request->input('office_address') ?? $company->office_address,
-            'city'           => $request->input('city', $company->city),
-            'state'          => $request->input('state', $company->state),
+            'city'           => $request->input('city') ?? $company->city,
+            'state'          => $request->input('state') ?? $company->state,
             'about_company'  => $request->input('aboutCompany') ?? $request->input('about_company') ?? $company->about_company,
         ]);
 
-        if ($request->has('logo') && str_starts_with($request->input('logo'), 'data:image')) {
-            $company->logo_path = $request->input('logo');
+        if ($request->filled('logo')) {
+            $logoInput = $request->input('logo');
+            if (str_starts_with($logoInput, 'data:image')) {
+                try {
+                    @list($type, $file_data) = explode(';', $logoInput);
+                    @list(, $file_data) = explode(',', $file_data);
+                    if ($file_data) {
+                        $extension = 'png';
+                        if (str_contains($type, 'jpeg') || str_contains($type, 'jpg')) {
+                            $extension = 'jpg';
+                        }
+                        $fileName = 'logo_' . ($company->id ?? time()) . '_' . time() . '.' . $extension;
+                        Storage::disk('public')->put('company-logos/' . $fileName, base64_decode($file_data));
+                        $company->logo_path = 'company-logos/' . $fileName;
+                    }
+                } catch (\Throwable $e) {
+                    $company->logo_path = $logoInput;
+                }
+            } else {
+                $company->logo_path = $logoInput;
+            }
         }
 
         $company->save();
@@ -161,7 +199,9 @@ class CompanyController extends Controller
     // ───────── GET /api/company/jobs ─────────
     public function getJobs(Request $request): JsonResponse
     {
-        $companyId = $request->query('company_id');
+        $company = $request->user();
+        $companyId = ($company && $company instanceof Company) ? $company->id : $request->query('company_id');
+
         $query = PlacementJob::withCount('applications')->latest();
         if ($companyId) {
             $query->where('company_id', $companyId);
@@ -188,10 +228,10 @@ class CompanyController extends Controller
             'skills'           => 'nullable|array',
             'description'      => 'nullable|string',
             'status'           => 'nullable|string',
-            'company_id'       => 'nullable|integer',
         ]);
 
-        $companyId = $validated['company_id'] ?? Company::first()?->id ?? 1;
+        $user = $request->user();
+        $companyId = ($user && $user instanceof Company) ? $user->id : ($request->input('company_id') ?? Company::first()?->id ?? 1);
         $company = Company::find($companyId);
 
         $job = PlacementJob::create([
@@ -221,6 +261,101 @@ class CompanyController extends Controller
             'message' => 'Job posted successfully! Submitted to Admin for approval.',
             'data'    => $job,
         ], 201);
+    }
+
+    // ───────── PUT /api/company/jobs/{id} ─────────
+    public function updateJob(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $companyId = ($user && $user instanceof Company) ? $user->id : null;
+
+        $jobQuery = PlacementJob::query();
+        if ($companyId) {
+            $jobQuery->where('company_id', $companyId);
+        }
+        $job = $jobQuery->findOrFail($id);
+
+        $job->update($request->only([
+            'title', 'description', 'eligibility', 'skills', 'experience',
+            'salary', 'location', 'openings', 'last_date', 'status'
+        ]));
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Job updated successfully.',
+            'data'    => $job,
+        ]);
+    }
+
+    // ───────── DELETE /api/company/jobs/{id} ─────────
+    public function deleteJob(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $companyId = ($user && $user instanceof Company) ? $user->id : null;
+
+        $jobQuery = PlacementJob::query();
+        if ($companyId) {
+            $jobQuery->where('company_id', $companyId);
+        }
+        $job = $jobQuery->findOrFail($id);
+        $job->delete();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Job deleted successfully.',
+        ]);
+    }
+
+    // ───────── GET /api/company/applications ─────────
+    public function getApplications(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $companyId = ($user && $user instanceof Company) ? $user->id : Company::first()?->id;
+
+        $jobIds = PlacementJob::where('company_id', $companyId)->pluck('id');
+        $applications = Application::whereIn('job_id', $jobIds)
+            ->with(['student.user', 'job'])
+            ->latest()
+            ->get()
+            ->map(function ($app) {
+                return [
+                    'id'          => $app->id,
+                    'job_id'      => $app->job_id,
+                    'jobTitle'    => $app->job?->title ?? 'Software Engineer',
+                    'student'     => [
+                        'id'         => $app->student?->id,
+                        'name'       => $app->student?->user?->name ?? 'Candidate',
+                        'email'      => $app->student?->user?->email,
+                        'phone'      => $app->student?->phone,
+                        'course'     => $app->student?->course ?? 'B.Tech CS',
+                        'cgpa'       => $app->student?->cgpa ?? '8.5',
+                        'skills'     => $app->student?->skills ?? ['React', 'Node.js'],
+                    ],
+                    'appliedDate' => $app->created_at->format('M d, Y'),
+                    'status'      => $app->status ?? 'pending',
+                    'resume_path' => $app->resume_path ? url('/storage/' . $app->resume_path) : null,
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $applications,
+        ]);
+    }
+
+    // ───────── PUT /api/company/applications/{id}/status ─────────
+    public function updateApplicationStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate(['status' => 'required|string']);
+        $application = Application::findOrFail($id);
+        $application->status = $request->status;
+        $application->save();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Application status updated to ' . $request->status,
+            'data'    => $application,
+        ]);
     }
 
     // ───────── POST /api/company/job-request ─────────
