@@ -8,7 +8,7 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import ResumeUpload from "../../../components/ResumeUpload/ResumeUpload";
 import ProfileSwitcher from "../../../components/ProfileSwitcher/ProfileSwitcher";
 import { studentService, resumeService } from "../../../services/api";
-import { normalizePhotoUrl } from "../../../utils/resumeStorage";
+import { normalizePhotoUrl, getOverallProfileScore } from "../../../utils/resumeStorage";
 
 export default function Profile() {
   const { user, login } = useAuth();
@@ -206,7 +206,7 @@ export default function Profile() {
     }
   };
 
-  const profileCompletion = student.profile_completion ?? 0;
+  const profileCompletion = getOverallProfileScore(student, activeProfile?.id);
   const hasUploadedResume = !!(student.resume_url || student.resumeUrl || student.resume_path);
   const hasCreatedResume = builderResumes.length > 0 || !!(student.has_created_resume);
   const resumeUrl = student.resume_url ? student.resume_url : (student.resumeUrl ? student.resumeUrl : "#");
@@ -234,14 +234,14 @@ export default function Profile() {
             <span className="fw-semibold small text-dark">
               Profile Completion ({activeProfile?.profile_name}): <span className="text-primary fw-bold">{profileCompletion}%</span>
             </span>
-            <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1 fw-semibold">
-              {profileCompletion === 100 ? "100% Ready for Companies 🎉" : "Action Required"}
+            <span className={`badge ${profileCompletion >= 80 ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-warning"} px-3 py-1 fw-semibold`}>
+              {profileCompletion >= 80 ? "Eligible to Apply (Score >= 80%) 🎉" : "Action Required: Reaching 80% Score Required to Apply"}
             </span>
           </div>
           <div className="progress rounded-pill" style={{ height: "10px" }}>
             <div
               className={`progress-bar progress-bar-striped progress-bar-animated ${
-                profileCompletion === 100 ? "bg-success" : profileCompletion >= 50 ? "bg-primary" : "bg-warning"
+                profileCompletion >= 80 ? "bg-success" : profileCompletion >= 50 ? "bg-primary" : "bg-warning"
               }`}
               role="progressbar"
               style={{ width: `${profileCompletion}%` }}

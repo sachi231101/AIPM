@@ -9,7 +9,7 @@ import { SkeletonGrid } from "../../../components/Skeleton/Skeleton";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { studentService, jobService, applicationService } from "../../../services/api";
-import { getCompanyLogo } from "../../../utils/logoHelper";
+import { normalizePhotoUrl, getOverallProfileScore } from "../../../utils/resumeStorage";
 import ConfirmApplicationModal from "../../../components/ConfirmApplicationModal/ConfirmApplicationModal";
 
 const ITEMS_PER_PAGE = 6;
@@ -194,28 +194,35 @@ export default function AvailableJobs() {
         </div>
       )}
 
-      {/* ── Resume Active Banner ── */}
-      {hasAnyResume && (
-        <div
-          className="alert border-0 mb-4 rounded-3 py-2 px-3 d-flex align-items-center gap-2"
-          style={{ background: "#d1fae5", color: "#065f46" }}
-        >
-          <i className="bi bi-check-circle-fill text-success"></i>
-          <span className="small fw-medium">
-            Your resume is ready.{" "}
-            <span className="text-muted fw-normal">
-              It will be automatically submitted with your application.
-            </span>
-          </span>
-          <Link
-            to="/student/profile"
-            className="ms-auto btn btn-sm btn-outline-success"
-            style={{ fontSize: 12, borderRadius: 8 }}
+      {/* ── Profile & Resume Score Banner ── */}
+      {(() => {
+        const score = getOverallProfileScore(student);
+        const isEligible = score >= 80;
+        return (
+          <div
+            className={`alert border-0 mb-4 rounded-3 py-2 px-3 d-flex align-items-center gap-2 ${
+              isEligible ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-dark"
+            }`}
           >
-            <i className="bi bi-pencil me-1"></i>Update Resume
-          </Link>
-        </div>
-      )}
+            <i className={`bi ${isEligible ? "bi-shield-check text-success fs-5" : "bi-exclamation-triangle-fill text-warning fs-5"}`}></i>
+            <span className="small fw-medium">
+              Profile & Resume Score: <strong>{score}%</strong> —{" "}
+              {isEligible ? (
+                <span className="text-success fw-semibold">Eligible to apply for placement opportunities 🎉</span>
+              ) : (
+                <span className="text-danger fw-semibold">Action Required: Score must be at least 80% to apply.</span>
+              )}
+            </span>
+            <Link
+              to="/student/resume-builder"
+              className={`ms-auto btn btn-sm ${isEligible ? "btn-outline-success" : "btn-warning text-dark fw-bold"}`}
+              style={{ fontSize: 12, borderRadius: 8 }}
+            >
+              <i className="bi bi-pencil-square me-1"></i>{isEligible ? "Update Resume" : "Boost Score to 80%+"}
+            </Link>
+          </div>
+        );
+      })()}
 
       {/* Filters */}
       <div className="card border-0 shadow-sm mb-4">

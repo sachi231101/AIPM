@@ -43,56 +43,69 @@ export default function MinimalTemplate({ resume }) {
       )}
 
       {/* Experience */}
-      {experience && experience.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase tracking-wider text-muted mb-3">Experience</h6>
-          {experience.map((exp) => (
-            <div key={exp.id} className="mb-3">
-              <div className="d-flex justify-content-between">
-                <strong>{exp.designation} <span className="text-muted">at {exp.company}</span></strong>
-                <span className="text-muted small">{exp.startDate} — {exp.endDate}</span>
+      {(() => {
+        const validExp = (experience || []).filter((exp) => exp && (exp.designation?.trim() || exp.company?.trim() || exp.responsibilities?.trim()));
+        if (validExp.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase tracking-wider text-muted mb-3">Experience</h6>
+            {validExp.map((exp) => (
+              <div key={exp.id} className="mb-3">
+                <div className="d-flex justify-content-between">
+                  <strong>{exp.designation || "Role"} {exp.company ? <span className="text-muted">at {exp.company}</span> : ""}</strong>
+                  <span className="text-muted small">{exp.startDate} — {exp.endDate}</span>
+                </div>
+                <p className="text-secondary mb-0 mt-1">{exp.responsibilities}</p>
               </div>
-              <p className="text-secondary mb-0 mt-1">{exp.responsibilities}</p>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Projects */}
-      {projects && projects.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase tracking-wider text-muted mb-3">Projects</h6>
-          {projects.map((proj) => (
-            <div key={proj.id} className="mb-3">
-              <div className="d-flex justify-content-between">
-                <strong>{proj.name}</strong>
-                <span className="text-muted small">{proj.duration}</span>
+      {(() => {
+        const validProj = (projects || []).filter((proj) => proj && (proj.name?.trim() || proj.title?.trim() || proj.description?.trim()));
+        if (validProj.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase tracking-wider text-muted mb-3">Projects</h6>
+            {validProj.map((proj) => (
+              <div key={proj.id} className="mb-3">
+                <div className="d-flex justify-content-between">
+                  <strong>{proj.name || proj.title}</strong>
+                  <span className="text-muted small">{proj.duration}</span>
+                </div>
+                <p className="text-secondary mb-0">{proj.description}</p>
+                {proj.technologies && <p className="text-muted small mb-0">Stack: {proj.technologies}</p>}
               </div>
-              <p className="text-secondary mb-0">{proj.description}</p>
-              {proj.technologies && <p className="text-muted small mb-0">Stack: {proj.technologies}</p>}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Education */}
-      {education && education.length > 0 && (
-        <div className="mb-4">
-          <h6 className="fw-bold text-uppercase tracking-wider text-muted mb-3">Education</h6>
-          {education.map((edu) => (
-            <div key={edu.id} className="d-flex justify-content-between mb-2">
-              <div>
-                <strong>{edu.degree} in {edu.specialization}</strong>
-                <div className="text-muted small">{edu.college}</div>
+      {(() => {
+        const validEdu = (education || []).filter((edu) => edu && (edu.degree?.trim() || edu.college?.trim() || edu.university?.trim() || edu.specialization?.trim()));
+        if (validEdu.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <h6 className="fw-bold text-uppercase tracking-wider text-muted mb-3">Education</h6>
+            {validEdu.map((edu) => (
+              <div key={edu.id} className="d-flex justify-content-between mb-2">
+                <div>
+                  <strong>{edu.degree || "Degree"}{edu.specialization ? ` in ${edu.specialization}` : ""}</strong>
+                  <div className="text-muted small">{edu.college || edu.university}</div>
+                </div>
+                <div className="text-end text-muted small">
+                  {edu.startYear && `${edu.startYear} – `}{edu.endYear}
+                  {edu.cgpa && <div>CGPA: {edu.cgpa}</div>}
+                </div>
               </div>
-              <div className="text-end text-muted small">
-                {edu.startYear} – {edu.endYear}
-                {edu.cgpa && <div>CGPA: {edu.cgpa}</div>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
+ 
 
       {/* Skills */}
       {allSkillsList.length > 0 && (

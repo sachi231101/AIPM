@@ -15,6 +15,8 @@ import {
   deleteResume,
   calculateATSMetrics,
   aiGenerateSummary,
+  aiRewriteSummaryWithTone,
+  aiGenerateBulletPoints,
   aiImproveText,
   aiShortenText,
   aiAtsOptimize,
@@ -485,33 +487,70 @@ export default function ResumeBuilder() {
   };
 
   // AI helper triggers
-  const handleAiGenerateSummary = () => {
-    const allSkills = Object.values(activeResume.skills || {}).flat();
-    const generated = aiGenerateSummary(activeResume.personal?.professionalTitle || "Developer", allSkills);
+  const handleAiGenerateSummary = async () => {
+    const generated = await aiGenerateSummary(activeResume, targetRole);
     handleUpdateResume({ ...activeResume, summary: generated });
-    toast.success("Generated Summary with AI!");
+    toast.success("Generated Summary with AI! ✨");
   };
 
-  const handleAiImproveSummary = () => {
-    const improved = aiImproveText(activeResume.summary);
+  const handleAiGenerateSummaryWithTone = async (tone) => {
+    const rewritten = await aiRewriteSummaryWithTone(activeResume, tone);
+    handleUpdateResume({ ...activeResume, summary: rewritten });
+    toast.success(`Generated ${tone.toUpperCase()} summary with AI! ✨`);
+  };
+
+  const handleAiGenerateExpBullets = async (expId, roleTitle) => {
+    const bullets = await aiGenerateBulletPoints(roleTitle || "Software Engineer");
+    const bulletText = bullets.join("\n");
+    const list = (activeResume.experience || []).map((e) => {
+      if (e.id === expId) {
+        const existing = e.description ? `${e.description}\n` : "";
+        return { ...e, description: existing + bulletText };
+      }
+      return e;
+    });
+    handleUpdateResume({ ...activeResume, experience: list });
+    toast.success("Generated impact bullet points with AI! ✨");
+  };
+
+  const handleAiGenerateProjBullets = async (projId, projTitle) => {
+    const bullets = await aiGenerateBulletPoints(projTitle || "Web Application");
+    const bulletText = bullets.join("\n");
+    const list = (activeResume.projects || []).map((p) => {
+      if (p.id === projId) {
+        const existing = p.description ? `${p.description}\n` : "";
+        return { ...p, description: existing + bulletText };
+      }
+      return p;
+    });
+    handleUpdateResume({ ...activeResume, projects: list });
+    toast.success("Generated project bullet points with AI! ✨");
+  };
+
+  const handleSettingChange = (key, value) => {
+    const updatedSettings = { ...(activeResume.settings || {}), [key]: value };
+    handleUpdateResume({ ...activeResume, settings: updatedSettings });
+  };
+
+  const handleAiImproveSummary = async () => {
+    const improved = await aiImproveText(activeResume.summary);
     handleUpdateResume({ ...activeResume, summary: improved });
-    toast.success("Improved Summary with AI!");
+    toast.success("Improved Summary with AI! ✨");
   };
 
-  const handleAiShortenSummary = () => {
-    const shortened = aiShortenText(activeResume.summary);
+  const handleAiShortenSummary = async () => {
+    const shortened = await aiShortenText(activeResume.summary);
     handleUpdateResume({ ...activeResume, summary: shortened });
     toast.info("Shortened Summary.");
   };
 
-  const handleAiAtsOptimizeSummary = () => {
-    const optimized = aiAtsOptimize(activeResume.summary, targetRole);
-    handleUpdateResume({ ...activeResume, summary: optimized });
-    toast.success(`ATS Optimized Summary for ${targetRole}!`);
+  const handleAiAtsOptimizeSummary = async () => {
+    const res = await aiAtsOptimize(activeResume, targetRole);
+    toast.success(res.message);
   };
 
-  const handleGenerateCoverLetter = (role = "Software Developer") => {
-    const cl = aiGenerateCoverLetter(activeResume, role, "Aadya Recruiting Partner");
+  const handleGenerateCoverLetter = async (role = "Software Developer") => {
+    const cl = await aiGenerateCoverLetter(activeResume, role, "Aadya Recruiting Partner");
     setCoverLetterText(cl);
     setShowCoverLetterModal(true);
   };
@@ -522,7 +561,10 @@ export default function ResumeBuilder() {
         title="Resume Builder"
         subtitle="Create, customize, and optimize ATS-friendly resumes for your placement applications."
         action={
-          <div className="d-flex gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1.5 d-none d-md-inline-flex align-items-center gap-1 small">
+              <i className="bi bi-cloud-check-fill text-success"></i> Auto-Saved to Cloud
+            </span>
             <button className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" onClick={handleSyncProfile}>
               <i className="bi bi-arrow-repeat"></i> Auto-Fill Profile Info
             </button>
@@ -608,6 +650,92 @@ export default function ResumeBuilder() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+
+          {/* Typography & Layout Customization Card */}
+          <div className="card border-0 shadow-sm mb-3">
+            <div className="card-body p-3">
+              <label className="form-label small text-muted fw-bold uppercase mb-2" style={{ letterSpacing: "0.5px" }}>
+                <i className="bi bi-fonts text-primary me-1"></i> Typography & Layout
+              </label>
+              
+              {/* Font Family */}
+              <div className="mb-2">
+                <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Font Family</small>
+                <select
+                  className="form-select form-select-sm"
+                  style={{ fontSize: "0.78rem" }}
+                  value={activeResume.settings?.fontFamily || "Inter"}
+                  onChange={(e) => handleSettingChange("fontFamily", e.target.value)}
+                >
+                  <option value="Inter">Inter (Sans-Serif)</option>
+                  <option value="Roboto">Roboto (Clean)</option>
+                  <option value="Outfit">Outfit (Modern)</option>
+                  <option value="Merriweather">Merriweather (Classic Serif)</option>
+                  <option value="Poppins">Poppins (Geometric)</option>
+                </select>
+              </div>
+
+              {/* Font Size & Line Spacing */}
+              <div className="row g-2 mb-2">
+                <div className="col-6">
+                  <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Font Size</small>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ fontSize: "0.75rem" }}
+                    value={activeResume.settings?.fontSize || "medium"}
+                    onChange={(e) => handleSettingChange("fontSize", e.target.value)}
+                  >
+                    <option value="small">Small (Dense)</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Spacing</small>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ fontSize: "0.75rem" }}
+                    value={activeResume.settings?.lineSpacing || "normal"}
+                    onChange={(e) => handleSettingChange("lineSpacing", e.target.value)}
+                  >
+                    <option value="compact">Compact</option>
+                    <option value="normal">Normal</option>
+                    <option value="spacious">Spacious</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Accent Color Palette */}
+              <div>
+                <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Color Theme</small>
+                <div className="d-flex align-items-center gap-2">
+                  {[
+                    { name: "Corporate Blue", color: "#0F4C81" },
+                    { name: "Emerald", color: "#059669" },
+                    { name: "Slate Gray", color: "#475569" },
+                    { name: "Royal Purple", color: "#7C3AED" },
+                    { name: "Crimson", color: "#991B1B" },
+                    { name: "Charcoal", color: "#1F2937" },
+                  ].map((p, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="rounded-circle border-0 transition-all p-0"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        background: p.color,
+                        boxShadow: (activeResume.settings?.accentColor === p.color) ? "0 0 0 2px #fff, 0 0 0 4px " + p.color : "none",
+                        transform: (activeResume.settings?.accentColor === p.color) ? "scale(1.15)" : "scale(1)",
+                      }}
+                      title={p.name}
+                      onClick={() => handleSettingChange("accentColor", p.color)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1305,24 +1433,65 @@ export default function ResumeBuilder() {
               {currentStep === 9 && (
                 <div>
                   <h5 className="fw-bold text-success mb-3"><i className="bi bi-check-circle me-2"></i>Review & Generate Resume</h5>
-                  <div className="alert alert-success d-flex align-items-center gap-3 mb-4">
-                    <i className="bi bi-shield-check fs-2"></i>
-                    <div>
-                      <h6 className="fw-bold mb-1">Your Resume is ATS Ready!</h6>
-                      <p className="mb-0 small">ATS Score: <strong>{atsMetrics.atsScore}%</strong> | Profile Score: <strong>{atsMetrics.profileScore}%</strong></p>
-                    </div>
-                  </div>
-
-                  <div className="row g-3 mb-4">
-                    {["Personal Information", "Education", "Experience", "Projects", "Skills", "Certifications", "Languages"].map((sec, i) => (
-                      <div key={i} className="col-md-4">
-                        <div className="p-3 bg-light rounded border d-flex align-items-center gap-2">
-                          <i className="bi bi-check-circle-fill text-success fs-5"></i>
-                          <span className="fw-medium text-dark">{sec}</span>
+                  
+                  {/* ATS Score Card */}
+                  {(() => {
+                    const ats = calculateATSMetrics(activeResume);
+                    return (
+                      <div className="card border-0 bg-primary bg-opacity-10 rounded-3 mb-4 p-4">
+                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-4" style={{ width: 60, height: 60 }}>
+                              {ats.score}%
+                            </div>
+                            <div>
+                              <div className="d-flex align-items-center gap-2">
+                                <h5 className="fw-bold mb-0 text-dark">ATS Resume Health Score</h5>
+                                <span className="badge bg-primary fs-6">Grade {ats.grade}</span>
+                              </div>
+                              <p className="text-muted small mb-0 mt-1">
+                                High ATS compliance ensures your resume passes recruiter screening software.
+                              </p>
+                            </div>
+                          </div>
+                         
                         </div>
+
+                        {/* Breakdown meters */}
+                        <div className="row g-3 mt-3">
+                          {Object.entries(ats.breakdown).map(([key, val], idx) => (
+                            <div key={idx} className="col-6 col-md-3">
+                              <div className="p-2 bg-white rounded border small">
+                                <div className="d-flex justify-content-between text-capitalize text-muted mb-1" style={{ fontSize: "0.75rem" }}>
+                                  <span>{key}</span>
+                                  <span className="fw-bold text-primary">{val} pts</span>
+                                </div>
+                                <div className="progress" style={{ height: 4 }}>
+                                  <div className="progress-bar bg-primary" style={{ width: `${Math.min(100, (val / 20) * 100)}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Actionable Tips */}
+                        {ats.tips && ats.tips.length > 0 && (
+                          <div className="mt-3 pt-3 border-top border-primary border-opacity-25">
+                            <h6 className="fw-bold text-dark small mb-2"><i className="bi bi-lightbulb text-warning me-1"></i> Recommended Optimization Improvements:</h6>
+                            <ul className="mb-0 ps-3 small text-muted">
+                              {ats.tips.map((t, idx) => (
+                                <li key={idx} className="mb-1">
+                                  <strong className="text-dark">[{t.cat}]</strong> {t.text}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
+
+
 
                   <div className="d-flex flex-wrap gap-3">
                     <button className="btn btn-primary btn-lg fw-bold px-4" onClick={() => setShowPreviewModal(true)}>

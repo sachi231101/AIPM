@@ -555,4 +555,15 @@ body {
     color: #000000 !important;
     visibility: visible !important;
   }
+
+  /* Page break rules for clean PDF printing */
+  .resume-section-block,
+  .resume-item-card,
+  .resume-experience-item,
+  .resume-project-item,
+  .resume-education-item {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
 }
+

@@ -75,6 +75,7 @@ export default function App() {
                 <Route path="/placement-drives" element={<PlacementDrives />} />
                 <Route path="/job/:id" element={<JobDetails />} />
                 <Route path="/for-companies" element={<ForCompanies />} />
+                <Route path="/company" element={<ForCompanies />} />
                 <Route path="/company/landing" element={<ForCompanies />} />
                 <Route path="/company/for-companies" element={<ForCompanies />} />
                 <Route path="/company/submit-job" element={<SubmitJob />} />
