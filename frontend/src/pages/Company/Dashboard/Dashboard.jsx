@@ -294,11 +294,12 @@ export default function CompanyDashboard() {
                             job.status === "published" ? "bg-success" : "bg-secondary"
                           }`}
                         >
-                          {job.status === "published" ? "ACTIVE" : "DRAFT"}
+                          {job.status === "published" ? "ACTIVE" : (job.status ? job.status.toUpperCase() : "DRAFT")}
                         </span>
-                      </tr>
-                    );
-                  })}
+                      </td>
+                    </tr>
+                  );
+                })}
                 </tbody>
               </table>
             </div>

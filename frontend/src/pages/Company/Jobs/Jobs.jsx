@@ -169,7 +169,7 @@ export default function CompanyJobs() {
                           : "bg-secondary"
                       }`}
                     >
-                      {job.status === "published" ? "ACTIVE" : job.status.toUpperCase()}
+                      {job.status === "published" || job.status === "approved" ? "ACTIVE" : (job.status ? job.status.toUpperCase() : "PENDING")}
                     </span>
                   </td>
                   <td className="small text-muted">{job.postedDate}</td>
