@@ -125,9 +125,21 @@ class CompanyController extends Controller
             }
         }
 
+        if (!$company) {
+            return response()->json(['status' => 'success', 'data' => null]);
+        }
+
+        $logo = $company->logo_path;
+        $logoUrl = $logo ? (str_starts_with($logo, 'data:') || str_starts_with($logo, 'http') ? $logo : url('/storage/' . ltrim($logo, '/'))) : null;
+
+        $data = array_merge($company->toArray(), [
+            'logo_url'  => $logoUrl,
+            'logo_path' => $logoUrl ?? $company->logo_path,
+        ]);
+
         return response()->json([
             'status' => 'success',
-            'data'   => $company,
+            'data'   => $data,
         ]);
     }
 
@@ -189,10 +201,18 @@ class CompanyController extends Controller
 
         $company->save();
 
+        $logo = $company->logo_path;
+        $logoUrl = $logo ? (str_starts_with($logo, 'data:') || str_starts_with($logo, 'http') ? $logo : url('/storage/' . ltrim($logo, '/'))) : null;
+
+        $data = array_merge($company->toArray(), [
+            'logo_url'  => $logoUrl,
+            'logo_path' => $logoUrl ?? $company->logo_path,
+        ]);
+
         return response()->json([
             'status'  => 'success',
             'message' => 'Company profile updated successfully.',
-            'data'    => $company,
+            'data'    => $data,
         ]);
     }
 
