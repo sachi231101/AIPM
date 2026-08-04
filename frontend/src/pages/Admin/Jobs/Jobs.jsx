@@ -3,7 +3,7 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 import { jobService } from "../../../services/api";
-import { useCachedData } from "../../../hooks/useCachedData";
+import { useCachedData, clearCache } from "../../../hooks/useCachedData";
 import { getCompanyLogo, handleLogoError } from "../../../utils/logoHelper";
 
 const statusColors = { 
@@ -91,6 +91,8 @@ export default function Jobs() {
       } else if (action === "Closed") {
         await jobService.close(id);
       }
+      clearCache("public_jobs");
+      clearCache(`job_details_${id}`);
       toast.success(`Job drive status updated to ${newStatusLower}!`);
       refetch();
     } catch (err) {

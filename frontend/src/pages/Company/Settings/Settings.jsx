@@ -2,27 +2,29 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
+import { companyService } from "../../../services/api";
+import CompanyForgotPasswordModal from "../../../components/Company/CompanyForgotPasswordModal";
 
 export default function CompanySettings() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const [showForgotModal, setShowForgotModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+  const [submittingPassword, setSubmittingPassword] = useState(false);
 
-  const [notifications, setNotifications] = useState({
-    emailOnApplication: true,
-    emailOnStatusChange: true,
-    weeklyDigest: false,
-  });
-
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (!passwordData.currentPassword || !passwordData.newPassword) {
       toast.error("Please enter current password and new password.");
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long.");
       return;
     }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -30,8 +32,24 @@ export default function CompanySettings() {
       return;
     }
 
-    toast.success("Password updated successfully! 🔒");
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    try {
+      setSubmittingPassword(true);
+      const res = await companyService.changePassword({
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+      });
+
+      toast.success(res.data?.message || "Password updated successfully! 🔒 Please login with your new password.");
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      logout();
+      navigate("/company/login");
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || "Failed to update password. Please check your current password.";
+      toast.error(msg);
+    } finally {
+      setSubmittingPassword(false);
+    }
   };
 
   const handleLogout = () => {
@@ -78,7 +96,17 @@ export default function CompanySettings() {
           <form onSubmit={handlePasswordSubmit}>
             <div className="row g-3">
               <div className="col-md-4">
-                <label className="form-label small fw-semibold text-muted">Current Password</label>
+                <div className="d-flex align-items-center justify-content-between">
+                  <label className="form-label small fw-semibold text-muted mb-1">Current Password</label>
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 small text-decoration-none text-primary fw-medium border-0 bg-transparent mb-1"
+                    style={{ fontSize: "0.78rem" }}
+                    onClick={() => setShowForgotModal(true)}
+                  >
+                    Forgot current password?
+                  </button>
+                </div>
                 <input
                   type="password"
                   className="form-control"
@@ -115,65 +143,19 @@ export default function CompanySettings() {
             </div>
 
             <div className="text-end mt-3">
-              <button type="submit" className="btn btn-primary fw-bold px-4 rounded-3 shadow-sm">
-                Update Password
+              <button
+                type="submit"
+                className="btn btn-primary fw-bold px-4 rounded-3 shadow-sm"
+                disabled={submittingPassword}
+              >
+                {submittingPassword ? (
+                  <><span className="spinner-border spinner-border-sm me-2"></span>Updating...</>
+                ) : (
+                  <><i className="bi bi-key-fill me-1"></i> Update Password</>
+                )}
               </button>
             </div>
           </form>
-        </div>
-      </div>
-
-      {/* Notifications Settings Card */}
-      <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white">
-        <div className="card-body p-4">
-          <h5 className="fw-bold text-primary mb-3"><i className="bi bi-bell me-2"></i>Notification Preferences</h5>
-
-          <div className="d-flex flex-column gap-3">
-            <div className="d-flex align-items-center justify-content-between pb-2 border-bottom">
-              <div>
-                <div className="fw-semibold text-dark">Email Notification on New Applications</div>
-                <small className="text-muted">Receive an instant email when a student applies for your jobs</small>
-              </div>
-              <div className="form-check form-switch fs-5">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  checked={notifications.emailOnApplication}
-                  onChange={(e) => setNotifications({ ...notifications, emailOnApplication: e.target.checked })}
-                />
-              </div>
-            </div>
-
-            <div className="d-flex align-items-center justify-content-between pb-2 border-bottom">
-              <div>
-                <div className="fw-semibold text-dark">Status Update Alerts</div>
-                <small className="text-muted">Receive confirmation alerts when shortlisting or rejecting candidates</small>
-              </div>
-              <div className="form-check form-switch fs-5">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  checked={notifications.emailOnStatusChange}
-                  onChange={(e) => setNotifications({ ...notifications, emailOnStatusChange: e.target.checked })}
-                />
-              </div>
-            </div>
-
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <div className="fw-semibold text-dark">Weekly Placement Digest</div>
-                <small className="text-muted">Receive weekly summary reports of application counts and active drives</small>
-              </div>
-              <div className="form-check form-switch fs-5">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  checked={notifications.weeklyDigest}
-                  onChange={(e) => setNotifications({ ...notifications, weeklyDigest: e.target.checked })}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -189,6 +171,19 @@ export default function CompanySettings() {
           </button>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <CompanyForgotPasswordModal
+          initialEmail={user?.email || ""}
+          onClose={() => setShowForgotModal(false)}
+          onSuccess={() => {
+            setShowForgotModal(false);
+            logout();
+            navigate("/company/login");
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import PostJobModal from "../../../components/Company/PostJobModal";
 import { companyService } from "../../../services/api";
+import { clearCache } from "../../../hooks/useCachedData";
 import { toast } from "react-toastify";
 
 export default function CompanyJobs() {
@@ -28,6 +29,8 @@ export default function CompanyJobs() {
   }, [jobs]);
 
   const handleSaveJob = (jobObj) => {
+    clearCache("public_jobs");
+    clearCache("admin_jobs");
     companyService.getJobs()
       .then((res) => {
         if (res.data?.data) setJobs(res.data.data);
@@ -49,6 +52,9 @@ export default function CompanyJobs() {
       if (typeof jobId === "number" || !String(jobId).startsWith("job_")) {
         await companyService.updateJob(jobId, { status: "closed" });
       }
+      clearCache("public_jobs");
+      clearCache("admin_jobs");
+      clearCache(`job_details_${jobId}`);
       toast.info("Job listing closed.");
     } catch (err) {
       console.error(err);
@@ -62,6 +68,9 @@ export default function CompanyJobs() {
         if (typeof jobId === "number" || !String(jobId).startsWith("job_")) {
           await companyService.deleteJob(jobId);
         }
+        clearCache("public_jobs");
+        clearCache("admin_jobs");
+        clearCache(`job_details_${jobId}`);
         toast.success("Job posting deleted.");
       } catch (err) {
         console.error(err);

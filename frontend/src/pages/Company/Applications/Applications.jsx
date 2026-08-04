@@ -40,8 +40,14 @@ export default function CompanyApplications() {
     }
   };
 
-  const handleDownloadResume = (studentName) => {
-    toast.info(`Downloading ${studentName}'s Master Resume PDF...`);
+  const handleDownloadResume = (app) => {
+    if (app.resume_path) {
+      window.open(app.resume_path, "_blank");
+      toast.success(`Opening ${app.student?.name || "Candidate"}'s PDF Resume...`);
+    } else {
+      toast.info(`Opening ${app.student?.name || "Candidate"}'s live Career Profile...`);
+      setViewingApp(app);
+    }
   };
 
   const filteredApps = filterStatus === "all"
@@ -118,7 +124,7 @@ export default function CompanyApplications() {
                     <button
                       type="button"
                       className="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold"
-                      onClick={() => handleDownloadResume(app.student.name)}
+                      onClick={() => handleDownloadResume(app)}
                       title="Download Candidate Resume PDF"
                     >
                       <i className="bi bi-file-earmark-pdf-fill me-1"></i>
