@@ -65,3 +65,13 @@ Route::get('/db_test', function () {
         return "Failed to connect to the database: " . $e->getMessage();
     }
 });
+
+// SPA Fallback Route: Serves React index.html for any frontend web route
+Route::fallback(function () {
+    $indexPath = public_path('index.html');
+    if (file_exists($indexPath)) {
+        return response()->file($indexPath);
+    }
+    return view('welcome');
+});
+
