@@ -38,6 +38,7 @@ export default function PlacementDrives() {
     company: job.company?.name || "Unknown Company",
     companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
     location: job.location,
+    employmentType: job.employment_type || job.employmentType || "Full Time",
     salary: job.salary,
     experience: job.experience,
     skills: job.skills || [],

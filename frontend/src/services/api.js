@@ -120,6 +120,8 @@ export const companyService = {
   deleteJob: (id) => api.delete(`/company/jobs/${id}`),
   getApplications: () => api.get("/company/applications"),
   updateApplicationStatus: (id, status) => api.put(`/company/applications/${id}/status`, { status }),
+  changePassword: (data) => api.put("/company/change-password", data),
+  forgotPassword: (data) => api.post("/company/forgot-password", data),
   submitJob: (formData) => api.post("/company/job-request", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   }),

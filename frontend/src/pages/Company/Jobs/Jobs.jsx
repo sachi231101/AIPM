@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import PostJobModal from "../../../components/Company/PostJobModal";
 import { companyService } from "../../../services/api";
+import { clearCache } from "../../../hooks/useCachedData";
 import { toast } from "react-toastify";
 
 export default function CompanyJobs() {
@@ -28,6 +29,8 @@ export default function CompanyJobs() {
   }, [jobs]);
 
   const handleSaveJob = (jobObj) => {
+    clearCache("public_jobs");
+    clearCache("admin_jobs");
     companyService.getJobs()
       .then((res) => {
         if (res.data?.data) setJobs(res.data.data);
@@ -49,6 +52,9 @@ export default function CompanyJobs() {
       if (typeof jobId === "number" || !String(jobId).startsWith("job_")) {
         await companyService.updateJob(jobId, { status: "closed" });
       }
+      clearCache("public_jobs");
+      clearCache("admin_jobs");
+      clearCache(`job_details_${jobId}`);
       toast.info("Job listing closed.");
     } catch (err) {
       console.error(err);
@@ -62,12 +68,24 @@ export default function CompanyJobs() {
         if (typeof jobId === "number" || !String(jobId).startsWith("job_")) {
           await companyService.deleteJob(jobId);
         }
+        clearCache("public_jobs");
+        clearCache("admin_jobs");
+        clearCache(`job_details_${jobId}`);
         toast.success("Job posting deleted.");
       } catch (err) {
         console.error(err);
       }
     }
   };
+
+  const profileLogo = (() => {
+    try {
+      const saved = localStorage.getItem("apms_company_profile");
+      return saved ? JSON.parse(saved).logo : null;
+    } catch (e) {
+      return null;
+    }
+  })();
 
   return (
     <div>
@@ -105,12 +123,39 @@ export default function CompanyJobs() {
               </tr>
             </thead>
             <tbody>
-              {jobs.map((job) => (
-                <tr key={job.id}>
-                  <td className="ps-4">
-                    <div className="fw-bold text-dark">{job.title}</div>
-                    <div className="text-muted small">Experience: {job.experience}</div>
-                  </td>
+              {jobs.map((job) => {
+                const logoSrc = job.company_logo || job.company?.logo_path || profileLogo;
+
+                return (
+                  <tr key={job.id}>
+                    <td className="ps-4">
+                      <div className="d-flex align-items-center gap-3">
+                        <div
+                          className="rounded-3 bg-light border d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0 shadow-sm"
+                          style={{ width: 44, height: 44 }}
+                        >
+                          {logoSrc ? (
+                            <img
+                              src={logoSrc}
+                              alt="Company Logo"
+                              className="w-100 h-100 object-fit-contain p-1"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                if (e.target.nextSibling) e.target.nextSibling.style.display = "block";
+                              }}
+                            />
+                          ) : null}
+                          <i
+                            className="bi bi-buildings-fill text-primary fs-5"
+                            style={{ display: logoSrc ? "none" : "block" }}
+                          ></i>
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark">{job.title}</div>
+                          <div className="text-muted small">Experience: {job.experience}</div>
+                        </div>
+                      </div>
+                    </td>
                   <td className="small text-secondary fw-medium">{job.location}</td>
                   <td>
                     <span className="badge bg-primary bg-opacity-10 text-primary fw-semibold px-2.5 py-1">
@@ -126,14 +171,18 @@ export default function CompanyJobs() {
                   <td>
                     <span
                       className={`badge rounded-pill px-3 py-1 ${
-                        job.status === "published"
+                        job.status === "published" || job.status === "approved"
                           ? "bg-success"
                           : job.status === "draft"
                           ? "bg-warning text-dark"
-                          : "bg-secondary"
+                          : "bg-warning bg-opacity-25 text-dark border border-warning"
                       }`}
                     >
-                      {job.status === "published" ? "ACTIVE" : job.status.toUpperCase()}
+                      {job.status === "published" || job.status === "approved"
+                        ? "ACTIVE"
+                        : job.status === "pending"
+                        ? "PENDING APPROVAL"
+                        : (job.status ? job.status.toUpperCase() : "PENDING")}
                     </span>
                   </td>
                   <td className="small text-muted">{job.postedDate}</td>
@@ -186,7 +235,8 @@ export default function CompanyJobs() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+            })}
 
               {jobs.length === 0 && (
                 <tr>
