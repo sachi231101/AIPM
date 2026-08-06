@@ -10,6 +10,7 @@ export default function CompanyLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 

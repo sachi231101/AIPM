@@ -22,18 +22,27 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
 
   useEffect(() => {
     if (initialData) {
+      const parsedEligibility = Array.isArray(initialData.eligibility)
+        ? initialData.eligibility.join(", ")
+        : (Array.isArray(initialData.eligibleCourses) 
+            ? initialData.eligibleCourses.join(", ") 
+            : (Array.isArray(initialData.eligible_courses)
+                ? initialData.eligible_courses.join(", ")
+                : (initialData.eligibility || initialData.eligibleCourses || initialData.eligible_courses || "")));
+
+      const rawDeadline = initialData.deadline || initialData.last_date || "";
+      const formattedDeadline = typeof rawDeadline === "string" ? rawDeadline.split("T")[0] : rawDeadline;
+
       setFormData({
         title: initialData.title || "",
         location: initialData.location || "",
-        employmentType: initialData.employmentType || "Full Time",
+        employmentType: initialData.employmentType || initialData.employment_type || "Full Time",
         experience: initialData.experience || "",
         salary: initialData.salary || "",
         vacancies: initialData.vacancies || initialData.openings || "",
-        deadline: initialData.deadline || initialData.last_date || "",
+        deadline: formattedDeadline,
         skills: Array.isArray(initialData.skills) ? initialData.skills.join(", ") : (initialData.skills || ""),
-        eligibleCourses: Array.isArray(initialData.eligibleCourses) 
-          ? initialData.eligibleCourses.join(", ") 
-          : (initialData.eligibility || initialData.eligibleCourses || ""),
+        eligibleCourses: parsedEligibility,
         description: initialData.description || "",
         responsibilities: initialData.responsibilities || "",
         status: initialData.status || "published",
@@ -55,6 +64,8 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
       return;
     }
 
+    const eligibilityVal = formData.eligibleCourses.trim();
+
     const payload = {
       title: formData.title.trim(),
       location: formData.location.trim(),
@@ -64,6 +75,8 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
       vacancies: Number(formData.vacancies) || 1,
       last_date: formData.deadline || null,
       skills: formData.skills ? formData.skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      eligibility: eligibilityVal,
+      eligibleCourses: eligibilityVal,
       eligible_courses: formData.eligibleCourses ? formData.eligibleCourses.split(",").map((c) => c.trim()).filter(Boolean) : [],
       description: formData.description.trim(),
       responsibilities: formData.responsibilities.trim(),
@@ -84,6 +97,9 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
       clearCache("company_jobs");
       clearCache("admin_jobs");
       clearCache("public_jobs");
+      if (initialData?.id) {
+        clearCache(`job_details_${initialData.id}`);
+      }
       onSave?.(savedJob);
       onClose?.();
     } catch (err) {
@@ -110,7 +126,11 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
             <div className="alert alert-info py-2 px-3 mb-3 small d-flex align-items-center gap-2 rounded-3 border-0 bg-info bg-opacity-10 text-dark">
               <i className="bi bi-info-circle-fill text-info fs-5"></i>
               <span>
-                <strong>Admin Approval Required:</strong> All job details will be saved and submitted to Placement Cell Admin for review before being published to candidates.
+                {initialData ? (
+                  <><strong>Direct Update:</strong> Changes to this job posting will be saved and published directly.</>
+                ) : (
+                  <><strong>Admin Approval Required:</strong> New job postings will be submitted to Placement Cell Admin for review before being published.</>
+                )}
               </span>
             </div>
 
@@ -277,11 +297,13 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
               <button
                 type="button"
                 className="btn btn-primary fw-bold px-4"
-                onClick={() => handleSave("pending")}
+                onClick={() => handleSave(initialData ? (initialData.status || "published") : "pending")}
                 disabled={loading}
               >
                 {loading ? (
                   <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</>
+                ) : initialData ? (
+                  <><i className="bi bi-check-circle-fill me-1"></i> Save Changes</>
                 ) : (
                   <><i className="bi bi-shield-check me-1"></i> Save & Submit for Approval</>
                 )}
