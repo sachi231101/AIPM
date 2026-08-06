@@ -243,16 +243,18 @@ class CompanyController extends Controller
     public function createJob(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'location' => 'required|string',
-            'employmentType' => 'nullable|string',
-            'experience' => 'nullable|string',
-            'salary' => 'nullable|string',
-            'vacancies' => 'nullable|integer',
-            'last_date' => 'nullable|date',
-            'skills' => 'nullable|array',
-            'description' => 'nullable|string',
-            'status' => 'nullable|string',
+            'title'            => 'required|string|max:255',
+            'location'         => 'required|string',
+            'employmentType'   => 'nullable|string',
+            'employment_type'  => 'nullable|string',
+            'experience'       => 'nullable|string',
+            'salary'           => 'nullable|string',
+            'vacancies'        => 'nullable|integer',
+            'last_date'        => 'nullable|date',
+            'skills'           => 'nullable|array',
+            'description'      => 'nullable|string',
+            'responsibilities' => 'nullable|string',
+            'status'           => 'nullable|string',
         ]);
 
         $user = $request->user();
@@ -260,17 +262,19 @@ class CompanyController extends Controller
         $company = Company::find($companyId);
 
         $job = PlacementJob::create([
-            'company_id' => $companyId,
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? '',
-            'eligibility' => $request->input('eligibleCourses') ? (is_array($request->input('eligibleCourses')) ? implode(', ', $request->input('eligibleCourses')) : $request->input('eligibleCourses')) : 'B.Tech, BCA, MCA',
-            'skills' => $validated['skills'] ?? [],
-            'experience' => $validated['experience'] ?? '0-2 Years',
-            'salary' => $validated['salary'] ?? 'Not Disclosed',
-            'location' => $validated['location'],
-            'openings' => $validated['vacancies'] ?? 1,
-            'last_date' => $validated['last_date'] ?? now()->addDays(30),
-            'status' => 'pending', // Pending Admin Approval
+            'company_id'       => $companyId,
+            'title'            => $validated['title'],
+            'description'      => $validated['description'] ?? '',
+            'responsibilities' => $validated['responsibilities'] ?? $request->input('responsibilities') ?? '',
+            'eligibility'      => $request->input('eligibleCourses') ? (is_array($request->input('eligibleCourses')) ? implode(', ', $request->input('eligibleCourses')) : $request->input('eligibleCourses')) : 'B.Tech, BCA, MCA',
+            'skills'           => $validated['skills'] ?? [],
+            'experience'       => $validated['experience'] ?? '0-2 Years',
+            'salary'           => $validated['salary'] ?? 'Not Disclosed',
+            'location'         => $validated['location'],
+            'employment_type'  => $validated['employmentType'] ?? $validated['employment_type'] ?? 'Full Time',
+            'openings'         => $validated['vacancies'] ?? 1,
+            'last_date'        => $validated['last_date'] ?? now()->addDays(30),
+            'status'           => 'pending', // Pending Admin Approval
         ]);
 
         // Create Admin Notification
@@ -311,6 +315,42 @@ class CompanyController extends Controller
             'openings',
             'last_date'
         ]);
+        $updateData = [];
+
+        if ($request->has('title'))            $updateData['title'] = $request->input('title');
+        if ($request->has('description'))      $updateData['description'] = $request->input('description');
+        if ($request->has('responsibilities')) $updateData['responsibilities'] = $request->input('responsibilities');
+        if ($request->has('experience'))       $updateData['experience'] = $request->input('experience');
+        if ($request->has('salary'))           $updateData['salary'] = $request->input('salary');
+        if ($request->has('location'))         $updateData['location'] = $request->input('location');
+        if ($request->has('employmentType'))   $updateData['employment_type'] = $request->input('employmentType');
+        if ($request->has('employment_type'))  $updateData['employment_type'] = $request->input('employment_type');
+        if ($request->has('last_date'))        $updateData['last_date'] = $request->input('last_date');
+
+        if ($request->has('skills')) {
+            $skillsInput = $request->input('skills');
+            if (is_array($skillsInput)) {
+                $updateData['skills'] = array_values(array_filter(array_map('trim', $skillsInput)));
+            } elseif (is_string($skillsInput)) {
+                $updateData['skills'] = array_values(array_filter(array_map('trim', explode(',', $skillsInput))));
+            }
+        }
+
+        // Handle vacancies / openings mapping
+        if ($request->has('openings')) {
+            $updateData['openings'] = (int) $request->input('openings');
+        } elseif ($request->has('vacancies')) {
+            $updateData['openings'] = (int) $request->input('vacancies');
+        }
+
+        // Handle eligibility / eligibleCourses mapping
+        if ($request->has('eligibility')) {
+            $el = $request->input('eligibility');
+            $updateData['eligibility'] = is_array($el) ? implode(', ', $el) : $el;
+        } elseif ($request->has('eligibleCourses')) {
+            $ec = $request->input('eligibleCourses');
+            $updateData['eligibility'] = is_array($ec) ? implode(', ', $ec) : $ec;
+        }
 
         $requestedStatus = $request->input('status');
         if ($requestedStatus === 'closed') {
@@ -335,7 +375,7 @@ class CompanyController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Job information saved! Submitted to Admin for approval.',
-            'data' => $job,
+            'data'    => $job->fresh()->load('company'),
         ]);
     }
 
@@ -366,26 +406,93 @@ class CompanyController extends Controller
 
         $jobIds = PlacementJob::where('company_id', $companyId)->pluck('id');
         $applications = Application::whereIn('job_id', $jobIds)
-            ->with(['student.user', 'job'])
+            ->with(['student.user', 'student.institute', 'job', 'profile'])
             ->latest()
             ->get()
             ->map(function ($app) {
-                return [
-                    'id' => $app->id,
-                    'job_id' => $app->job_id,
-                    'jobTitle' => $app->job?->title ?? 'Software Engineer',
-                    'student' => [
-                        'id' => $app->student?->id,
-                        'name' => $app->student?->user?->name ?? 'Candidate',
-                        'email' => $app->student?->user?->email,
-                        'phone' => $app->student?->phone,
-                        'course' => $app->student?->course ?? 'B.Tech CS',
-                        'cgpa' => $app->student?->cgpa ?? '8.5',
-                        'skills' => $app->student?->skills ?? ['React', 'Node.js'],
+                // Fetch student resume content if available
+                $studentResume = \App\Models\StudentResume::where('student_id', $app->student_id)
+                    ->where(function ($q) use ($app) {
+                        if ($app->resume_key) {
+                            $q->where('resume_key', $app->resume_key);
+                        } elseif ($app->student_profile_id) {
+                            $q->where('student_profile_id', $app->student_profile_id);
+                        }
+                    })->first();
+
+                if (!$studentResume) {
+                    $studentResume = \App\Models\StudentResume::where('student_id', $app->student_id)->latest()->first();
+                }
+
+                $resumeContent = $studentResume?->content ?? [];
+
+                $skillsData = $resumeContent['skills'] ?? null;
+                if (!$skillsData) {
+                    $rawSkills = $app->profile?->skills ?? $app->student?->skills ?? ['Problem Solving', 'Teamwork'];
+                    $skillsList = is_array($rawSkills) ? $rawSkills : array_filter(array_map('trim', explode(',', (string)$rawSkills)));
+                    $skillsData = ['technical' => $skillsList];
+                }
+
+                $educationData = $resumeContent['education'] ?? null;
+                if (!$educationData || empty($educationData)) {
+                    $educationData = [
+                        [
+                            'degree'         => $app->profile?->course ?? $app->student?->course ?? 'B.Tech',
+                            'specialization' => $app->profile?->branch ?? $app->student?->branch ?? 'Computer Science',
+                            'college'        => $app->student?->institute?->name ?? 'Placement Institute',
+                            'startYear'      => '2022',
+                            'endYear'        => (string)($app->profile?->passing_year ?? $app->student?->passing_year ?? '2026'),
+                            'cgpa'           => (string)($app->profile?->cgpa ?? $app->student?->cgpa ?? '8.5'),
+                        ]
+                    ];
+                }
+
+                $photo = $app->student?->profile_photo;
+                $photoUrl = $photo ? (str_starts_with($photo, 'http') || str_starts_with($photo, 'data:') ? $photo : url('/storage/' . ltrim($photo, '/'))) : null;
+
+                $resumePath = $app->resume_path ?? $app->profile?->resume_path ?? $app->student?->resume_path;
+                $resumeUrl = $resumePath ? (str_starts_with($resumePath, 'http') ? $resumePath : url('/storage/' . ltrim($resumePath, '/'))) : null;
+
+                $careerProfile = [
+                    'personal' => [
+                        'fullName'          => $app->student?->user?->name ?? $app->student?->name ?? 'Candidate',
+                        'professionalTitle' => $app->profile?->professional_title ?? $app->profile?->profile_name ?? 'Software Engineer',
+                        'email'             => $app->student?->user?->email ?? $app->student?->email ?? '',
+                        'phone'             => $app->student?->mobile ?? $app->student?->phone ?? '',
+                        'location'          => $app->student?->address ?? 'Bengaluru, India',
+                        'github'            => $app->profile?->github ?? $app->student?->github ?? '',
+                        'linkedin'          => $app->profile?->linkedin ?? $app->student?->linkedin ?? '',
+                        'portfolio'         => $app->profile?->portfolio ?? $app->student?->portfolio ?? '',
+                        'photo'             => $photoUrl,
                     ],
-                    'appliedDate' => $app->created_at->format('M d, Y'),
-                    'status' => $app->status ?? 'pending',
-                    'resume_path' => $app->resume_path ? url('/storage/' . $app->resume_path) : null,
+                    'summary'        => $resumeContent['summary'] ?? $app->profile?->summary ?? 'Passionate candidate with strong analytical and programming capabilities.',
+                    'skills'         => $skillsData,
+                    'education'      => $educationData,
+                    'projects'       => $resumeContent['projects'] ?? [],
+                    'experience'     => $resumeContent['experience'] ?? [],
+                    'certifications' => $resumeContent['certifications'] ?? [],
+                ];
+
+                return [
+                    'id'            => $app->id,
+                    'job_id'        => $app->job_id,
+                    'jobTitle'      => $app->job?->title ?? 'Software Engineer',
+                    'student'       => [
+                        'id'          => $app->student?->id,
+                        'name'        => $app->student?->user?->name ?? 'Candidate',
+                        'email'       => $app->student?->user?->email,
+                        'phone'       => $app->student?->mobile,
+                        'mobile'      => $app->student?->mobile,
+                        'course'      => $app->profile?->course ?? $app->student?->course ?? 'B.Tech CS',
+                        'cgpa'        => $app->profile?->cgpa ?? $app->student?->cgpa ?? '8.5',
+                        'skills'      => $app->profile?->skills ?? $app->student?->skills ?? ['React', 'Node.js'],
+                        'target_role' => $app->profile?->professional_title ?? $app->profile?->profile_name ?? 'Candidate',
+                    ],
+                    'careerProfile' => $careerProfile,
+                    'resume'        => $careerProfile,
+                    'appliedDate'   => $app->created_at->format('M d, Y'),
+                    'status'        => $app->status ?? 'pending',
+                    'resume_path'   => $resumeUrl,
                 ];
             });
 
@@ -479,6 +586,78 @@ class CompanyController extends Controller
         return response()->json([
             'message' => 'Companies retrieved successfully.',
             'data' => $companies,
+        ]);
+    }
+
+    // ───────── PUT /api/company/change-password ─────────
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password'     => 'required|string|min:6',
+        ]);
+
+        $company = $request->user();
+
+        if (!$company || !($company instanceof Company)) {
+            $email = $request->input('email') ?? $request->input('hr_email');
+            if ($email) {
+                $company = Company::where('hr_email', $email)->first();
+            }
+            if (!$company) {
+                $company = Company::first();
+            }
+        }
+
+        if (!$company) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Company account not found.',
+            ], 404);
+        }
+
+        $currentPassword = $request->input('current_password');
+
+        // Check if existing password matches
+        if ($company->password && !Hash::check($currentPassword, $company->password)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Current password does not match our records.',
+            ], 422);
+        }
+
+        $company->password = Hash::make($request->input('new_password'));
+        $company->save();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Password updated successfully! 🔒',
+        ]);
+    }
+
+    // ───────── POST /api/company/forgot-password ─────────
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email'        => 'required|email',
+            'new_password' => 'required|string|min:6',
+        ]);
+
+        $company = Company::where('hr_email', trim($request->email))->first();
+
+        if (!$company) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'No company account found registered with email address "' . $request->email . '".',
+            ], 404);
+        }
+
+        $company->password = Hash::make($request->input('new_password'));
+        $company->save();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Password reset successfully! 🔑 You can now log in with your new password.',
         ]);
     }
 }
