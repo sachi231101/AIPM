@@ -55,7 +55,13 @@ export default function CompanyDashboard() {
   const selectedCount = applications.filter((a) => a.status === "hired" || a.status === "selected").length;
 
   const handleSaveJob = (newJob) => {
-    setJobs((prev) => [newJob, ...prev.filter((j) => j.id !== newJob.id)]);
+    if (!newJob || !newJob.id) {
+      companyService.getJobs().then((res) => {
+        if (res.data?.data) setJobs(res.data.data);
+      }).catch(() => {});
+      return;
+    }
+    setJobs((prev) => [newJob, ...prev.filter((j) => j && j.id !== newJob.id)]);
   };
 
   const handleStatusChange = async (appId, newStatus) => {

@@ -61,6 +61,10 @@ class StudentProfile extends Model
 
     public function calculateCompletion(): int
     {
+        if ($this->student) {
+            return $this->student->calculateProfileScore();
+        }
+
         $hasPersonalInfo = !empty($this->student?->email) || !empty($this->student?->mobile);
         $hasAcademic     = !empty($this->course) || !empty($this->branch) || !empty($this->batch);
         $hasResume       = !empty($this->resume_path) || $this->resumes()->exists();

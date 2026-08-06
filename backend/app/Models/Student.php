@@ -125,15 +125,88 @@ class Student extends Model
      */
     public function completionSections(): array
     {
-        $hasUploaded = filled($this->resume_path);
+        $profile = $this->getOrCreateDefaultProfile();
+        $hasUploaded = filled($profile?->resume_path) || filled($this->resume_path);
         $hasCreated  = \App\Models\StudentResume::where('student_id', $this->id)->exists();
 
         return [
-            'personal'  => filled($this->user?->email) && filled($this->dob) && filled($this->gender) && filled($this->address),
-            'academic'  => filled($this->course) && filled($this->branch) && filled($this->batch),
+            'personal'  => filled($this->user?->email) && filled($this->mobile),
+            'academic'  => filled($profile?->course ?? $this->course) || filled($profile?->branch ?? $this->branch),
             'resume'    => $hasUploaded || $hasCreated,
-            'skills'    => !empty($this->skills),
+            'skills'    => !empty($profile?->skills ?? $this->skills),
         ];
+    }
+
+    /**
+     * Calculate dynamic profile completion percentage (0-100).
+     */
+    public function calculateProfileScore(): int
+    {
+        $profile = $this->getOrCreateDefaultProfile();
+
+        $score = 0;
+
+        // 1. Basic & Personal Info (25%)
+        $hasName = filled($this->user?->name);
+        $hasEmail = filled($this->user?->email);
+        $hasMobile = filled($this->mobile);
+        $hasDob = filled($this->dob);
+        $hasGenderOrAddress = filled($this->gender) || filled($this->address);
+
+        if ($hasName) $score += 5;
+        if ($hasEmail) $score += 5;
+        if ($hasMobile) $score += 5;
+        if ($hasDob) $score += 5;
+        if ($hasGenderOrAddress) $score += 5;
+
+        // 2. Academics & Education (25%)
+        $course = $profile?->course ?? $this->course;
+        $branch = $profile?->branch ?? $this->branch;
+        $cgpa = $profile?->cgpa ?? $this->cgpa;
+        $batch = $profile?->batch ?? $this->batch;
+
+        if (filled($course)) $score += 10;
+        if (filled($branch)) $score += 10;
+        if (filled($cgpa) || filled($batch)) $score += 5;
+
+        // 3. Career Details & Summary (20%)
+        if ($profile) {
+            if (filled($profile->professional_title)) $score += 5;
+            if (filled($profile->target_role)) $score += 5;
+            if (filled($profile->summary) && strlen(trim($profile->summary)) > 5) $score += 10;
+        }
+
+        // 4. Skills & Links (20%)
+        $skills = $profile?->skills ?? $this->skills ?? [];
+        $skillsArr = is_array($skills) ? $skills : [];
+        if (count($skillsArr) >= 3) $score += 10;
+        elseif (count($skillsArr) > 0) $score += 5;
+
+        $hasLink = filled($profile?->linkedin ?? $this->linkedin) ||
+                   filled($profile?->github ?? $this->github) ||
+                   filled($profile?->portfolio ?? $this->portfolio);
+        if ($hasLink) $score += 10;
+
+        // 5. Photo & Resume (10%)
+        $hasPhoto = filled($this->profile_photo);
+        $hasResume = filled($profile?->resume_path) || filled($this->resume_path) ||
+                     \App\Models\StudentResume::where('student_id', $this->id)->exists();
+
+        if ($hasPhoto) $score += 5;
+        if ($hasResume) $score += 5;
+
+        $finalScore = min(100, max(0, $score));
+
+        if ($this->profile_completion !== $finalScore) {
+            $this->profile_completion = $finalScore;
+            $this->saveQuietly();
+        }
+
+        if ($profile && $profile->profile_completion !== $finalScore) {
+            $profile->update(['profile_completion' => $finalScore]);
+        }
+
+        return $finalScore;
     }
 
     /**
@@ -141,9 +214,6 @@ class Student extends Model
      */
     public function recalculateCompletion(): void
     {
-        $sections  = $this->completionSections();
-        $completed = count(array_filter($sections));
-        $this->profile_completion = $completed * 25;
-        $this->saveQuietly();
+        $this->calculateProfileScore();
     }
 }

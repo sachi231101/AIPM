@@ -21,6 +21,10 @@ export default function Dashboard() {
   const { data: appsRes, loading: loadingApps } = useCachedData("student_applications", applicationService.getMyApplications);
 
   const student = profileRes?.data || null;
+
+  useEffect(() => {
+    setImgError(false);
+  }, [student?.profile_photo, student?.profilePhoto]);
   const rawApps = appsRes ? (Array.isArray(appsRes.data) ? appsRes.data : (appsRes.data?.data || [])) : [];
   const rawJobs = jobsRes ? (Array.isArray(jobsRes.data) ? jobsRes.data : (jobsRes.data?.data || [])) : [];
 
@@ -70,7 +74,7 @@ export default function Dashboard() {
     skills: !!(student.skills && student.skills.length > 0)
   };
 
-  const profileCompletion = getOverallProfileScore(student);
+  const profileCompletion = getOverallProfileScore(student, student?.active_profile_id);
   student.profileCompletion = profileCompletion;
 
   const recentJobs = availableJobs.slice(0, 3);
@@ -194,6 +198,49 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* WhatsApp Community Job Updates Card */}
+      <div className="card border-0 shadow-sm mb-4 text-white overflow-hidden" style={{ background: "linear-gradient(135deg, #075E54 0%, #128C7E 50%, #25D366 100%)", borderRadius: "16px" }}>
+        <div className="card-body p-4">
+          <div className="row align-items-center g-4">
+            <div className="col-md-8">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <span className="badge bg-white text-success fw-bold px-3 py-2 shadow-sm rounded-pill d-inline-flex align-items-center gap-1" style={{ fontSize: "0.85rem" }}>
+                  <i className="bi bi-whatsapp fs-6 text-success"></i> OFFICIAL COMMUNITY
+                </span>
+                <span className="badge bg-dark bg-opacity-25 text-white fw-medium rounded-pill px-2.5 py-1">Instant Job Alerts</span>
+              </div>
+              <h3 className="fw-bold text-white mb-2">Join Job Updates WhatsApp Group</h3>
+              <p className="text-white opacity-90 mb-3" style={{ fontSize: "0.95rem", lineHeight: "1.5" }}>
+                Get instant placement drive notifications, daily walk-in updates, and urgent hiring alerts directly on your phone!
+              </p>
+              <div className="d-flex flex-wrap align-items-center">
+                <a
+                  href="https://chat.whatsapp.com/JzQLdJvoZjz243LaztjHwS"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-light text-success fw-bold btn-lg shadow-sm px-4 py-2-5 rounded-3 d-inline-flex align-items-center gap-2"
+                >
+                  <i className="bi bi-whatsapp fs-5 text-success"></i> Click to Join WhatsApp Group
+                </a>
+              </div>
+            </div>
+            <div className="col-md-4 text-center">
+              <div className="bg-white p-1  d-inline-block border border-2 border-white">
+                <img
+                  src="/whatsapp-qr.jpg"
+                  alt="WhatsApp Group QR Code"
+                  className="img-fluid rounded-2"
+                  style={{ width: 140, height: 140, objectFit: "contain" }}
+                />
+                <div className="mt-2 text-dark fw-semibold small d-flex align-items-center justify-content-center gap-1">
+                  <i className="bi bi-qr-code-scan text-success fs-6"></i> Scan QR code to join
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="row g-4">
         {/* Left: Checklist + Recent Jobs */}
         <div className="col-lg-8">
@@ -223,24 +270,6 @@ export default function Dashboard() {
                 </div>
                 <Link to="/student/profile" className="btn btn-outline-primary btn-sm">Edit Profile</Link>
               </div>
-
-              <h6 className="fw-bold mb-3 small text-muted text-uppercase" style={{ letterSpacing: "0.05em" }}>Profile Checklist</h6>
-              <div className="row g-2 mb-4">
-                {[
-                  { label: "Personal Information", completed: sections.personal },
-                  { label: "Academic Information", completed: sections.academic },
-                  { label: "Resume Upload", completed: sections.resume },
-                  { label: "Skills & Expertise", completed: sections.skills }
-                ].map((item, i) => (
-                  <div key={i} className="col-md-6">
-                    <div className="d-flex align-items-center gap-2 p-2 rounded bg-light border border-light">
-                      <i className={`bi ${item.completed ? "bi-check-circle-fill text-success" : "bi-x-circle-fill text-danger"} fs-5`}></i>
-                      <span className="small text-muted">{item.label}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
               <div className="d-flex justify-content-between align-items-center mb-1">
                 <small className="fw-semibold">Overall Progress</small>
                 <small className="text-primary fw-bold">{student.profileCompletion}%</small>

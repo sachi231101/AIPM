@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { studentService } from "../../../services/api";
 import { useCachedData } from "../../../hooks/useCachedData";
+import { getOverallProfileScore } from "../../../utils/resumeStorage";
 
 export default function Students() {
   const [search, setSearch] = useState("");
@@ -179,6 +180,7 @@ export default function Students() {
                   filtered.map((student, i) => {
                     const status = student.approval_status || student.approvalStatus || "approved";
                     const hasResume = student.hasCreated || student.hasUploaded || (student.resumeUrl && student.resumeUrl !== "#");
+                    const completionScore = student.profileCompletion || student.profile_completion || getOverallProfileScore(student);
 
                     return (
                       <tr key={student.id || i}>
@@ -198,11 +200,11 @@ export default function Students() {
                           <div className="d-flex align-items-center gap-2">
                             <div className="progress flex-grow-1" style={{ height: 6, width: 60 }}>
                               <div
-                                className={`progress-bar ${student.profileCompletion >= 75 ? "bg-success" : "bg-primary"}`}
-                                style={{ width: `${student.profileCompletion || student.profile_completion || 0}%` }}
+                                className={`progress-bar ${completionScore >= 75 ? "bg-success" : "bg-primary"}`}
+                                style={{ width: `${completionScore}%` }}
                               ></div>
                             </div>
-                            <small className="fw-semibold text-muted">{student.profileCompletion || student.profile_completion || 0}%</small>
+                            <small className="fw-semibold text-muted">{completionScore}%</small>
                           </div>
                         </td>
                         <td>
@@ -323,10 +325,17 @@ export default function Students() {
                       )}
                     </div>
 
-                    <div className="progress mb-1" style={{ height: 8 }}>
-                      <div className="progress-bar bg-primary" style={{ width: `${selectedStudent.profileCompletion || selectedStudent.profile_completion || 0}%` }}></div>
-                    </div>
-                    <small className="text-muted">{selectedStudent.profileCompletion || selectedStudent.profile_completion || 0}% Complete</small>
+                    {(() => {
+                      const selectedScore = selectedStudent.profileCompletion || selectedStudent.profile_completion || getOverallProfileScore(selectedStudent);
+                      return (
+                        <>
+                          <div className="progress mb-1" style={{ height: 8 }}>
+                            <div className="progress-bar bg-primary" style={{ width: `${selectedScore}%` }}></div>
+                          </div>
+                          <small className="text-muted">{selectedScore}% Complete</small>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="col-md-8">

@@ -6,16 +6,16 @@ import { clearCache } from "../../hooks/useCachedData";
 export default function PostJobModal({ initialData, onClose, onSave }) {
   const [formData, setFormData] = useState({
     title: "",
-    location: "Bengaluru, Karnataka",
+    location: "",
     employmentType: "Full Time",
-    experience: "0-2 Years (Freshers Allowed)",
-    salary: "₹6,00,000 - ₹9,50,000 / annum",
-    vacancies: 5,
-    deadline: "2026-08-30",
-    skills: "React, Node.js, JavaScript, MySQL, HTML, CSS",
-    eligibleCourses: "B.Tech, BCA, MCA, M.Tech",
-    description: "We are seeking motivated Software Engineers to join our dynamic product development team.",
-    responsibilities: "• Develop high quality frontend & backend features\n• Collaborate with product managers & designers\n• Write clean, scalable, maintainable code\n• Participate in code reviews and agile sprints",
+    experience: "",
+    salary: "",
+    vacancies: "",
+    deadline: "",
+    skills: "",
+    eligibleCourses: "",
+    description: "",
+    responsibilities: "",
     status: "published",
   });
   const [loading, setLoading] = useState(false);
@@ -24,16 +24,16 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
     if (initialData) {
       setFormData({
         title: initialData.title || "",
-        location: initialData.location || "Bengaluru",
+        location: initialData.location || "",
         employmentType: initialData.employmentType || "Full Time",
-        experience: initialData.experience || "0-2 Years",
+        experience: initialData.experience || "",
         salary: initialData.salary || "",
-        vacancies: initialData.vacancies || initialData.openings || 1,
+        vacancies: initialData.vacancies || initialData.openings || "",
         deadline: initialData.deadline || initialData.last_date || "",
         skills: Array.isArray(initialData.skills) ? initialData.skills.join(", ") : (initialData.skills || ""),
         eligibleCourses: Array.isArray(initialData.eligibleCourses) 
           ? initialData.eligibleCourses.join(", ") 
-          : (initialData.eligibility || initialData.eligibleCourses || "B.Tech, BCA, MCA"),
+          : (initialData.eligibility || initialData.eligibleCourses || ""),
         description: initialData.description || "",
         responsibilities: initialData.responsibilities || "",
         status: initialData.status || "published",
@@ -45,56 +45,50 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
     setFormData((prev) => ({ ...prev, [field]: val }));
   };
 
-  const handleSave = async (targetStatus) => {
-    if (!formData.title.trim()) {
-      toast.error("Please enter a Job Title.");
-      return;
-    }
-    if (!formData.location.trim()) {
-      toast.error("Please enter Job Location.");
+  const handleSave = async (targetStatus, e) => {
+    if (e) e.preventDefault();
+
+    // Natively refer and focus the first empty required input field without showing pop-up toast notifications
+    const form = document.getElementById("post-job-form");
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
       return;
     }
 
     const payload = {
       title: formData.title.trim(),
       location: formData.location.trim(),
-      employmentType: formData.employmentType,
       employment_type: formData.employmentType,
-      experience: formData.experience,
-      salary: formData.salary.trim() || "Not Disclosed",
-      vacancies: parseInt(formData.vacancies) || 1,
-      openings: parseInt(formData.vacancies) || 1,
-      last_date: formData.deadline,
-      skills: formData.skills.split(",").map((s) => s.trim()).filter(Boolean),
-      eligibleCourses: formData.eligibleCourses.split(",").map((c) => c.trim()).filter(Boolean),
-      eligibility: formData.eligibleCourses,
-      description: formData.description,
-      responsibilities: formData.responsibilities,
-      status: targetStatus,
+      experience: formData.experience.trim(),
+      salary: formData.salary.trim(),
+      vacancies: Number(formData.vacancies) || 1,
+      last_date: formData.deadline || null,
+      skills: formData.skills ? formData.skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      eligible_courses: formData.eligibleCourses ? formData.eligibleCourses.split(",").map((c) => c.trim()).filter(Boolean) : [],
+      description: formData.description.trim(),
+      responsibilities: formData.responsibilities.trim(),
+      status: targetStatus || "published",
     };
 
+    setLoading(true);
     try {
-      setLoading(true);
       let res;
-      if (initialData?.id && !String(initialData.id).startsWith("job_")) {
+      if (initialData?.id) {
         res = await companyService.updateJob(initialData.id, payload);
+        toast.success(`Job updated successfully! 🚀`);
       } else {
         res = await companyService.createJob(payload);
+        toast.success(`Job created and submitted for admin review! 🚀`);
       }
-
-      const savedJob = res.data?.data || payload;
-      clearCache("public_jobs");
+      const savedJob = res?.data?.data || payload;
+      clearCache("company_jobs");
       clearCache("admin_jobs");
-      if (initialData?.id) {
-        clearCache(`job_details_${initialData.id}`);
-      }
-
-      onSave(savedJob);
-      toast.success(targetStatus === "draft" ? "Job draft saved successfully!" : "Job submitted to Admin for approval! 🚀");
-      onClose();
+      clearCache("public_jobs");
+      onSave?.(savedJob);
+      onClose?.();
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to save job. Please try again.");
+      console.error("[PostJobModal Error]", err);
+      toast.error(err.response?.data?.message || "Failed to save job posting.");
     } finally {
       setLoading(false);
     }
@@ -120,7 +114,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
               </span>
             </div>
 
-            <form onSubmit={(e) => e.preventDefault()}>
+            <form id="post-job-form" onSubmit={(e) => handleSave("pending", e)}>
               <div className="row g-3">
                 {/* Job Title */}
                 <div className="col-md-8">
@@ -156,7 +150,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="e.g. Bengaluru, Karnataka (Hybrid)"
+                    placeholder="e.g. Bengaluru, Karnataka"
                     value={formData.location}
                     onChange={(e) => handleChange("location", e.target.value)}
                     required
@@ -165,13 +159,14 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
 
                 {/* Experience */}
                 <div className="col-md-6">
-                  <label className="form-label small fw-semibold text-dark">Experience Required</label>
+                  <label className="form-label small fw-semibold text-dark">Experience Required <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="e.g. 0-1 Years / Freshers"
+                    placeholder="e.g. 0-2 Years (Freshers Allowed)"
                     value={formData.experience}
                     onChange={(e) => handleChange("experience", e.target.value)}
+                    required
                   />
                 </div>
 
@@ -181,7 +176,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="e.g. ₹6.5 LPA - ₹9 LPA"
+                    placeholder="e.g. ₹6,00,000 - ₹9,50,000 / annum"
                     value={formData.salary}
                     onChange={(e) => handleChange("salary", e.target.value)}
                   />
@@ -194,6 +189,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                     type="number"
                     min="1"
                     className="form-control"
+                    placeholder="e.g. 5"
                     value={formData.vacancies}
                     onChange={(e) => handleChange("vacancies", e.target.value)}
                   />
@@ -201,48 +197,52 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
 
                 {/* Application Deadline */}
                 <div className="col-md-4">
-                  <label className="form-label small fw-semibold text-dark">Application Deadline</label>
+                  <label className="form-label small fw-semibold text-dark">Application Deadline <span className="text-danger">*</span></label>
                   <input
                     type="date"
                     className="form-control"
                     value={formData.deadline}
                     onChange={(e) => handleChange("deadline", e.target.value)}
+                    required
                   />
                 </div>
 
                 {/* Required Skills */}
                 <div className="col-md-6">
-                  <label className="form-label small fw-semibold text-dark">Required Skills (Comma-separated)</label>
+                  <label className="form-label small fw-semibold text-dark">Required Skills (Comma-separated) <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="React, Node.js, SQL, JavaScript"
+                    placeholder="e.g. React, Node.js, JavaScript, MySQL, HTML, CSS"
                     value={formData.skills}
                     onChange={(e) => handleChange("skills", e.target.value)}
+                    required
                   />
                 </div>
 
                 {/* Eligible Courses */}
                 <div className="col-md-6">
-                  <label className="form-label small fw-semibold text-dark">Eligible Courses / Streams</label>
+                  <label className="form-label small fw-semibold text-dark">Eligible Courses / Streams <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="B.Tech, BCA, MCA, M.Tech, MBA"
+                    placeholder="e.g. B.Tech, BCA, MCA, M.Tech"
                     value={formData.eligibleCourses}
                     onChange={(e) => handleChange("eligibleCourses", e.target.value)}
+                    required
                   />
                 </div>
 
                 {/* Job Description */}
                 <div className="col-12">
-                  <label className="form-label small fw-semibold text-dark">Job Description</label>
+                  <label className="form-label small fw-semibold text-dark">Job Description <span className="text-danger">*</span></label>
                   <textarea
                     className="form-control"
                     rows={3}
-                    placeholder="Brief overview of the opportunity..."
+                    placeholder="e.g. We are seeking motivated Software Engineers to join our dynamic product development team..."
                     value={formData.description}
                     onChange={(e) => handleChange("description", e.target.value)}
+                    required
                   ></textarea>
                 </div>
 
@@ -252,7 +252,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                   <textarea
                     className="form-control"
                     rows={3}
-                    placeholder="List key bullet points of what the candidate will do..."
+                    placeholder="e.g. Develop high quality frontend & backend features, Collaborate with team members, Write clean code..."
                     value={formData.responsibilities}
                     onChange={(e) => handleChange("responsibilities", e.target.value)}
                   ></textarea>

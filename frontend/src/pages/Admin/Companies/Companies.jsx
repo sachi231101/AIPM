@@ -8,9 +8,6 @@ import { toast } from "react-toastify";
 export default function Companies() {
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ company_name: "", hr_email: "", message: "" });
-  const [inviteSubmitting, setInviteSubmitting] = useState(false);
 
   const companyLoginUrl = `${window.location.origin}/company`;
 
@@ -43,19 +40,19 @@ export default function Companies() {
     c.industry.toLowerCase().includes(search.toLowerCase())
   );
 
-  const copyLoginLink = (companyName = "") => {
+  const copyLoginLink = () => {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(companyLoginUrl)
         .then(() => {
-          toast.success(companyName ? `Company login link copied for ${companyName}! 📋` : "Company login link copied to clipboard! 📋");
+          toast.success("Company portal link copied to clipboard! 📋");
         })
-        .catch(() => fallbackCopy(companyLoginUrl, companyName));
+        .catch(() => fallbackCopy(companyLoginUrl));
     } else {
-      fallbackCopy(companyLoginUrl, companyName);
+      fallbackCopy(companyLoginUrl);
     }
   };
 
-  const fallbackCopy = (text, companyName = "") => {
+  const fallbackCopy = (text) => {
     try {
       const textArea = document.createElement("textarea");
       textArea.value = text;
@@ -67,35 +64,9 @@ export default function Companies() {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      toast.success(companyName ? `Company login link copied for ${companyName}! 📋` : "Company login link copied to clipboard! 📋");
+      toast.success("Company portal link copied to clipboard! 📋");
     } catch (err) {
       toast.error("Failed to copy link.");
-    }
-  };
-
-  const handleSendInvite = async (e) => {
-    e.preventDefault();
-    if (!inviteForm.hr_email) {
-      toast.error("Please enter HR Email address.");
-      return;
-    }
-    setInviteSubmitting(true);
-    try {
-      if (companyService.inviteCompany) {
-        await companyService.inviteCompany(inviteForm);
-      }
-      copyLoginLink(inviteForm.company_name || inviteForm.hr_email);
-      toast.success(`Invitation generated & link copied for ${inviteForm.hr_email}! 🚀`);
-      setShowInviteModal(false);
-      setInviteForm({ company_name: "", hr_email: "", message: "" });
-    } catch (err) {
-      // Fallback copy even if server call fails
-      copyLoginLink(inviteForm.company_name || inviteForm.hr_email);
-      toast.success(`Login link copied to clipboard! 🚀`);
-      setShowInviteModal(false);
-      setInviteForm({ company_name: "", hr_email: "", message: "" });
-    } finally {
-      setInviteSubmitting(false);
     }
   };
 
@@ -121,8 +92,8 @@ export default function Companies() {
             </div>
             <div className="d-flex align-items-center gap-2">
               <span className="badge bg-primary px-3 py-2">{filtered.length} Companies</span>
-              <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={() => setShowInviteModal(true)}>
-                <i className="bi bi-send-fill"></i> Invite Company
+              <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={copyLoginLink}>
+                <i className="bi bi-link-45deg"></i> Invite Company
               </button>
             </div>
           </div>
@@ -171,14 +142,9 @@ export default function Companies() {
                       <td><span className="fw-bold text-primary">{company.openings}</span></td>
                       <td><span className="badge bg-success bg-opacity-10 text-success">{company.status}</span></td>
                       <td className="text-end px-4">
-                        <div className="btn-group">
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedCompany(company)}>
-                            <i className="bi bi-eye me-1"></i>View Details
-                          </button>
-                          <button className="btn btn-sm btn-outline-secondary" onClick={() => copyLoginLink(company.name)} title="Copy Company Login Link">
-                            <i className="bi bi-link-45deg me-1"></i>Copy Link
-                          </button>
-                        </div>
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedCompany(company)}>
+                          <i className="bi bi-eye me-1"></i>View Details
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -192,81 +158,6 @@ export default function Companies() {
           </div>
         </div>
       </div>
-
-      {/* Invite Company Modal */}
-      {showInviteModal && (
-        <div className="modal show d-block" style={{ background: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg">
-              <div className="modal-header border-0 bg-primary text-white">
-                <h6 className="modal-title fw-bold">
-                  <i className="bi bi-send me-2"></i>Invite Company
-                </h6>
-                <button className="btn-close btn-close-white" onClick={() => setShowInviteModal(false)}></button>
-              </div>
-              <form onSubmit={handleSendInvite}>
-                <div className="modal-body p-4">
-                  <p className="text-muted small mb-3">
-                    Invite a recruiter or company to join the placement portal. Copying the login link will copy the portal access link to your clipboard.
-                  </p>
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold">Company Name</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      placeholder="e.g. Acme Corp"
-                      value={inviteForm.company_name}
-                      onChange={(e) => setInviteForm({ ...inviteForm, company_name: e.target.value })}
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold">HR / Contact Email <span className="text-danger">*</span></label>
-                    <input
-                      type="email"
-                      required
-                      className="form-control form-control-sm"
-                      placeholder="hr@acme.com"
-                      value={inviteForm.hr_email}
-                      onChange={(e) => setInviteForm({ ...inviteForm, hr_email: e.target.value })}
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold">Personalized Note (Optional)</label>
-                    <textarea
-                      className="form-control form-control-sm"
-                      rows={2}
-                      placeholder="Add a message for the company recruiter..."
-                      value={inviteForm.message}
-                      onChange={(e) => setInviteForm({ ...inviteForm, message: e.target.value })}
-                    />
-                  </div>
-                  <div className="mb-2">
-                    <label className="form-label small fw-semibold text-muted">Company Login Link</label>
-                    <div className="input-group input-group-sm">
-                      <input type="text" className="form-control bg-light" value={companyLoginUrl} readOnly />
-                      <button type="button" className="btn btn-outline-primary" onClick={() => copyLoginLink()}>
-                        <i className="bi bi-clipboard me-1"></i>Copy Link
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer border-0">
-                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowInviteModal(false)}>
-                    Cancel
-                  </button>
-                  <button type="button" className="btn btn-outline-primary btn-sm me-2" onClick={() => copyLoginLink(inviteForm.company_name || inviteForm.hr_email)}>
-                    <i className="bi bi-link-45deg me-1"></i>Copy Login Link
-                  </button>
-                  <button type="submit" className="btn btn-primary btn-sm" disabled={inviteSubmitting}>
-                    {inviteSubmitting ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-send me-1"></i>}
-                    Send Invite & Copy Link
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* View Company Modal */}
       {selectedCompany && (
@@ -308,8 +199,8 @@ export default function Companies() {
                 </div>
               </div>
               <div className="modal-footer border-0">
-                <button className="btn btn-outline-primary me-auto btn-sm" onClick={() => copyLoginLink(selectedCompany.name)}>
-                  <i className="bi bi-link-45deg me-1"></i>Copy Login Link
+                <button className="btn btn-outline-primary me-auto btn-sm" onClick={() => copyLoginLink()}>
+                  <i className="bi bi-link-45deg me-1"></i>Copy Portal Link
                 </button>
                 <button className="btn btn-outline-secondary btn-sm" onClick={() => setSelectedCompany(null)}>Close</button>
               </div>
@@ -320,4 +211,5 @@ export default function Companies() {
     </div>
   );
 }
+
 

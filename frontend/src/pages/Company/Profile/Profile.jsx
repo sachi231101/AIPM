@@ -26,10 +26,11 @@ export default function CompanyProfile() {
 
   const getFullLogoUrl = (url) => {
     if (!url) return "";
-    if (url.startsWith("data:") || url.startsWith("http")) return url;
-    const apiBase = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
-    const storageBase = apiBase.replace(/\/api\/?$/, "");
-    return `${storageBase}/storage/${url.replace(/^\//, "")}`;
+    if (typeof url === "string" && url.includes("/storage/")) {
+      return `/storage/${url.split("/storage/")[1]}`;
+    }
+    if (url.startsWith("data:") || url.startsWith("http") || url.startsWith("/")) return url;
+    return `/storage/${url.replace(/^\//, "")}`;
   };
 
   useEffect(() => {
