@@ -8,15 +8,109 @@ use App\Models\Company;
 use App\Models\Notification;
 use App\Models\PlacementJob;
 use App\Models\Application;
+use App\Models\Otp;
+use App\Mail\CompanyOtpMail;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
-    // ───────── POST /api/company/register ─────────
-    public function register(Request $request): JsonResponse
+    // ───────── HELPER METHODS FOR EMAIL OTP ─────────
+
+    protected function sendEmailOtp(string $email, string $actionType = 'login', string $companyName = ''): array
+    {
+        $email = strtolower(trim($email));
+
+        // Rate Limit: Check if OTP was sent in the last 30 seconds
+        $recentOtp = Otp::where('email', $email)
+            ->where('created_at', '>=', now()->subSeconds(30))
+            ->first();
+
+        if ($recentOtp) {
+            $secondsLeft = 30 - now()->diffInSeconds($recentOtp->created_at);
+            throw new \Exception("Please wait {$secondsLeft} seconds before requesting a new verification code.", 429);
+        }
+
+        // Invalidate previous unverified OTPs for this email
+        Otp::where('email', $email)->where('verified', false)->delete();
+
+        // Generate 6-digit OTP
+        $rawOtp = sprintf('%06d', random_int(100000, 999999));
+
+        // Store in DB
+        Otp::create([
+            'email'      => $email,
+            'otp'        => Hash::make($rawOtp),
+            'expires_at' => now()->addMinutes(10),
+            'attempts'   => 0,
+            'verified'   => false,
+        ]);
+
+        // Send Email
+        try {
+            Mail::to($email)->send(new CompanyOtpMail($rawOtp, $actionType, $companyName));
+        } catch (\Throwable $e) {
+            Log::error("Failed to send OTP mail to {$email}: " . $e->getMessage());
+        }
+
+        return [
+            'status' => 'success',
+            'message' => "Verification code sent to your HR email address {$email}.",
+            'email' => $email,
+        ];
+    }
+
+    protected function verifyEmailOtpCode(string $email, string $inputOtp): void
+    {
+        $email = strtolower(trim($email));
+        $inputOtp = trim($inputOtp);
+
+        // Clean up expired OTPs
+        Otp::where('expires_at', '<', now())->delete();
+
+        $otpRecord = Otp::where('email', $email)
+            ->where('verified', false)
+            ->latest()
+            ->first();
+
+        if (!$otpRecord) {
+            throw new \Exception("Invalid or expired verification code. Please request a new code.", 422);
+        }
+
+        if ($otpRecord->isExpired()) {
+            $otpRecord->delete();
+            throw new \Exception("Verification code has expired. Please request a new code.", 422);
+        }
+
+        if ($otpRecord->attempts >= 5) {
+            $otpRecord->delete();
+            throw new \Exception("Too many invalid attempts. This code has been invalidated. Please request a new code.", 422);
+        }
+
+        if (!Hash::check($inputOtp, $otpRecord->otp)) {
+            $otpRecord->increment('attempts');
+            $remaining = 5 - $otpRecord->attempts;
+
+            if ($remaining <= 0) {
+                $otpRecord->delete();
+                throw new \Exception("Invalid verification code. Maximum attempts reached. Please request a new code.", 422);
+            }
+
+            throw new \Exception("Invalid verification code. You have {$remaining} attempt(s) remaining.", 422);
+        }
+
+        // Mark OTP as verified and delete
+        $otpRecord->update(['verified' => true]);
+        Otp::where('email', $email)->delete();
+    }
+
+    // ───────── POST /api/company/register/send-otp ─────────
+    public function registerSendOtp(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'company_name' => 'required|string|max:255',
@@ -25,23 +119,69 @@ class CompanyController extends Controller
             'password' => 'required|string|min:6',
             'industry' => 'nullable|string',
             'phone' => 'nullable|string',
-            'website' => 'nullable|string',
+            'website' => 'required|string|max:255',
+        ], [
+            'hr_email.unique' => 'This HR Email address is already registered. Please sign in.',
+            'website.required' => 'Company Website is required.',
         ]);
 
+        $email = strtolower(trim($validated['hr_email']));
+
+        // Cache registration payload for 15 minutes
+        Cache::put('reg_pending_company_' . $email, $validated, 900);
+
+        try {
+            $result = $this->sendEmailOtp($email, 'registration', $validated['company_name']);
+            return response()->json($result);
+        } catch (\Exception $e) {
+            Cache::forget('reg_pending_company_' . $email);
+            $code = is_numeric($e->getCode()) && $e->getCode() >= 400 && $e->getCode() < 600 ? (int)$e->getCode() : 400;
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $code);
+        }
+    }
+
+    // ───────── POST /api/company/register/verify-otp ─────────
+    public function registerVerifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp'   => 'required|string|size:6',
+        ]);
+
+        $email = strtolower(trim($request->email));
+
+        $regData = Cache::get('reg_pending_company_' . $email);
+        if (!$regData) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Registration session expired. Please start registration again.'
+            ], 422);
+        }
+
+        try {
+            $this->verifyEmailOtpCode($email, $request->otp);
+        } catch (\Exception $e) {
+            $code = is_numeric($e->getCode()) && $e->getCode() >= 400 && $e->getCode() < 600 ? (int)$e->getCode() : 422;
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $code);
+        }
+
+        // Create the company record
         $company = Company::create([
-            'name' => $validated['company_name'],
-            'hr_name' => $validated['hr_name'],
-            'hr_email' => $validated['hr_email'],
-            'phone' => $validated['phone'] ?? null,
-            'website' => $validated['website'] ?? null,
-            'industry' => $validated['industry'] ?? 'Technology & Software',
-            'password' => Hash::make($validated['password']),
+            'name' => $regData['company_name'],
+            'hr_name' => $regData['hr_name'],
+            'hr_email' => $regData['hr_email'],
+            'phone' => $regData['phone'] ?? null,
+            'website' => $regData['website'] ?? null,
+            'industry' => $regData['industry'] ?? 'Technology & Software',
+            'password' => Hash::make($regData['password']),
             'status' => 'approved',
         ]);
 
+        Cache::forget('reg_pending_company_' . $email);
+
         $token = $company->createToken('company_token')->plainTextToken;
 
-        // Notify Admin of new company registration
+        // Notify Admin
         Notification::create([
             'type' => 'new_company',
             'title' => 'New Company Registered',
@@ -51,7 +191,7 @@ class CompanyController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Company registration successful.',
+            'message' => 'Company registration & email verification successful.',
             'data' => [
                 'company' => $company,
                 'user' => [
@@ -70,6 +210,35 @@ class CompanyController extends Controller
         ], 201);
     }
 
+    // ───────── POST /api/company/register/resend-otp ─────────
+    public function registerResendOtp(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email']);
+        $email = strtolower(trim($request->email));
+
+        $regData = Cache::get('reg_pending_company_' . $email);
+        if (!$regData) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Registration session expired. Please start registration again.'
+            ], 422);
+        }
+
+        try {
+            $result = $this->sendEmailOtp($email, 'registration', $regData['company_name'] ?? '');
+            return response()->json($result);
+        } catch (\Exception $e) {
+            $code = is_numeric($e->getCode()) && $e->getCode() >= 400 && $e->getCode() < 600 ? (int)$e->getCode() : 400;
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $code);
+        }
+    }
+
+    // ───────── POST /api/company/register (Legacy Direct Fallback) ─────────
+    public function register(Request $request): JsonResponse
+    {
+        return $this->registerSendOtp($request);
+    }
+
     // ───────── POST /api/company/login ─────────
     public function login(Request $request): JsonResponse
     {
@@ -78,7 +247,8 @@ class CompanyController extends Controller
             'password' => 'required|string',
         ]);
 
-        $company = Company::where('hr_email', $validated['email'])->first();
+        $email = strtolower(trim($validated['email']));
+        $company = Company::where('hr_email', $email)->first();
 
         if (!$company || !Hash::check($validated['password'], $company->password)) {
             return response()->json([
@@ -261,12 +431,17 @@ class CompanyController extends Controller
         $companyId = ($user && $user instanceof Company) ? $user->id : ($request->input('company_id') ?? Company::first()?->id ?? 1);
         $company = Company::find($companyId);
 
+        $eligibilityInput = $request->input('eligibility') ?? $request->input('eligibleCourses') ?? $request->input('eligible_courses');
+        $eligibilityVal = $eligibilityInput
+            ? (is_array($eligibilityInput) ? implode(', ', array_filter(array_map('trim', $eligibilityInput))) : trim($eligibilityInput))
+            : 'B.Tech, BCA, MCA';
+
         $job = PlacementJob::create([
             'company_id'       => $companyId,
             'title'            => $validated['title'],
             'description'      => $validated['description'] ?? '',
             'responsibilities' => $validated['responsibilities'] ?? $request->input('responsibilities') ?? '',
-            'eligibility'      => $request->input('eligibleCourses') ? (is_array($request->input('eligibleCourses')) ? implode(', ', $request->input('eligibleCourses')) : $request->input('eligibleCourses')) : 'B.Tech, BCA, MCA',
+            'eligibility'      => $eligibilityVal,
             'skills'           => $validated['skills'] ?? [],
             'experience'       => $validated['experience'] ?? '0-2 Years',
             'salary'           => $validated['salary'] ?? 'Not Disclosed',
@@ -304,17 +479,6 @@ class CompanyController extends Controller
         }
         $job = $jobQuery->findOrFail($id);
 
-        $updateData = $request->only([
-            'title',
-            'description',
-            'eligibility',
-            'skills',
-            'experience',
-            'salary',
-            'location',
-            'openings',
-            'last_date'
-        ]);
         $updateData = [];
 
         if ($request->has('title'))            $updateData['title'] = $request->input('title');
@@ -343,13 +507,10 @@ class CompanyController extends Controller
             $updateData['openings'] = (int) $request->input('vacancies');
         }
 
-        // Handle eligibility / eligibleCourses mapping
-        if ($request->has('eligibility')) {
-            $el = $request->input('eligibility');
-            $updateData['eligibility'] = is_array($el) ? implode(', ', $el) : $el;
-        } elseif ($request->has('eligibleCourses')) {
-            $ec = $request->input('eligibleCourses');
-            $updateData['eligibility'] = is_array($ec) ? implode(', ', $ec) : $ec;
+        // Handle eligibility / eligibleCourses / eligible_courses mapping
+        if ($request->has('eligibility') || $request->has('eligibleCourses') || $request->has('eligible_courses')) {
+            $el = $request->input('eligibility') ?? $request->input('eligibleCourses') ?? $request->input('eligible_courses');
+            $updateData['eligibility'] = is_array($el) ? implode(', ', array_filter(array_map('trim', $el))) : trim($el);
         }
 
         $requestedStatus = $request->input('status');
@@ -357,25 +518,42 @@ class CompanyController extends Controller
             $updateData['status'] = 'closed';
         } elseif ($requestedStatus === 'draft') {
             $updateData['status'] = 'draft';
+        } elseif ($requestedStatus === 'published' || $requestedStatus === 'approved') {
+            $updateData['status'] = $requestedStatus;
         } else {
-            // Any edit or submission by company requires Admin approval
-            $updateData['status'] = 'pending';
+            // One-time Admin Approval: If job was ALREADY approved or published, preserve published status!
+            if (in_array($job->status, ['published', 'approved'])) {
+                $updateData['status'] = $job->status;
+            } else {
+                $updateData['status'] = 'pending';
+            }
         }
 
         $job->update($updateData);
+        $freshJob = $job->fresh();
+        $isPublished = in_array($freshJob->status, ['published', 'approved']);
 
-        // Notify Admin of job update requiring approval
+        if ($isPublished) {
+            $allInstituteIds = \App\Models\Institute::pluck('id')->toArray();
+            if (!empty($allInstituteIds)) {
+                $freshJob->institutes()->sync($allInstituteIds);
+            }
+        }
+
+        // Notify Admin of job update
         Notification::create([
             'type' => 'job_updated',
-            'title' => 'Job Posting Updated for Approval',
-            'message' => ($job->company?->name ?? 'Company') . ' updated job: "' . $job->title . '". Admin approval required before publishing.',
+            'title' => $isPublished ? 'Job Posting Updated' : 'Job Posting Updated for Approval',
+            'message' => ($freshJob->company?->name ?? 'Company') . ' updated job: "' . $freshJob->title . '"' . ($isPublished ? '.' : '. Admin approval required.'),
             'link' => '/admin/jobs',
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Job information saved! Submitted to Admin for approval.',
-            'data'    => $job->fresh()->load('company'),
+            'message' => $isPublished 
+                ? 'Job information updated and published directly!' 
+                : 'Job information saved! Submitted to Admin for approval.',
+            'data'    => $freshJob->load('company'),
         ]);
     }
 

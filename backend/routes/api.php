@@ -38,11 +38,15 @@ Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
 
 // Company Auth & Public Routes
-Route::get('/companies',               [CompanyController::class, 'index']);
-Route::post('/company/job-request',    [CompanyController::class, 'submitJob']);
-Route::post('/company/register',       [CompanyController::class, 'register']);
-Route::post('/company/login',          [CompanyController::class, 'login']);
-Route::post('/company/forgot-password', [CompanyController::class, 'forgotPassword']);
+Route::get('/companies',                  [CompanyController::class, 'index']);
+Route::post('/company/job-request',       [CompanyController::class, 'submitJob']);
+Route::post('/company/register',          [CompanyController::class, 'register']);
+Route::post('/company/register/send-otp', [CompanyController::class, 'registerSendOtp']);
+Route::post('/company/register/verify-otp',[CompanyController::class, 'registerVerifyOtp']);
+Route::post('/company/register/resend-otp',[CompanyController::class, 'registerResendOtp']);
+
+Route::post('/company/login',             [CompanyController::class, 'login']);
+Route::post('/company/forgot-password',   [CompanyController::class, 'forgotPassword']);
 
 // Company Protected Routes (Sanctum)
 Route::middleware(['auth:sanctum'])->group(function () {

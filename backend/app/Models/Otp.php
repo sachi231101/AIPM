@@ -11,6 +11,7 @@ class Otp extends Model
 
     protected $fillable = [
         'mobile',
+        'email',
         'otp',
         'expires_at',
         'attempts',
