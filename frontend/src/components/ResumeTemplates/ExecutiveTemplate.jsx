@@ -4,11 +4,17 @@ export default function ExecutiveTemplate({ resume }) {
   if (!resume) return null;
   const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
   const accent = settings?.accentColor || "#0F4C81";
+  const fontFamily = settings?.fontFamily || "Inter";
+  const fontStyle = settings?.fontStyle || "normal";
+  const fontSizeMap = { small: "0.82rem", medium: "0.92rem", large: "1.05rem", xlarge: "1.18rem" };
+  const lineSpacingMap = { compact: "1.2", normal: "1.5", spacious: "1.8" };
+  const fontSize = fontSizeMap[settings?.fontSize] || "0.92rem";
+  const lineHeight = lineSpacingMap[settings?.lineSpacing] || "1.5";
 
   const allSkillsList = Object.values(skills || {}).flat();
 
   return (
-    <div className="resume-document bg-white text-dark shadow-sm rounded-3 overflow-hidden d-flex" style={{ fontSize: "0.875rem" }}>
+    <div className="resume-document bg-white text-dark shadow-sm rounded-3 overflow-hidden d-flex" style={{ fontFamily, fontStyle, fontSize, lineHeight }}>
       {/* Left Sidebar */}
       <div className="p-4 text-white d-flex flex-column gap-4" style={{ width: "32%", backgroundColor: accent, minHeight: "100%" }}>
         {/* Photo */}
@@ -62,7 +68,7 @@ export default function ExecutiveTemplate({ resume }) {
       <div className="p-4 p-md-5 flex-grow-1">
         {/* Name Header */}
         <div className="border-bottom pb-3 mb-4">
-          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.85rem" }}>{personal?.fullName}</h2>
+          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.85em" }}>{personal?.fullName}</h2>
           <h6 className="fw-semibold" style={{ color: accent }}>{personal?.professionalTitle}</h6>
         </div>
 

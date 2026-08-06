@@ -4,11 +4,17 @@ export default function ProfessionalTemplate({ resume }) {
   if (!resume) return null;
   const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
   const accent = settings?.accentColor || "#0F4C81";
+  const fontFamily = settings?.fontFamily || "Inter";
+  const fontStyle = settings?.fontStyle || "normal";
+  const fontSizeMap = { small: "0.82rem", medium: "0.92rem", large: "1.05rem", xlarge: "1.18rem" };
+  const lineSpacingMap = { compact: "1.2", normal: "1.5", spacious: "1.8" };
+  const fontSize = fontSizeMap[settings?.fontSize] || "0.92rem";
+  const lineHeight = lineSpacingMap[settings?.lineSpacing] || "1.5";
 
   const allSkillsList = Object.values(skills || {}).flat();
 
   return (
-    <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-serif" style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
+    <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3" style={{ fontFamily, fontStyle, fontSize, lineHeight }}>
       {/* Header Banner */}
       <div className="text-center pb-4 mb-4 border-bottom border-2" style={{ borderColor: accent }}>
         {(personal?.showPhoto !== false && personal?.photo) && (
@@ -21,7 +27,7 @@ export default function ProfessionalTemplate({ resume }) {
             />
           </div>
         )}
-        <h1 className="fw-bold mb-1 tracking-tight" style={{ color: accent, fontSize: "2rem" }}>
+        <h1 className="fw-bold mb-1 tracking-tight" style={{ color: accent, fontSize: "2em" }}>
           {personal?.fullName}
         </h1>
         <div className="fw-medium text-dark fs-6 mb-2">{personal?.professionalTitle}</div>
