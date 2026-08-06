@@ -39,6 +39,7 @@ export default function Profile() {
       setImgError(false);
       // Normalize the photo URL so /storage/... becomes a full URL
       setPhotoBase64(normalizePhotoUrl(current.profile_photo || current.profilePhoto || ""));
+      setImgError(false);
       setBuilderResumes(resumesRes.data?.data || []);
     } catch (err) {
       console.error("Failed to load profile", err);
@@ -306,8 +307,7 @@ export default function Profile() {
             )}
 
             <h5 className="fw-bold mb-1 text-dark">{student.name}</h5>
-            <p className="text-primary fw-semibold small mb-1">{student.professional_title || activeProfile?.professional_title || "Software Engineer"}</p>
-            <p className="text-muted small mb-3">{student.course || activeProfile?.course} - {student.branch || activeProfile?.branch} ({student.batch || activeProfile?.batch})</p>
+            <p className="text-primary fw-semibold small mb-3">{student.professional_title || activeProfile?.professional_title || "Software Engineer"}</p>
 
             <div className="p-3 bg-light rounded-3 text-start small mb-3">
               <div className="d-flex justify-content-between mb-1">

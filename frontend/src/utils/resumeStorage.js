@@ -8,22 +8,18 @@ export function normalizePhotoUrl(url) {
   if (!url) return "";
   if (url.startsWith("data:")) return url;
 
-  const getBackendRoot = () => {
-    const apiBase = import.meta.env?.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
-    try {
-      const parsed = new URL(apiBase);
-      return `${parsed.protocol}//${parsed.host}`;
-    } catch {
-      return `http://${window.location.hostname}:8000`;
-    }
-  };
-
-  const backendRoot = getBackendRoot();
+  if (typeof url === "string" && url.includes("/storage/")) {
+    const relativePath = url.split("/storage/")[1];
+    return `/storage/${relativePath}`;
+  }
 
   if (url.startsWith("http://") || url.startsWith("https://")) {
     try {
       const parsed = new URL(url);
-      return `${backendRoot}${parsed.pathname}`;
+      if (parsed.pathname.includes("/storage/")) {
+        return `/storage/${parsed.pathname.split("/storage/")[1]}`;
+      }
+      return parsed.pathname;
     } catch {
       return url;
     }
@@ -35,7 +31,7 @@ export function normalizePhotoUrl(url) {
   } else if (!path.startsWith("/")) {
     path = `/${path}`;
   }
-  return `${backendRoot}${path}`;
+  return path;
 }
 
 // Convert any image URL (http/relative) to a Base64 Data URL for robust canvas/PDF rendering
@@ -443,14 +439,14 @@ export function calculateATSMetrics(resumeObj) {
 
   const exp = (resumeObj.experience || []).filter((e) => e && (e.designation?.trim() || e.company?.trim() || e.responsibilities?.trim()));
   if (exp.length > 0) {
-    breakdown.experience += 15;
+    breakdown.experience += 5;
   } else {
-    tips.push({ cat: "Experience", text: "Add work experience or internships to showcase practical exposure." });
+    tips.push({ cat: "Experience", text: "Add work experience or internships if available." });
   }
 
   const proj = (resumeObj.projects || []).filter((p) => p && (p.title?.trim() || p.description?.trim()));
   if (proj.length > 0) {
-    breakdown.projects += 15;
+    breakdown.projects += 20;
   } else {
     tips.push({ cat: "Projects", text: "Add 2+ technical or academic projects detailing tools used." });
   }
@@ -461,22 +457,53 @@ export function calculateATSMetrics(resumeObj) {
   else if (totalSkills > 0) breakdown.skills += 8;
   else tips.push({ cat: "Skills", text: "Add at least 8 relevant technical and soft skills." });
 
-  // Action Verbs Detection
-  const resumeText = JSON.stringify(resumeObj).toLowerCase();
-  const actionVerbs = ["spearheaded", "engineered", "developed", "architected", "optimized", "built", "implemented", "managed", "created", "designed", "launched"];
-  const matchedVerbs = actionVerbs.filter((verb) => resumeText.includes(verb));
-  if (matchedVerbs.length >= 3) {
-    breakdown.actionVerbs += 10;
-  } else if (matchedVerbs.length > 0) {
+  // Production-Grade Action Verbs Detection (Max 5 Pts)
+  const ACTION_VERBS_DICTIONARY = {
+    engineering: ["engineered", "developed", "architected", "automated", "built", "configured", "deployed", "programmed", "refactored", "integrated", "debugged", "optimized"],
+    leadership: ["spearheaded", "led", "directed", "orchestrated", "pioneered", "headed", "supervised", "coordinated", "delegated", "championed"],
+    results: ["resolved", "accelerated", "streamlined", "increased", "reduced", "transformed", "boosted", "delivered", "achieved", "surpassed", "maximized"],
+    design: ["designed", "formulated", "fashioned", "innovated", "conceptualized", "drafted", "constructed", "crafted", "created", "launched"],
+    analysis: ["analyzed", "evaluated", "synthesized", "researched", "assessed", "audited", "investigated", "forecasted", "modeled"]
+  };
+
+  const allVerbs = Object.values(ACTION_VERBS_DICTIONARY).flat();
+  const summaryText = (resumeObj.summary || "").toLowerCase();
+  const expText = (resumeObj.experience || []).map(e => `${e.designation} ${e.company} ${e.responsibilities}`).join(" ").toLowerCase();
+  const projText = (resumeObj.projects || []).map(p => `${p.title} ${p.description}`).join(" ").toLowerCase();
+  const searchableText = `${summaryText} ${expText} ${projText}`;
+
+  const matchedVerbs = allVerbs.filter((verb) => {
+    const regex = new RegExp(`\\b${verb}\\b`, "i");
+    return regex.test(searchableText);
+  });
+
+  const uniqueMatchedVerbs = Array.from(new Set(matchedVerbs));
+
+  if (uniqueMatchedVerbs.length >= 3) {
     breakdown.actionVerbs += 5;
-    tips.push({ cat: "Action Verbs", text: "Use strong action verbs like 'Engineered', 'Spearheaded', or 'Optimized' in project descriptions." });
+  } else if (uniqueMatchedVerbs.length > 0) {
+    breakdown.actionVerbs += 3;
+    tips.push({
+      cat: "Action Verbs",
+      text: `Found ${uniqueMatchedVerbs.length} action verb(s) (${uniqueMatchedVerbs.join(", ")}). Add at least 3 power verbs like 'Engineered', 'Spearheaded' or 'Optimized' for max points.`
+    });
   } else {
-    tips.push({ cat: "Action Verbs", text: "Incorporate powerful action verbs in your bullet points to pass ATS screening filters." });
+    tips.push({
+      cat: "Action Verbs",
+      text: "No strong action verbs detected. Start your bullet points with power verbs like 'Developed', 'Engineered', 'Designed', or 'Spearheaded'."
+    });
   }
 
-  if (resumeObj.settings && resumeObj.settings.template) breakdown.formatting += 5;
+  // ATS Formatting & Compliance check (Max 5 Pts)
+  if (resumeObj.settings && resumeObj.settings.template) {
+    breakdown.formatting += 5;
+  } else {
+    breakdown.formatting += 5; // Default active template
+  }
 
-  score = Object.values(breakdown).reduce((a, b) => a + b, 0);
+  // Calculate total score and cap at 100%
+  const rawScore = Object.values(breakdown).reduce((a, b) => a + b, 0);
+  score = Math.min(100, Math.max(0, rawScore));
 
   let grade = "C";
   if (score >= 90) grade = "A+";
@@ -491,28 +518,59 @@ export function calculateATSMetrics(resumeObj) {
 export function getOverallProfileScore(student, activeProfileId = "") {
   if (!student) return 0;
   const userId = student.id || student.student_id || "";
-  const profileId = activeProfileId || localStorage.getItem("apms_active_profile_id") || "default";
+  const profileId = activeProfileId || student.active_profile_id || localStorage.getItem("apms_active_profile_id") || "default";
 
   // Calculate ATS metrics for the current active resume
   const activeResume = getActiveResume(student, userId, profileId);
   const atsMetrics = calculateATSMetrics(activeResume);
   const atsScore = atsMetrics?.score || 0;
 
-  // Calculate profile details field completeness (0-100)
-  let fieldPoints = 0;
-  if (student.name || student.fullName || student.personal?.fullName) fieldPoints += 15;
-  if (student.email || student.personal?.email) fieldPoints += 15;
-  if (student.mobile || student.phone || student.personal?.phone) fieldPoints += 15;
-  if (student.dob || student.gender) fieldPoints += 15;
-  if (student.course || student.branch) fieldPoints += 20;
-  if (student.cgpa || student.percentage) fieldPoints += 10;
-  const skillsCount = Array.isArray(student.skills) ? student.skills.length : (student.skills ? 1 : 0);
-  if (skillsCount > 0) fieldPoints += 10;
+  // Calculate real field-by-field profile completeness (0-100)
+  let totalScore = 0;
 
-  const backendCompletion = student.profile_completion || 0;
+  // Helper for valid text check
+  const isValid = (val) => val && val !== "N/A" && String(val).trim().length > 0;
 
-  const score = Math.max(atsScore, fieldPoints, backendCompletion);
-  return Math.min(100, Math.max(0, score));
+  // 1. Basic & Personal Info (25%)
+  if (isValid(student.name || student.fullName)) totalScore += 5;
+  if (isValid(student.email)) totalScore += 5;
+  if (isValid(student.mobile || student.phone)) totalScore += 5;
+  if (isValid(student.dob)) totalScore += 5;
+  if (isValid(student.gender) || isValid(student.address)) totalScore += 5;
+
+  // 2. Academics & Education (25%)
+  if (isValid(student.course)) totalScore += 10;
+  if (isValid(student.branch)) totalScore += 10;
+  if (isValid(student.cgpa) || isValid(student.percentage) || isValid(student.batch)) totalScore += 5;
+
+  // 3. Career Details & Summary (20%)
+  if (isValid(student.professional_title || student.professionalTitle)) totalScore += 5;
+  if (isValid(student.target_role || student.targetRole)) totalScore += 5;
+  if (isValid(student.summary) && String(student.summary).trim().length > 5) totalScore += 10;
+
+  // 4. Skills & Links (20%)
+  const skillsArr = Array.isArray(student.skills) 
+    ? student.skills 
+    : (student.technicalSkills ? student.technicalSkills.split(',') : []);
+  if (skillsArr.length >= 3) totalScore += 10;
+  else if (skillsArr.length > 0) totalScore += 5;
+
+  if (isValid(student.linkedin) || isValid(student.github) || isValid(student.portfolio)) totalScore += 10;
+
+  // 5. Photo & Resume (10%)
+  if (isValid(student.profile_photo || student.profilePhoto)) totalScore += 5;
+  const hasResume = activeResume || 
+    (student.resume_url && student.resume_url !== "#") || 
+    (student.resumeUrl && student.resumeUrl !== "#") || 
+    student.resume_path || 
+    student.hasUploaded || 
+    student.hasCreated;
+  if (hasResume) totalScore += 5;
+
+  const backendCompletion = Number(student.profile_completion || student.profileCompletion) || 0;
+
+  const finalScore = Math.max(atsScore, totalScore, backendCompletion);
+  return Math.min(100, Math.max(0, finalScore));
 }
 
 // ─── AI HELPER MOCKS (Produces Realistic Output) ────────────────────────────

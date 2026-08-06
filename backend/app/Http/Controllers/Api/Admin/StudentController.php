@@ -20,14 +20,18 @@ class StudentController extends Controller
         $students = $query->latest()->get();
 
         $data = $students->map(function ($student) {
-            $hasUploaded = filled($student->resume_path);
+            $defaultProfile = $student->getOrCreateDefaultProfile();
+
+            $hasUploaded = filled($defaultProfile->resume_path) || filled($student->resume_path);
             $hasCreated  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
 
             $createdUrl = $hasCreated
                 ? url("/created-resume/" . $student->id)
                 : null;
-            $uploadedUrl = $hasUploaded ? url("/storage/" . $student->resume_path) : null;
+            $uploadedUrl = $hasUploaded ? url("/storage/" . ($defaultProfile->resume_path ?? $student->resume_path)) : null;
             $primaryUrl  = $createdUrl ?? $uploadedUrl;
+
+            $score = $student->calculateProfileScore();
 
             return [
                 'id'                  => $student->user_id,
@@ -40,16 +44,16 @@ class StudentController extends Controller
                 'dob'                 => $student->dob?->format('Y-m-d') ?? 'N/A',
                 'gender'              => $student->gender ?? 'N/A',
                 'address'             => $student->address ?? 'N/A',
-                'course'              => $student->course ?? 'N/A',
-                'branch'              => $student->branch ?? 'N/A',
-                'batch'               => $student->batch ?? 'N/A',
-                'passing_year'        => $student->passing_year ?? 'N/A',
-                'cgpa'                => $student->cgpa ?? 'N/A',
-                'skills'              => $student->skills ?? [],
-                'softSkills'          => $student->soft_skills ?? [],
-                'soft_skills'         => $student->soft_skills ?? [],
-                'profileCompletion'   => $student->profile_completion ?? 0,
-                'profile_completion'  => $student->profile_completion ?? 0,
+                'course'              => $defaultProfile->course ?? $student->course ?? 'N/A',
+                'branch'              => $defaultProfile->branch ?? $student->branch ?? 'N/A',
+                'batch'               => $defaultProfile->batch ?? $student->batch ?? 'N/A',
+                'passing_year'        => $defaultProfile->passing_year ?? $student->passing_year ?? 'N/A',
+                'cgpa'                => $defaultProfile->cgpa ?? $student->cgpa ?? 'N/A',
+                'skills'              => $defaultProfile->skills ?? $student->skills ?? [],
+                'softSkills'          => $defaultProfile->soft_skills ?? $student->soft_skills ?? [],
+                'soft_skills'         => $defaultProfile->soft_skills ?? $student->soft_skills ?? [],
+                'profileCompletion'   => $score,
+                'profile_completion'  => $score,
                 'approval_status'     => $student->approval_status ?? 'approved',
                 'approvalStatus'      => $student->approval_status ?? 'approved',
                 'resumeUrl'           => $primaryUrl,
@@ -57,9 +61,9 @@ class StudentController extends Controller
                 'createdResumeUrl'    => $createdUrl,
                 'hasUploaded'         => $hasUploaded,
                 'hasCreated'          => $hasCreated,
-                'linkedin'            => $student->linkedin ?? '',
-                'github'              => $student->github ?? '',
-                'portfolio'           => $student->portfolio ?? '',
+                'linkedin'            => $defaultProfile->linkedin ?? $student->linkedin ?? '',
+                'github'              => $defaultProfile->github ?? $student->github ?? '',
+                'portfolio'           => $defaultProfile->portfolio ?? $student->portfolio ?? '',
             ];
         });
 

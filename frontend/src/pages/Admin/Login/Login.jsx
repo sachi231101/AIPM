@@ -47,11 +47,6 @@ export default function AdminLogin() {
               <div className="card-body p-4 p-md-5">
                 <h6 className="fw-bold mb-4 text-center">Sign In to Admin Panel</h6>
 
-                <div className="alert alert-info border-0 small p-2 mb-4" role="alert">
-                  <i className="bi bi-info-circle me-1"></i>
-                  Demo: <strong>admin@aadyaplacements.com</strong> / <strong>Admin@1234</strong>
-                </div>
-
                 <form onSubmit={handleSubmit(onSubmit)}>
                   <div className="mb-3">
                     <label className="form-label small fw-medium">Admin Email</label>

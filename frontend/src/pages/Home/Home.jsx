@@ -231,29 +231,6 @@ export default function Home() {
         </div>
       </section>
 
-
-      {/* ── PARTNER INSTITUTES ───────────────────────────────────────────── */}
-      <section className="py-5">
-        <div className="container">
-          <div className="text-center mb-5">
-            <h2 className="fw-bold mb-2">Partner Institutes</h2>
-            <p className="text-muted">Trusted by leading engineering and management colleges</p>
-          </div>
-          <div className="row g-3 justify-content-center align-items-center">
-            {institutes.filter(i => i.name !== "Other").map((inst) => (
-              <div key={inst.id} className="col-6 col-md-4 col-lg-2">
-                <div className="card border-0 shadow-sm text-center p-3 institute-badge">
-                  <div className="rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center" style={{ width: 48, height: 48, background: "#e3f0ff" }}>
-                    <i className="bi bi-bank2 text-primary"></i>
-                  </div>
-                  <small className="fw-medium" style={{ fontSize: "0.7rem", lineHeight: 1.3 }}>{inst.name}</small>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── TOP RECRUITERS ───────────────────────────────────────────────── */}
       <section className="py-5 bg-light">
         <div className="container">

@@ -4,6 +4,7 @@ import StatCard from "../../../components/StatCard/StatCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { adminService } from "../../../services/api";
 import { useCachedData, clearCache } from "../../../hooks/useCachedData";
+import { getCompanyLogo, handleLogoError } from "../../../utils/logoHelper";
 import Chart from "chart.js/auto";
 
 const statusColors = { 
@@ -221,6 +222,7 @@ export default function AdminDashboard() {
     id: job.id,
     title: job.title,
     company: job.company?.name || "Unknown Company",
+    companyLogo: getCompanyLogo(job.company?.logo_path, job.company?.name),
     location: job.location,
     status: statusMap[job.status] || "Pending",
   }));
@@ -309,8 +311,21 @@ export default function AdminDashboard() {
                       recentJobsMapped.map((job) => (
                         <tr key={job.id}>
                           <td className="px-4">
-                            <p className="fw-medium mb-0 small">{job.title}</p>
-                            <small className="text-muted">{job.company}</small>
+                            <div className="d-flex align-items-center gap-2">
+                              <img
+                                src={job.companyLogo}
+                                alt={job.company}
+                                width={28}
+                                height={28}
+                                className="rounded-1 flex-shrink-0"
+                                style={{ objectFit: "cover" }}
+                                onError={(e) => handleLogoError(e, job.company)}
+                              />
+                              <div>
+                                <p className="fw-medium mb-0 small">{job.title}</p>
+                                <small className="text-muted">{job.company}</small>
+                              </div>
+                            </div>
                           </td>
                           <td className="small text-muted">{job.location}</td>
                           <td>

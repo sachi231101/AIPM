@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { useProfile } from "../../../context/ProfileContext";
@@ -40,6 +41,19 @@ const STEP_NAMES = [
   "Review & Generate",
 ];
 
+const STEP_ICONS = [
+  "bi-person-fill",
+  "bi-card-text",
+  "bi-mortarboard-fill",
+  "bi-briefcase-fill",
+  "bi-code-slash",
+  "bi-tools",
+  "bi-patch-check-fill",
+  "bi-trophy-fill",
+  "bi-translate",
+  "bi-file-earmark-check-fill",
+];
+
 const SKILL_CATEGORIES = [
   { key: "accountingFinance", label: "Accounting, Tally & Finance" },
   { key: "officeTools", label: "Office & Software Tools (Excel, Word, etc.)" },
@@ -66,11 +80,90 @@ const POPULAR_SKILLS_SUGGESTIONS = [
   { name: "React.js", category: "frontend" },
   { name: "Digital Marketing", category: "businessManagement" },
   { name: "Graphic Design (Canva)", category: "designCreative" },
-  { name: "Communication", category: "softSkills" },
-  { name: "Problem Solving", category: "softSkills" },
 ];
 
+const getStepIndexFromCategory = (key) => {
+  if (!key) return 0;
+  const k = key.toString().toLowerCase();
+  if (k.includes("personal") || k.includes("contact")) return 0;
+  if (k.includes("summary") || k.includes("actionverb") || k.includes("action verb") || k.includes("bio")) return 1;
+  if (k.includes("education") || k.includes("degree") || k.includes("college") || k.includes("school")) return 2;
+  if (k.includes("experience") || k.includes("work") || k.includes("job") || k.includes("intern")) return 3;
+  if (k.includes("project")) return 4;
+  if (k.includes("skill")) return 5;
+  if (k.includes("certif")) return 6;
+  if (k.includes("achieve") || k.includes("award")) return 7;
+  if (k.includes("language")) return 8;
+  if (k.includes("format") || k.includes("review") || k.includes("generate")) return 9;
+  return 0;
+};
+
+const getStepStatus = (idx, activeResume, atsMetrics) => {
+  if (!activeResume) return { status: "empty", pts: 0, bg: "bg-secondary bg-opacity-25 text-secondary", text: "text-secondary opacity-50", icon: "bi-circle" };
+  const breakdown = atsMetrics?.breakdown || {};
+  
+  let pts = 0;
+  let isFilled = false;
+  
+  switch (idx) {
+    case 0: // Personal Information
+      pts = breakdown.personal ?? (activeResume.personal?.fullName ? 15 : 0);
+      isFilled = !!(activeResume.personal?.fullName && activeResume.personal?.email && activeResume.personal?.phone);
+      break;
+    case 1: // Professional Summary
+      pts = breakdown.summary ?? (activeResume.summary?.trim()?.length > 20 ? 10 : (activeResume.summary?.trim() ? 5 : 0));
+      isFilled = !!(activeResume.summary?.trim()?.length > 20);
+      break;
+    case 2: // Education
+      pts = breakdown.education ?? (Array.isArray(activeResume.education) && activeResume.education.length > 0 ? 15 : 0);
+      isFilled = Array.isArray(activeResume.education) && activeResume.education.length > 0;
+      break;
+    case 3: // Experience
+      pts = breakdown.experience ?? (Array.isArray(activeResume.experience) && activeResume.experience.length > 0 ? 15 : 0);
+      isFilled = Array.isArray(activeResume.experience) && activeResume.experience.length > 0;
+      break;
+    case 4: // Projects
+      pts = breakdown.projects ?? (Array.isArray(activeResume.projects) && activeResume.projects.length > 0 ? 15 : 0);
+      isFilled = Array.isArray(activeResume.projects) && activeResume.projects.length > 0;
+      break;
+    case 5: // Skills
+      pts = breakdown.skills ?? (Array.isArray(activeResume.skills) && activeResume.skills.length > 0 ? 15 : 0);
+      isFilled = Array.isArray(activeResume.skills) && activeResume.skills.length > 0;
+      break;
+    case 6: // Certifications
+      isFilled = Array.isArray(activeResume.certifications) && activeResume.certifications.length > 0;
+      pts = isFilled ? 10 : 0;
+      break;
+    case 7: // Achievements
+      isFilled = Array.isArray(activeResume.achievements) && activeResume.achievements.length > 0;
+      pts = isFilled ? 10 : 0;
+      break;
+    case 8: // Languages
+      isFilled = Array.isArray(activeResume.languages) && activeResume.languages.length > 0;
+      pts = isFilled ? 10 : 0;
+      break;
+    case 9: // Review & Generate
+      pts = (atsMetrics?.score >= 70) ? 10 : (atsMetrics?.score > 0 ? 5 : 0);
+      isFilled = (atsMetrics?.score >= 70);
+      break;
+    default:
+      pts = 0;
+  }
+
+  // - Filled all / points >= 10 -> Green (bg-success) with checkmark ✓
+  // - Points less than 10 (1-9 pts) -> Yellow (bg-warning) with checkmark ✓
+  // - Not filled (0 pts) -> Gray (bg-secondary opacity-25)
+  if (pts >= 10 || (isFilled && pts > 0)) {
+    return { status: "filled", pts, bg: "bg-success text-white", text: "text-success", icon: "bi-check-lg" };
+  } else if (pts > 0) {
+    return { status: "partial", pts, bg: "bg-warning text-dark", text: "text-warning", icon: "bi-check-lg" };
+  } else {
+    return { status: "empty", pts: 0, bg: "bg-secondary bg-opacity-25 text-secondary", text: "text-secondary opacity-50", icon: "bi-circle" };
+  }
+};
+
 export default function ResumeBuilder() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { activeProfile } = useProfile();
   const [activeResume, setActiveResume] = useState(null);
@@ -555,6 +648,22 @@ export default function ResumeBuilder() {
     setShowCoverLetterModal(true);
   };
 
+  const handleSubmitResume = async () => {
+    try {
+      if (activeResume) {
+        saveResume(activeResume, user?.id, activeResumeId);
+        await resumeService.save({
+          active_resume_id: activeResumeId,
+          resume_data: activeResume,
+        });
+      }
+    } catch (e) {
+      console.error("Save error on submit:", e);
+    }
+    toast.success("Resume submitted successfully! Redirecting to Dashboard... 🎉");
+    navigate("/student/dashboard");
+  };
+
   return (
     <div className="container-fluid py-3">
       <PageHeader
@@ -758,27 +867,53 @@ export default function ResumeBuilder() {
           {/* Horizontal Stepper */}
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-body p-3 overflow-auto">
-              <div className="d-flex justify-content-between align-items-center min-w-max">
+              <div className="d-flex justify-content-between align-items-center min-w-max px-2">
                 {STEP_NAMES.map((name, idx) => {
                   const isActive = idx === currentStep;
-                  const isCompleted = idx < currentStep;
+                  const stepStat = getStepStatus(idx, activeResume, atsMetrics);
+                  const nextStat = idx < STEP_NAMES.length - 1 ? getStepStatus(idx + 1, activeResume, atsMetrics) : null;
+                  const lineColor = (stepStat.status === "filled" && (nextStat?.status === "filled" || nextStat?.status === "partial"))
+                    ? "#198754"
+                    : (stepStat.status === "filled" || stepStat.status === "partial")
+                    ? "#ffc107"
+                    : "#cbd5e1";
+
                   return (
-                    <div
-                      key={idx}
-                      className={`d-flex align-items-center gap-2 cursor-pointer px-2 py-1 rounded transition-all ${
-                        isActive ? "bg-primary text-white fw-bold" : isCompleted ? "text-success fw-medium" : "text-muted"
-                      }`}
-                      onClick={() => handleGoToStep(idx)}
-                    >
-                      <span
-                        className={`rounded-circle d-inline-flex align-items-center justify-content-center ${
-                          isActive ? "bg-white text-primary" : isCompleted ? "bg-success text-white" : "bg-light text-muted"
-                        }`}
-                        style={{ width: 24, height: 24, fontSize: "0.75rem" }}
+                    <div key={idx} className="d-flex align-items-center flex-grow-1">
+                      <div
+                        className="d-flex align-items-center cursor-pointer p-1"
+                        onClick={() => handleGoToStep(idx)}
+                        title={`${idx + 1}. ${name}: ${stepStat.pts} Pts (${stepStat.status.toUpperCase()})`}
                       >
-                        {isCompleted ? <i className="bi bi-check"></i> : idx + 1}
-                      </span>
-                      <span className="small text-nowrap">{name}</span>
+                        <span
+                          className={`rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm transition-all ${
+                            isActive
+                              ? "bg-primary text-white fw-bold border border-2 border-white"
+                              : stepStat.bg
+                          }`}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            fontSize: "1rem",
+                            transform: isActive ? "scale(1.15)" : "scale(1)"
+                          }}
+                        >
+                          <i className={`bi ${STEP_ICONS[idx] || "bi-app"}`}></i>
+                        </span>
+                      </div>
+                      {idx < STEP_NAMES.length - 1 && (
+                        <div
+                          className="flex-grow-1"
+                          style={{
+                            height: "3px",
+                            minWidth: "16px",
+                            backgroundColor: lineColor,
+                            borderRadius: "2px",
+                            transition: "background-color 0.3s ease",
+                            margin: "0 4px"
+                          }}
+                        />
+                      )}
                     </div>
                   );
                 })}
@@ -1006,19 +1141,32 @@ export default function ResumeBuilder() {
               {/* STEP 2: Professional Summary */}
               {currentStep === 1 && (
                 <div>
-                  <h5 className="fw-bold text-primary mb-3"><i className="bi bi-file-text me-2"></i>Professional Summary</h5>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <h5 className="fw-bold text-primary mb-0"><i className="bi bi-file-text me-2"></i>Professional Summary</h5>
+                  </div>
+
                   <div className="mb-3">
                     <textarea
                       className="form-control"
-                      rows={6}
+                      rows={5}
                       value={activeResume.summary || ""}
                       onChange={(e) => handleUpdateResume({ ...activeResume, summary: e.target.value })}
                       placeholder="Write a concise overview of your technical background and career goals..."
-                    >
-                    </textarea>
-                    <div className="d-flex justify-content-between align-items-center mt-2 small text-muted">
+                      style={{ fontSize: "0.95rem" }}
+                    />
+                    <div className="d-flex flex-wrap justify-content-between align-items-center mt-2 small text-muted">
                       <span>Word Count: <strong>{(activeResume.summary || "").split(/\s+/).filter(Boolean).length} words</strong></span>
-                      <span>Target: ~50-80 words</span>
+                      {(() => {
+                        const summaryText = (activeResume.summary || "").toLowerCase();
+                        const verbs = ["engineered", "developed", "architected", "optimized", "built", "implemented", "managed", "created", "designed", "launched", "spearheaded", "led", "automated", "analyzed", "improved", "constructed", "delivered", "integrated", "accelerated", "collaborated", "formulated", "executed", "streamlined", "resolved"];
+                        const found = Array.from(new Set(verbs.filter(v => summaryText.includes(v))));
+                        return (
+                          <span className={found.length >= 3 ? "text-success fw-bold" : found.length > 0 ? "text-warning fw-semibold" : "text-danger"}>
+                            <i className={`bi ${found.length >= 3 ? "bi-check-circle-fill text-success" : "bi-lightning-charge-fill text-warning"} me-1`}></i>
+                            Detected Action Verbs ({found.length}): {found.length > 0 ? found.join(", ") : "None detected yet"}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1459,32 +1607,97 @@ export default function ResumeBuilder() {
 
                         {/* Breakdown meters */}
                         <div className="row g-3 mt-3">
-                          {Object.entries(ats.breakdown).map(([key, val], idx) => (
-                            <div key={idx} className="col-6 col-md-3">
-                              <div className="p-2 bg-white rounded border small">
-                                <div className="d-flex justify-content-between text-capitalize text-muted mb-1" style={{ fontSize: "0.75rem" }}>
-                                  <span>{key}</span>
-                                  <span className="fw-bold text-primary">{val} pts</span>
-                                </div>
-                                <div className="progress" style={{ height: 4 }}>
-                                  <div className="progress-bar bg-primary" style={{ width: `${Math.min(100, (val / 20) * 100)}%` }} />
+                          {Object.entries(ats.breakdown).map(([key, val], idx) => {
+                            const targetStep = getStepIndexFromCategory(key);
+                            const SECTION_MAX_POINTS = {
+                              personal: 20,
+                              summary: 15,
+                              education: 15,
+                              experience: 5,
+                              projects: 20,
+                              skills: 15,
+                              actionVerbs: 5,
+                              formatting: 5,
+                            };
+                            const maxPts = SECTION_MAX_POINTS[key] || 15;
+                            const isGreen = val >= maxPts;
+                            const isYellow = val > 0 && val < maxPts;
+                            const isGray = val === 0;
+                            const pct = Math.min(100, Math.round((val / maxPts) * 100));
+
+                            const ptsTextColor = isGreen ? "text-success" : isYellow ? "text-warning" : "text-danger opacity-75";
+                            const progressBg = isGreen ? "bg-success" : isYellow ? "bg-warning" : "bg-secondary bg-opacity-25";
+                            const borderHighlight = isGreen ? "#198754" : isYellow ? "#ffc107" : "#6c757d";
+
+                            return (
+                              <div key={idx} className="col-6 col-md-3">
+                                <div 
+                                  className="p-2 bg-white rounded border small shadow-sm cursor-pointer"
+                                  style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+                                  onClick={() => handleGoToStep(targetStep)}
+                                  title={`Click to fill/edit ${key} section (${val}/${maxPts} Pts)`}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = "translateY(-2px)";
+                                    e.currentTarget.style.borderColor = borderHighlight;
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = "translateY(0)";
+                                    e.currentTarget.style.borderColor = "#dee2e6";
+                                  }}
+                                >
+                                  <div className="d-flex justify-content-between text-capitalize text-muted mb-1" style={{ fontSize: "0.75rem" }}>
+                                    <span className="fw-semibold text-dark d-flex align-items-center gap-1">
+                                      {key} 
+                                      {isGreen && <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "0.75rem" }}></i>}
+                                      {isYellow && <i className="bi bi-exclamation-circle-fill text-warning" style={{ fontSize: "0.75rem" }}></i>}
+                                      {isGray && <i className="bi bi-pencil-square text-secondary opacity-50" style={{ fontSize: "0.75rem" }}></i>}
+                                    </span>
+                                    <span className={`fw-bold ${ptsTextColor}`}>{val} Pts</span>
+                                  </div>
+                                  <div className="progress" style={{ height: 5 }}>
+                                    <div className={`progress-bar ${progressBg}`} style={{ width: `${pct}%` }} />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         {/* Actionable Tips */}
                         {ats.tips && ats.tips.length > 0 && (
                           <div className="mt-3 pt-3 border-top border-primary border-opacity-25">
-                            <h6 className="fw-bold text-dark small mb-2"><i className="bi bi-lightbulb text-warning me-1"></i> Recommended Optimization Improvements:</h6>
-                            <ul className="mb-0 ps-3 small text-muted">
-                              {ats.tips.map((t, idx) => (
-                                <li key={idx} className="mb-1">
-                                  <strong className="text-dark">[{t.cat}]</strong> {t.text}
-                                </li>
-                              ))}
-                            </ul>
+                            <h6 className="fw-bold text-dark small mb-2">
+                              <i className="bi bi-lightbulb text-warning me-1"></i> Recommended Optimization Improvements (Click to jump & fill):
+                            </h6>
+                            <div className="d-flex flex-column gap-2">
+                              {ats.tips.map((t, idx) => {
+                                const targetStep = getStepIndexFromCategory(t.cat || t.text);
+                                return (
+                                  <div 
+                                    key={idx} 
+                                    className="d-flex align-items-center justify-content-between p-2.5 rounded bg-white border border-light shadow-sm text-dark cursor-pointer"
+                                    style={{ cursor: "pointer", transition: "all 0.15s ease", fontSize: "0.85rem" }}
+                                    onClick={() => handleGoToStep(targetStep)}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = "#f0f4ff";
+                                      e.currentTarget.style.borderColor = "#0d6efd";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = "#ffffff";
+                                      e.currentTarget.style.borderColor = "#f8f9fa";
+                                    }}
+                                  >
+                                    <div>
+                                      <span className="badge bg-primary bg-opacity-10 text-primary fw-bold me-2">[{t.cat}]</span>
+                                      <span>{t.text}</span>
+                                    </div>
+                                    <span className="badge bg-primary text-white ms-2 px-2 py-1 flex-shrink-0 d-inline-flex align-items-center gap-1">
+                                      Fix Section <i className="bi bi-arrow-right"></i>
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1516,13 +1729,10 @@ export default function ResumeBuilder() {
                 <span className="small text-muted">Step {currentStep + 1} of {STEP_NAMES.length}</span>
                 {currentStep === STEP_NAMES.length - 1 ? (
                   <button
-                    className="btn btn-success fw-bold px-4"
-                    onClick={() => {
-                      toast.success("Resume submitted successfully!");
-                      setShowPreviewModal(true);
-                    }}
+                    className="btn btn-success fw-bold px-4 d-inline-flex align-items-center gap-2"
+                    onClick={handleSubmitResume}
                   >
-                    <i className="bi bi-check-circle me-1"></i> Submit
+                    <i className="bi bi-check-circle-fill"></i> Submit
                   </button>
                 ) : (
                   <button

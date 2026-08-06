@@ -333,9 +333,6 @@ export default function StudentLogin() {
                 </p>
               </div>
             </div>
-            <p className="text-center text-muted small mt-3">
-              Are you an admin? <Link to="/admin/login" className="text-primary text-decoration-none">Admin Login</Link>
-            </p>
           </div>
         </div>
       </div>
