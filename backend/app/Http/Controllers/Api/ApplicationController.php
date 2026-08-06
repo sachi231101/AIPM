@@ -126,16 +126,9 @@ class ApplicationController extends Controller
         $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
 
         if (!$hasUploadedResume && !$hasCreatedResume) {
-            $incompleteFields = [];
-            if (blank($course)) $incompleteFields[] = 'Course';
-            if (blank($branch)) $incompleteFields[] = 'Branch';
-            if (blank($batch))  $incompleteFields[] = 'Batch';
-
-            if (!empty($incompleteFields)) {
-                return response()->json([
-                    'message' => 'Your profile "' . $profile->profile_name . '" is missing a resume and incomplete details (' . implode(', ', $incompleteFields) . '). Please build a resume or complete your profile before applying.'
-                ], 422);
-            }
+            return response()->json([
+                'message' => 'Your profile "' . $profile->profile_name . '" does not have a resume attached. Please upload a resume or create one in the Resume Builder before applying.'
+            ], 422);
         }
 
         // Prevent duplicate applications for same job + profile

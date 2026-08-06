@@ -36,9 +36,13 @@ export default function ForgotPassword() {
         <div className="row justify-content-center">
           <div className="col-lg-5 col-md-7">
             <div className="text-center mb-4">
-              <Link to="/" className="d-inline-flex align-items-center gap-2 text-decoration-none">
-                <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "48px", objectFit: "contain" }} />
-                <span className="fw-bold fs-4 text-dark ms-1">Aadya Placements</span>
+              <Link to="/" className="d-flex flex-column align-items-center gap-2 text-decoration-none">
+                <div className="d-flex align-items-center gap-3">
+                  <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "44px", objectFit: "contain" }} />
+                  <span className="text-muted opacity-50 fw-light fs-4">|</span>
+                  <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "44px", objectFit: "contain" }} />
+                </div>
+                <span className="fw-bold fs-5 text-dark mt-1">Aadya & Edify Placements</span>
               </Link>
             </div>
 

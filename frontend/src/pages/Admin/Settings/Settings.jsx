@@ -271,14 +271,24 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="card-body p-4">
-                  <div className="d-flex align-items-center gap-4">
-                    <img src={logoUrl} alt="Aadya Institute Logo" style={{ width: "120px", height: "72px", objectFit: "contain" }} />
+                  <div className="d-flex align-items-center gap-4 flex-wrap">
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="text-center">
+                        <small className="d-block text-muted fw-semibold mb-1">1st Logo (Aadya)</small>
+                        <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
+                      </div>
+                      <div className="vr align-self-stretch my-1"></div>
+                      <div className="text-center">
+                        <small className="d-block text-muted fw-semibold mb-1">2nd Logo (Edify)</small>
+                        <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
+                      </div>
+                    </div>
                     <div>
                       <input type="file" className="form-control" accept="image/*" onChange={handleLogoChange} disabled={uploadingLogo} />
                       {uploadingLogo ? (
                         <small className="text-primary fw-medium"><span className="spinner-border spinner-border-sm me-1" style={{ width: "12px", height: "12px" }}></span>Uploading logo...</small>
                       ) : (
-                        <small className="text-muted">PNG, JPG or SVG. Max 2MB. Recommended: 200×200px</small>
+                        <small className="text-muted">PNG, JPG or SVG. Max 2MB. Updated logos are active across system.</small>
                       )}
                     </div>
                   </div>

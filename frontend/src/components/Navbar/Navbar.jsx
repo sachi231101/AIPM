@@ -31,7 +31,9 @@ export default function Navbar() {
     <nav className="navbar navbar-expand-lg navbar-light apms-navbar sticky-top">
       <div className="container">
         <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/" onClick={closeNavbar}>
-          <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
+          <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "38px", objectFit: "contain" }} />
+          <span className="text-muted opacity-50 fw-light fs-5 mx-1">|</span>
+          <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "38px", objectFit: "contain" }} />
         </Link>
 
         <button

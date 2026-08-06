@@ -24,7 +24,7 @@ export default function ResumeUpload({ onFileSelect, currentFile }) {
 
   return (
     <div
-      className={`resume-upload-area rounded-3 text-center p-4 ${dragging ? "dragging" : ""}`}
+      className={`resume-upload-area rounded-3 text-center p-3 p-sm-4 ${dragging ? "dragging" : ""}`}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}

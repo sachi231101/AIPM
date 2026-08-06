@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { studentProfileService, studentService, resumeService } from "../../services/api";
 import { getOverallProfileScore } from "../../utils/resumeStorage";
 
+import ResumePreview from "../ResumePreview/ResumePreview";
 import ModernTemplate from "../ResumeTemplates/ModernTemplate";
 import ProfessionalTemplate from "../ResumeTemplates/ProfessionalTemplate";
 import MinimalTemplate from "../ResumeTemplates/MinimalTemplate";
@@ -192,39 +193,20 @@ export default function ConfirmApplicationModal({
     return allCandidateSkills.some((cs) => cs.includes(jsLower) || jsLower.includes(cs));
   });
 
+  const missingSkills = cleanJobSkills.filter((js) => {
+    const jsLower = js.toLowerCase();
+    return !allCandidateSkills.some((cs) => cs.includes(jsLower) || jsLower.includes(cs));
+  });
+
   const skillMatchPercent = cleanJobSkills.length > 0
     ? Math.round((matchedSkills.length / cleanJobSkills.length) * 100)
     : 100;
 
-  // Degree eligibility matching (handles specific degrees, "Other", "All Streams", "Any Graduate")
-  const isDegreeEligible = (() => {
-    if (!job.eligibility) return true;
-    const req = job.eligibility.toLowerCase().trim();
-    const candidateDeg = (currCourse || "").toLowerCase().trim();
-
-    // 1. If company specified "other", "all", "any", "open", or "graduate", all candidates qualify
-    if (req.includes("other") || req.includes("all") || req.includes("any") || req.includes("open") || req.includes("graduate")) {
-      return true;
-    }
-
-    if (!candidateDeg) return true;
-
-    // 2. Tokenized match (e.g., "b.tech, bca, mca, b.sc, diploma")
-    const allowedTokens = req.split(/[,/|]/).map(t => t.trim().replace(/[^a-z0-9]/g, "")).filter(Boolean);
-    const candidateToken = candidateDeg.replace(/[^a-z0-9]/g, "");
-
-    if (allowedTokens.length === 0) return true;
-
-    return allowedTokens.some(token => candidateToken.includes(token) || token.includes(candidateToken));
-  })();
-
-  const incompleteFields = [];
-  if (!currCourse) incompleteFields.push("Course");
-  if (!currBranch) incompleteFields.push("Branch");
-  if (!currBatch) incompleteFields.push("Batch");
-
-  const isSkillTooLow = cleanJobSkills.length > 0 && matchedSkills.length === 0;
-  const isProfileIncomplete = isScoreTooLow || !hasResume || !isDegreeEligible || isSkillTooLow;
+  const MIN_MATCH_PERCENT = 60;
+  const isSkillMatchSufficient = cleanJobSkills.length === 0 || skillMatchPercent >= MIN_MATCH_PERCENT;
+  const isSkillMismatch = cleanJobSkills.length > 0 && !isSkillMatchSufficient;
+  const isPartialMatchEligible = isSkillMatchSufficient && missingSkills.length > 0 && cleanJobSkills.length > 0;
+  const isProfileIncomplete = isSkillMismatch || !hasResume;
 
   const handleConfirm = () => {
     onConfirm({ student_profile_id: selectedProfileId });
@@ -249,47 +231,48 @@ export default function ConfirmApplicationModal({
 
   return (
     <div className="modal show d-block" style={{ background: "rgba(0,0,0,0.6)", zIndex: 1060 }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable mx-2 mx-sm-auto">
         <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
 
           {/* Header */}
-          <div className="modal-header border-0 bg-primary text-white py-3 px-4">
-            <h6 className="modal-title fw-bold d-flex align-items-center gap-2">
-              <i className="bi bi-file-earmark-check-fill"></i> Confirm Application Submission
+          <div className="modal-header border-0 bg-primary text-white py-3 px-3 px-sm-4">
+            <h6 className="modal-title fw-bold d-flex align-items-center gap-2 small-sm-base text-truncate">
+              <i className="bi bi-file-earmark-check-fill flex-shrink-0"></i> Confirm Application Submission
             </h6>
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
 
-          <div className="modal-body p-4" style={{ maxHeight: "75vh", overflowY: "auto" }}>
+          <div className="modal-body p-3 p-sm-4" style={{ maxHeight: "75vh", overflowY: "auto" }}>
 
             {/* Job Summary Banner */}
             <div className="p-3 bg-light rounded-3 border mb-3">
-              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div className="d-flex align-items-start justify-content-between flex-wrap gap-2">
                 <div>
-                  <h6 className="fw-bold text-dark mb-1">{job.title}</h6>
+                  <h6 className="fw-bold text-dark mb-1 text-break">{job.title}</h6>
                   <p className="text-primary fw-semibold small mb-0">{job.company}</p>
                 </div>
-                <div className="text-end">
-                  <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1 fw-semibold me-2">
+                <div className="text-start text-sm-end">
+                  <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1 fw-semibold me-1 mb-1 d-inline-block text-wrap">
                     {job.salary || "Best in Industry"}
                   </span>
-                  <small className="text-muted d-block mt-1">
+                  <small className="text-muted d-block mt-0 text-wrap">
                     <i className="bi bi-geo-alt me-1"></i>{job.location}
                   </small>
                 </div>
               </div>
             </div>
 
-            {/* ATS Match & Eligibility Badge Bar */}
-            <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
-              <span className={`badge ${skillMatchPercent >= 75 ? "bg-success bg-opacity-10 text-success border border-success" : "bg-warning bg-opacity-10 text-dark border border-warning"} px-3 py-1.5 fw-bold`}>
-                <i className="bi bi-cpu me-1.5"></i>{skillMatchPercent}% Skill Match ({matchedSkills.length}/{cleanJobSkills.length || 1} Skills)
-              </span>
-              <span className={`badge ${isDegreeEligible ? "bg-primary bg-opacity-10 text-primary border border-primary" : "bg-warning bg-opacity-10 text-dark border border-warning"} px-3 py-1.5 fw-semibold`}>
-                <i className="bi bi-mortarboard me-1.5"></i>{isDegreeEligible ? "Degree Eligible ✓" : "Degree Under Review"}
-              </span>
-              <span className={`badge ${overallScore >= 80 ? "bg-success bg-opacity-10 text-success border border-success" : "bg-danger bg-opacity-10 text-danger border border-danger"} px-3 py-1.5 fw-bold`}>
-                <i className="bi bi-speedometer2 me-1.5"></i>ATS Score: {overallScore}% ({overallScore >= 80 ? "Unlocked" : "Minimum 80% Required"})
+            {/* Skill Match Status Badge Bar */}
+            <div className="d-flex align-items-center gap-2 mb-3.5 flex-wrap">
+              <span className={`badge ${isSkillMatchSufficient ? "bg-success bg-opacity-10 text-success border border-success" : "bg-danger bg-opacity-10 text-danger border border-danger"} px-3 py-2 fw-bold fs-6 text-wrap text-start lh-base mw-100`}>
+                <i className={`bi ${isSkillMatchSufficient ? "bi-check-circle-fill me-1.5 text-success" : "bi-x-circle-fill me-1.5 text-danger"}`}></i>
+                {cleanJobSkills.length === 0
+                  ? "Skill Match Confirmed ✓ (No Skills Specified for Drive)"
+                  : isSkillMatchSufficient
+                    ? skillMatchPercent === 100
+                      ? "100% Perfect Skill Match Confirmed ✓ (All Required Skills Matched)"
+                      : `✓ ${skillMatchPercent}% Skill Match (Min 60% Met — Eligible to Apply)`
+                    : `⚠️ ${skillMatchPercent}% Skill Match — Below Min 60% Requirement (${matchedSkills.length}/${cleanJobSkills.length} Skills Matched)`}
               </span>
             </div>
 
@@ -321,9 +304,9 @@ export default function ConfirmApplicationModal({
                               checked={isSelected}
                               onChange={() => setSelectedProfileId(p.id)}
                             />
-                            <label className="form-check-label w-100 cursor-pointer" htmlFor={`profile_radio_${p.id}`}>
-                              <span className="fw-bold text-dark small d-block">{p.profile_name}</span>
-                              <span className="text-muted small d-block" style={{ fontSize: "0.75rem" }}>
+                            <label className="form-check-label w-100 cursor-pointer text-truncate" htmlFor={`profile_radio_${p.id}`}>
+                              <span className="fw-bold text-dark small d-block text-truncate">{p.profile_name}</span>
+                              <span className="text-muted small d-block text-truncate" style={{ fontSize: "0.75rem" }}>
                                 {p.professional_title || "Career Profile"}
                               </span>
                             </label>
@@ -336,118 +319,118 @@ export default function ConfirmApplicationModal({
               </div>
             )}
 
-            {/* Profile / Eligibility Incomplete Alert */}
-            {isProfileIncomplete ? (
-              <div className="alert alert-warning border-0 shadow-sm p-4 rounded-3 mb-3">
-                <div className="d-flex align-items-start gap-3">
-                  <i className="bi bi-exclamation-triangle-fill fs-3 text-warning me-1"></i>
-                  <div className="flex-grow-1">
-                    <h6 className="fw-bold text-dark mb-1">
-                      {!isDegreeEligible
-                        ? "Application Locked: Degree Eligibility Mismatch"
-                        : isSkillTooLow
-                          ? "Application Locked: Required Skills Missing in Resume"
-                          : isScoreTooLow
-                            ? `Application Locked: Profile/Resume Score Must Be At Least 80% (Current: ${overallScore}%)`
-                            : "Application Locked: Incomplete Profile / Missing Resume"}
+            {/* Skill Match < 60% Error Alert */}
+            {isSkillMismatch ? (
+              <div className="alert alert-danger border-0 shadow-sm p-3 p-sm-4 rounded-3 mb-3">
+                <div className="d-flex align-items-start gap-2.5">
+                  <i className="bi bi-exclamation-octagon-fill fs-3 text-danger me-1 flex-shrink-0"></i>
+                  <div className="flex-grow-1 min-w-0">
+                    <h6 className="fw-bold text-danger mb-1 fs-6 text-wrap">
+                      Application Locked: Minimum 60% Skill Match Required (Current: {skillMatchPercent}%)
                     </h6>
-                    <p className="small mb-3 text-dark opacity-75">
-                      To submit your application for <strong>{job.title}</strong>, your degree must match job eligibility, your resume must include required skills, and your ATS score must be at least <strong>80%</strong>.
+                    <p className="small mb-3 text-dark opacity-90 text-wrap">
+                      This placement drive requires at least a <strong>60% skill match</strong> for <strong>{job.title}</strong>. Your profile/resume currently matches <strong>{matchedSkills.length} out of {cleanJobSkills.length} required skills ({skillMatchPercent}%)</strong>.
                     </p>
 
-                    {!isDegreeEligible && (
-                      <div className="p-3 bg-white rounded-3 border mb-3">
-                        <span className="small text-danger fw-bold d-block mb-1">
-                          <i className="bi bi-mortarboard-fill me-1"></i>Degree Mismatch
-                        </span>
-                        <small className="text-muted d-block mb-2">
-                          This placement drive requires degrees in <strong>{job.eligibility}</strong>. Your current degree is <strong>{currCourse || "Not Specified"}</strong>.
-                        </small>
-                        <Link to="/student/profile" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
-                          <i className="bi bi-pencil me-1"></i>Update Profile Degree / Course
-                        </Link>
-                      </div>
-                    )}
+                    <div className="p-2.5 p-sm-3 bg-white rounded-3 border border-danger border-opacity-25 mb-3">
+                      {/* Matched Skills */}
+                      {matchedSkills.length > 0 && (
+                        <div className="mb-3">
+                          <span className="small text-success fw-bold d-block mb-1">
+                            <i className="bi bi-check-circle-fill me-1"></i>Matched Skills ({matchedSkills.length}):
+                          </span>
+                          <div className="d-flex flex-wrap gap-1.5">
+                            {matchedSkills.map((s, i) => (
+                              <span key={i} className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1 text-wrap text-start">
+                                ✓ {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                    {isSkillTooLow && (
-                      <div className="p-3 bg-white rounded-3 border mb-3">
+                      {/* Missing Skills */}
+                      <div>
                         <span className="small text-danger fw-bold d-block mb-1">
-                          <i className="bi bi-cpu-fill me-1"></i>Required Skills Missing (0/{cleanJobSkills.length} Matched)
+                          <i className="bi bi-x-circle-fill me-1"></i>Missing Required Skills ({missingSkills.length}):
                         </span>
-                        <small className="text-muted d-block mb-2">
-                          Your resume does not list any of the required job skills (<strong>{cleanJobSkills.join(", ")}</strong>). Add these skills in the Resume Builder to qualify for this role.
-                        </small>
-                        <Link to="/student/resume-builder" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
-                          <i className="bi bi-pencil-square me-1"></i>Add Required Skills in Resume Builder
-                        </Link>
-                      </div>
-                    )}
-
-                    {isScoreTooLow && (
-                      <div className="p-3 bg-white rounded-3 border mb-3">
-                        <span className="small text-danger fw-bold d-block mb-1">
-                          <i className="bi bi-speedometer2 me-1"></i>Minimum 80% Score Required
-                        </span>
-                        <small className="text-muted d-block mb-2">
-                          Update your details in the Resume Builder (experience, projects, skills, education, professional summary) to reach an ATS score of 80%+ and unlock applications.
-                        </small>
-                        <div className="d-flex gap-2 flex-wrap">
-                          <Link to="/student/resume-builder" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
-                            <i className="bi bi-pencil-square me-1"></i>Open Resume Builder & Boost Score ({overallScore}%)
-                          </Link>
+                        <div className="d-flex flex-wrap gap-1.5">
+                          {missingSkills.map((s, i) => (
+                            <span key={i} className="badge bg-danger text-white px-2.5 py-1 fw-bold shadow-sm text-wrap text-start">
+                              + {s}
+                            </span>
+                          ))}
                         </div>
                       </div>
-                    )}
+                    </div>
 
-                    {!hasResume && !isScoreTooLow && (
-                      <div className="p-3 bg-white rounded-3 border mb-3">
-                        <span className="small text-danger fw-bold d-block mb-1">
-                          <i className="bi bi-x-circle-fill me-1"></i>No Resume Found for "{activeSelectedProfile?.profile_name}"
-                        </span>
-                        <small className="text-muted d-block mb-2">
-                          You haven't built or uploaded a resume for this career profile yet. Create a resume now to enable job applications.
-                        </small>
-                        <div className="d-flex gap-2 flex-wrap">
-                          <Link to="/student/resume-builder" className="btn btn-warning btn-sm text-dark fw-bold" onClick={onClose}>
-                            <i className="bi bi-magic me-1"></i>Build Resume Now
-                          </Link>
-                          <Link to="/student/profile" className="btn btn-outline-primary btn-sm fw-semibold" onClick={onClose}>
-                            <i className="bi bi-upload me-1"></i>Upload PDF Resume
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-
-                    {incompleteFields && incompleteFields.length > 0 && (
-                      <Link to="/student/profile" className="btn btn-warning btn-sm fw-semibold me-2" onClick={onClose}>
-                        <i className="bi bi-person-fill-gear me-1"></i>Complete Missing Profile Fields ({incompleteFields.join(", ")})
+                    <div className="mt-3">
+                      <Link
+                        to="/student/resume-builder"
+                        className="btn btn-danger text-white fw-bold px-3 py-2 shadow-sm d-inline-flex align-items-center gap-2 text-wrap text-start mw-100"
+                        onClick={onClose}
+                      >
+                        <i className="bi bi-pencil-square fs-6 flex-shrink-0"></i>
+                        <span>Update Resume in Resume Builder to Add Missing Skills</span>
                       </Link>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
               <div>
+                {/* Partial Skill Match Warning Banner (>= 60% & < 100%) */}
+                {isPartialMatchEligible && (
+                  <div className="alert alert-warning border-0 shadow-sm p-3 p-sm-3.5 rounded-3 mb-3">
+                    <div className="d-flex align-items-start gap-2.5">
+                      <i className="bi bi-exclamation-triangle-fill fs-4 text-warning me-1 flex-shrink-0"></i>
+                      <div className="flex-grow-1 min-w-0">
+                        <h6 className="fw-bold text-dark mb-1">
+                          Eligible to Apply ({skillMatchPercent}% Skill Match)!
+                        </h6>
+                        <p className="small mb-2 text-dark opacity-90 text-wrap">
+                          Great! You meet the minimum 60% skill requirement to submit your application. However, adding the remaining <strong>{missingSkills.length} skill(s)</strong> will further boost your selection score.
+                        </p>
+                        <div className="d-flex flex-wrap gap-1.5 mb-2">
+                          <span className="small text-muted fw-bold me-1">Recommended Skills to Add:</span>
+                          {missingSkills.map((s, i) => (
+                            <span key={i} className="badge bg-warning bg-opacity-20 text-dark border border-warning px-2 py-0.5 small text-wrap">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                        <Link
+                          to="/student/resume-builder"
+                          className="btn btn-warning btn-sm text-dark fw-bold mt-1 text-wrap d-inline-flex align-items-center gap-1.5"
+                          onClick={onClose}
+                        >
+                          <i className="bi bi-plus-circle me-1"></i>Add Missing Skills in Resume Builder
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* ── ATTACHED RESUME VERIFICATION & PREVIEW CARD ── */}
                 <div className="p-3 bg-white border border-success border-opacity-50 rounded-3 mb-3 shadow-sm">
-                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="rounded-circle bg-success bg-opacity-10 text-success p-2.5 d-flex align-items-center justify-content-center" style={{ width: 44, height: 44 }}>
-                        <i className="bi bi-file-earmark-check-fill fs-4"></i>
+                  <div className="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                    <div className="d-flex align-items-start gap-2.5 min-w-0">
+                      <div className="rounded-circle bg-success bg-opacity-10 text-success p-2 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
+                        <i className="bi bi-file-earmark-check-fill fs-5"></i>
                       </div>
-                      <div>
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="fw-bold text-dark">Attached Resume Verified</span>
-                          <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-0.5 me-2">
+                      <div className="min-w-0">
+                        <div className="d-flex align-items-center gap-1.5 flex-wrap mb-1">
+                          <span className="fw-bold text-dark small">Attached Resume Verified</span>
+                          <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-0.5 me-1">
                             ✓ Ready
                           </span>
                           {hasCreatedResume && (
                             <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-0.5 text-uppercase">
-                              Template: {templateKey}
+                              {templateKey}
                             </span>
                           )}
                         </div>
-                        <small className="text-muted">
+                        <small className="text-muted text-break d-block" style={{ fontSize: "0.75rem" }}>
                           {hasCreatedResume
                             ? `Master Resume (${templateKey} design) ready for ${activeSelectedProfile?.profile_name}`
                             : `PDF Resume attached for ${activeSelectedProfile?.profile_name}`}
@@ -455,35 +438,35 @@ export default function ConfirmApplicationModal({
                       </div>
                     </div>
 
-                    <div className="d-flex gap-2">
+                    <div className="w-100 w-sm-auto mt-1 mt-sm-0">
                       <button
                         type="button"
-                        className="btn btn-sm btn-primary fw-bold px-3 shadow-sm"
+                        className="btn btn-sm btn-primary fw-bold w-100 w-sm-auto shadow-sm text-nowrap"
                         onClick={() => setShowResumePreview(!showResumePreview)}
                       >
                         <i className={`bi ${showResumePreview ? "bi-eye-slash" : "bi-eye"} me-1.5`}></i>
-                        {showResumePreview ? "Hide Resume Preview" : "Preview Resume Before Applying"}
+                        {showResumePreview ? "Hide Preview" : "Preview Resume"}
                       </button>
                     </div>
                   </div>
 
                   {/* ── EMBEDDED INLINE RESUME PREVIEW PANEL ── */}
                   {showResumePreview && (
-                    <div className="mt-3 pt-3 border-top bg-light p-3 rounded-3 border">
-                      <div className="d-flex align-items-center justify-content-between mb-3">
-                        <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                          <i className="bi bi-file-earmark-person-fill text-primary"></i> Live Template Preview ({templateKey.toUpperCase()})
+                    <div className="mt-3 pt-3 border-top bg-light p-2.5 p-sm-3 rounded-3 border">
+                      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                        <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2 small-sm-base">
+                          <i className="bi bi-file-earmark-person-fill text-primary"></i> Template Preview ({templateKey.toUpperCase()})
                         </h6>
                         {pdfResumeUrl && (
                           <a href={pdfResumeUrl} target="_blank" rel="noreferrer" className="btn btn-xs btn-outline-primary fw-semibold">
-                            <i className="bi bi-box-arrow-up-right me-1"></i>Open PDF in New Window
+                            <i className="bi bi-box-arrow-up-right me-1"></i>Open PDF
                           </a>
                         )}
                       </div>
 
                       {hasCreatedResume && resumeContent && (
-                        <div className="bg-white p-2 rounded-3 border shadow-sm text-dark overflow-auto" style={{ maxHeight: "450px" }}>
-                          {renderTemplateComponent()}
+                        <div className="rounded-3 border shadow-sm text-dark overflow-hidden" style={{ height: "450px" }}>
+                          <ResumePreview resume={{ ...resumeContent, settings: resumeContent.settings || { template: templateKey } }} />
                         </div>
                       )}
 
@@ -500,7 +483,7 @@ export default function ConfirmApplicationModal({
                   )}
                 </div>
 
-                <div className="p-3 bg-light rounded-3 text-muted small border">
+                <div className="p-3 bg-light rounded-3 text-muted small border text-wrap">
                   <i className="bi bi-shield-check text-success me-1"></i>
                   By clicking <strong>Confirm & Submit</strong>, your profile <strong>{activeSelectedProfile?.profile_name}</strong> and verified resume will be submitted to <strong>{job.company}</strong>.
                 </div>
@@ -509,17 +492,17 @@ export default function ConfirmApplicationModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="modal-footer bg-light border-0 py-3 px-4">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>
+          <div className="modal-footer bg-light border-0 py-3 px-3 px-sm-4 d-flex align-items-center justify-content-end flex-wrap gap-2">
+            <button type="button" className="btn btn-secondary btn-sm px-3" onClick={onClose} disabled={submitting}>
               Cancel
             </button>
-            <Link to="/student/profile" className="btn btn-outline-primary" onClick={onClose}>
+            <Link to="/student/profile" className="btn btn-outline-primary btn-sm px-3" onClick={onClose}>
               <i className="bi bi-pencil me-1"></i>Edit Profile
             </Link>
             {!isProfileIncomplete ? (
               <button
                 type="button"
-                className="btn btn-success fw-semibold px-4"
+                className="btn btn-success btn-sm fw-bold px-3 px-sm-4 text-nowrap"
                 onClick={handleConfirm}
                 disabled={submitting || loadingProfiles || loadingSelectedProfile}
               >
@@ -532,9 +515,9 @@ export default function ConfirmApplicationModal({
             ) : (
               <button
                 type="button"
-                className="btn btn-secondary fw-semibold px-4 cursor-not-allowed"
+                className="btn btn-secondary btn-sm fw-bold px-3 px-sm-4 cursor-not-allowed text-nowrap"
                 disabled
-                title="Application Disabled: Eligibility or skill requirements not met"
+                title="Application Disabled: Minimum 60% skill match required"
               >
                 <i className="bi bi-lock-fill me-1"></i>Confirm & Submit Application (Locked)
               </button>

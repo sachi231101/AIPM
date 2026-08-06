@@ -797,7 +797,7 @@ export default function ResumeBuilder() {
                   {/* Photo Upload Widget */}
                   <div className="card border bg-light mb-4 rounded-3">
                     <div className="card-body p-3">
-                      <div className="d-flex align-items-center gap-4">
+                      <div className="d-flex flex-row align-items-center gap-3 gap-sm-4">
                         {/* Photo preview circle */}
                         <div
                           className="rounded-circle overflow-hidden d-flex align-items-center justify-content-center flex-shrink-0 border border-2"
@@ -824,44 +824,46 @@ export default function ResumeBuilder() {
                               ? "Photo loaded from your profile. You can update it below."
                               : "No photo yet. Upload to include your photo in the resume."}
                           </p>
-                          <label
-                            htmlFor="resumePhotoInput"
-                            className={`btn btn-sm ${ uploadingPhoto ? "btn-secondary disabled" : "btn-outline-primary" } fw-semibold`}
-                            style={{ cursor: uploadingPhoto ? "not-allowed" : "pointer" }}
-                          >
-                            {uploadingPhoto ? (
-                              <><span className="spinner-border spinner-border-sm me-1"></span>Uploading...</>
-                            ) : (
-                              <><i className="bi bi-camera me-1"></i>{activeResume.personal?.photo ? "Change Photo" : "Upload Photo"}</>
-                            )}
-                            <input
-                              id="resumePhotoInput"
-                              type="file"
-                              accept="image/*"
-                              className="d-none"
-                              disabled={uploadingPhoto}
-                              onChange={handleResumePhotoChange}
-                            />
-                          </label>
-                          {activeResume.personal?.photo && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger ms-2"
-                              onClick={() => {
-                                const updated = {
-                                  ...activeResume,
-                                  personal: {
-                                    ...activeResume.personal,
-                                    photo: "",
-                                    showPhoto: false,
-                                  },
-                                };
-                                handleUpdateResume(updated);
-                              }}
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <label
+                              htmlFor="resumePhotoInput"
+                              className={`btn btn-sm ${ uploadingPhoto ? "btn-secondary disabled" : "btn-outline-primary" } fw-semibold mb-0`}
+                              style={{ cursor: uploadingPhoto ? "not-allowed" : "pointer" }}
                             >
-                              <i className="bi bi-trash me-1"></i>Remove
-                            </button>
-                          )}
+                              {uploadingPhoto ? (
+                                <><span className="spinner-border spinner-border-sm me-1"></span>Uploading...</>
+                              ) : (
+                                <><i className="bi bi-camera me-1"></i>{activeResume.personal?.photo ? "Change Photo" : "Upload Photo"}</>
+                              )}
+                              <input
+                                id="resumePhotoInput"
+                                type="file"
+                                accept="image/*"
+                                className="d-none"
+                                disabled={uploadingPhoto}
+                                onChange={handleResumePhotoChange}
+                              />
+                            </label>
+                            {activeResume.personal?.photo && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => {
+                                  const updated = {
+                                    ...activeResume,
+                                    personal: {
+                                      ...activeResume.personal,
+                                      photo: "",
+                                      showPhoto: false,
+                                    },
+                                  };
+                                  handleUpdateResume(updated);
+                                }}
+                              >
+                                <i className="bi bi-trash me-1"></i>Remove
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

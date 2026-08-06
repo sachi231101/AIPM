@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function PageHeader({ title, subtitle, breadcrumbs = [] }) {
   return (
-    <div className="page-header-bar py-3 px-4 mb-4">
+    <div className="page-header-bar py-2 py-md-3 px-3 px-md-4 mb-3 mb-md-4">
       <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
         <div>
           <h4 className="mb-1 fw-bold text-primary">{title}</h4>

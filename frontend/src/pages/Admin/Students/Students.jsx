@@ -234,7 +234,7 @@ export default function Students() {
                           )}
                         </td>
                         <td className="text-end px-4">
-                          <div className="d-flex gap-1.5 justify-content-end">
+                          <div className="d-flex gap-2 justify-content-end">
                             {status !== "approved" && (
                               <button
                                 className="btn btn-sm btn-success px-2.5 py-1"

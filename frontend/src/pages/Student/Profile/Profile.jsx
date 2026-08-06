@@ -458,13 +458,13 @@ export default function Profile() {
                   </Link>
                 </h6>
 
-                <div className="mb-4 p-4 bg-light rounded-4 border">
+                <div className="mb-4 p-2.5 p-sm-4 bg-light rounded-4 border">
                   {/* Uploaded PDF Resume Box */}
                   {hasUploadedResume ? (
-                    <div className="p-3 bg-white rounded-3 border shadow-sm mb-3">
-                      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div className="p-2.5 p-sm-3 bg-white rounded-3 border shadow-sm mb-3">
+                      <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
                         <div className="d-flex align-items-center gap-3">
-                          <div className="rounded-circle bg-danger bg-opacity-10 text-danger p-2.5 d-flex align-items-center justify-content-center" style={{ width: 44, height: 44 }}>
+                          <div className="rounded-circle bg-danger bg-opacity-10 text-danger p-2.5 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 44, height: 44 }}>
                             <i className="bi bi-file-earmark-pdf-fill fs-4"></i>
                           </div>
                           <div>
@@ -472,8 +472,8 @@ export default function Profile() {
                             <small className="text-muted">Direct PDF attached to profile <strong>{activeProfile?.profile_name}</strong></small>
                           </div>
                         </div>
-                        <div className="d-flex gap-2">
-                          <a href={resumeUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary fw-semibold">
+                        <div className="d-flex gap-2 w-100 w-sm-auto justify-content-end">
+                          <a href={resumeUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary fw-semibold flex-grow-1 flex-sm-grow-0 text-nowrap">
                             <i className="bi bi-eye me-1"></i>View PDF
                           </a>
                         </div>
@@ -482,14 +482,14 @@ export default function Profile() {
                   ) : null}
 
                   {/* Built Resume Status Box */}
-                  <div className="p-3 bg-white rounded-3 border shadow-sm mb-3">
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div className="p-2.5 p-sm-3 bg-white rounded-3 border shadow-sm mb-3">
+                    <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
                       <div className="d-flex align-items-center gap-3">
-                        <div className={`rounded-circle ${hasCreatedResume ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-dark"} p-2.5 d-flex align-items-center justify-content-center`} style={{ width: 44, height: 44 }}>
+                        <div className={`rounded-circle ${hasCreatedResume ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-dark"} p-2.5 d-flex align-items-center justify-content-center flex-shrink-0`} style={{ width: 44, height: 44 }}>
                           <i className={`bi ${hasCreatedResume ? "bi-check-circle-fill text-success fs-4" : "bi-magic fs-4 text-warning"}`}></i>
                         </div>
                         <div>
-                          <div className="d-flex align-items-center gap-2">
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
                             <span className="fw-bold text-dark">Master Resume</span>
                             {hasCreatedResume && (
                               <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-0.5">
@@ -504,13 +504,13 @@ export default function Profile() {
                           </small>
                         </div>
                       </div>
-                      <div className="d-flex gap-2">
+                      <div className="d-flex gap-2 w-100 w-sm-auto flex-wrap flex-sm-nowrap mt-2 mt-sm-0">
                         {hasCreatedResume && (
-                          <a href={createdResumeUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-success fw-semibold">
+                          <a href={createdResumeUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-success fw-semibold flex-grow-1 flex-sm-grow-0 text-nowrap">
                             <i className="bi bi-eye me-1"></i>View Master Resume
                           </a>
                         )}
-                        <Link to="/student/resume-builder" className={`btn btn-sm ${hasCreatedResume ? "btn-warning" : "btn-warning"} text-dark fw-bold`}>
+                        <Link to="/student/resume-builder" className="btn btn-sm btn-warning text-dark fw-bold flex-grow-1 flex-sm-grow-0 text-nowrap">
                           <i className="bi bi-pencil-square me-1"></i>{hasCreatedResume ? "Edit Master Resume" : "Build Resume Now"}
                         </Link>
                       </div>

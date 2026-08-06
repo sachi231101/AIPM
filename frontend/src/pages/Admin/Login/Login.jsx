@@ -36,11 +36,13 @@ export default function AdminLogin() {
         <div className="row justify-content-center">
           <div className="col-md-4">
             <div className="text-center mb-4">
-              <div className="rounded-circle bg-white bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style={{ width: 72, height: 72 }}>
-                <i className="bi bi-shield-lock-fill text-warning fs-2"></i>
+              <div className="d-inline-flex align-items-center gap-3 mb-3">
+                <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "46px", objectFit: "contain" }} />
+                <span className="text-white-50 fs-4">|</span>
+                <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "46px", objectFit: "contain" }} />
               </div>
-              <h4 className="text-white fw-bold">Admin Portal</h4>
-              <p className="text-white-50 small">Secure access for Aadya Institution Placement Cell administrators</p>
+              <h4 className="text-white fw-bold mb-1">Admin Portal</h4>
+              <p className="text-white-50 small mb-0">Secure access for Aadya & Edify Institution Placement Cell administrators</p>
             </div>
 
             <div className="card border-0 shadow-lg rounded-4">

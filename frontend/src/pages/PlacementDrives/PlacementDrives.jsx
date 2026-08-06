@@ -73,14 +73,14 @@ export default function PlacementDrives() {
   return (
     <>
       {/* Hero */}
-      <section className="inner-page-hero text-white py-5">
-        <div className="container py-3">
+      <section className="inner-page-hero text-white py-3 py-md-5">
+        <div className="container py-2 py-md-3">
           <h1 className="display-5 fw-bold">Placement Drives</h1>
           <p className="lead text-white-75 mb-0">Explore opportunities from top companies</p>
         </div>
       </section>
 
-      <section className="py-5">
+      <section className="py-3 py-md-5">
         <div className="container">
           {/* Filters */}
           <div className="card border-0 shadow-sm mb-4">

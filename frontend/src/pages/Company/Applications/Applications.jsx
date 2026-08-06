@@ -154,7 +154,7 @@ export default function CompanyApplications() {
 
                   {/* Actions */}
                   <td className="pe-4 text-end">
-                    <div className="d-flex justify-content-end gap-1.5">
+                    <div className="d-flex justify-content-end gap-2">
                       {/* View Profile */}
                       <button
                         type="button"

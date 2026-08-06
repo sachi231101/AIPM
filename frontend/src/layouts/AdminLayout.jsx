@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Sidebar from "../components/Sidebar/Sidebar";
 import ProtectedLayout from "../components/ProtectedLayout/ProtectedLayout";
@@ -25,13 +25,20 @@ function timeAgo(dateStr) {
 
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const dropdownRef = useRef(null);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
@@ -98,14 +105,20 @@ export default function AdminLayout() {
   return (
     <ProtectedLayout requiredRole="admin">
       <div className="admin-layout d-flex" style={{ height: "100vh", overflow: "hidden" }}>
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+        <Sidebar
+          collapsed={collapsed}
+          onToggle={() => setCollapsed(!collapsed)}
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
         <div className="admin-content flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
           {/* Top bar */}
-          <header className="admin-topbar d-flex align-items-center justify-content-between px-4 py-2">
+          <header className="admin-topbar d-flex align-items-center justify-content-between px-3 px-md-4 py-2">
             <div className="d-flex align-items-center gap-2">
               <button
                 className="btn btn-sm btn-light d-lg-none"
-                onClick={() => setCollapsed(!collapsed)}
+                onClick={() => setMobileOpen(true)}
+                aria-label="Toggle navigation menu"
               >
                 <i className="bi bi-list fs-5"></i>
               </button>

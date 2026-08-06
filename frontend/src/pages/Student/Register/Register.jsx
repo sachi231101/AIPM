@@ -131,8 +131,12 @@ export default function Register() {
           <div className="col-lg-6 col-md-8">
             <div className="text-center mb-4">
               <Link to="/" className="d-flex flex-column align-items-center gap-2 text-decoration-none">
-                <img src="/logo.png" alt="Aadya Institute Logo" style={{ height: "52px", objectFit: "contain" }} />
-                <span className="fw-bold fs-4 text-dark text-center">Aadya Institution Placement Cell</span>
+                <div className="d-flex align-items-center gap-3">
+                  <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "46px", objectFit: "contain" }} />
+                  <span className="text-muted opacity-50 fw-light fs-4">|</span>
+                  <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "46px", objectFit: "contain" }} />
+                </div>
+                <span className="fw-bold fs-5 text-dark text-center mt-1">Aadya & Edify Institution Placement Cell</span>
               </Link>
             </div>
 

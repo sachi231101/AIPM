@@ -194,35 +194,20 @@ export default function AvailableJobs() {
         </div>
       )}
 
-      {/* ── Profile & Resume Score Banner ── */}
-      {(() => {
-        const score = getOverallProfileScore(student);
-        const isEligible = score >= 80;
-        return (
-          <div
-            className={`alert border-0 mb-4 rounded-3 py-2 px-3 d-flex align-items-center gap-2 ${
-              isEligible ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-dark"
-            }`}
-          >
-            <i className={`bi ${isEligible ? "bi-shield-check text-success fs-5" : "bi-exclamation-triangle-fill text-warning fs-5"}`}></i>
-            <span className="small fw-medium">
-              Profile & Resume Score: <strong>{score}%</strong> —{" "}
-              {isEligible ? (
-                <span className="text-success fw-semibold">Eligible to apply for placement opportunities 🎉</span>
-              ) : (
-                <span className="text-danger fw-semibold">Action Required: Score must be at least 80% to apply.</span>
-              )}
-            </span>
-            <Link
-              to="/student/resume-builder"
-              className={`ms-auto btn btn-sm ${isEligible ? "btn-outline-success" : "btn-warning text-dark fw-bold"}`}
-              style={{ fontSize: 12, borderRadius: 8 }}
-            >
-              <i className="bi bi-pencil-square me-1"></i>{isEligible ? "Update Resume" : "Boost Score to 80%+"}
-            </Link>
-          </div>
-        );
-      })()}
+      {/* ── Skill Matching Info Banner ── */}
+      <div className="alert border-0 mb-4 rounded-3 py-2 px-3 d-flex align-items-center gap-2 bg-primary bg-opacity-10 text-primary">
+        <i className="bi bi-cpu-fill fs-5"></i>
+        <span className="small fw-medium">
+          Skill-Based Matching Active — Minimum <strong>60% skill match</strong> required between your resume and job description to apply.
+        </span>
+        <Link
+          to="/student/resume-builder"
+          className="ms-auto btn btn-sm btn-primary rounded-pill px-3 py-1 fw-semibold"
+          style={{ fontSize: 12 }}
+        >
+          <i className="bi bi-pencil-square me-1"></i>Resume Builder
+        </Link>
+      </div>
 
       {/* Filters */}
       <div className="card border-0 shadow-sm mb-4">

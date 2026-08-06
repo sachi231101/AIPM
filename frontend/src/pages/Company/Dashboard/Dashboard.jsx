@@ -91,14 +91,14 @@ export default function CompanyDashboard() {
       <div className="row g-3 mb-4">
         {/* Active Jobs */}
         <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <span className="text-muted small fw-semibold d-block mb-1">Active Jobs</span>
+          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <div className="min-width-0 flex-grow-1">
+                <span className="text-muted small fw-semibold d-block mb-1 text-truncate">Active Jobs</span>
                 <h2 className="fw-bold text-primary mb-0">{activeJobsCount}</h2>
               </div>
               <div
-                className="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center"
+                className="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0"
                 style={{ width: 52, height: 52 }}
               >
                 <i className="bi bi-briefcase-fill fs-4"></i>
@@ -109,14 +109,14 @@ export default function CompanyDashboard() {
 
         {/* Total Applications */}
         <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <span className="text-muted small fw-semibold d-block mb-1">Total Applications</span>
+          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <div className="min-width-0 flex-grow-1">
+                <span className="text-muted small fw-semibold d-block mb-1 text-truncate">Total Applications</span>
                 <h2 className="fw-bold text-info mb-0">{totalAppsCount}</h2>
               </div>
               <div
-                className="rounded-3 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center"
+                className="rounded-3 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center flex-shrink-0"
                 style={{ width: 52, height: 52 }}
               >
                 <i className="bi bi-file-earmark-person-fill fs-4"></i>
@@ -127,14 +127,14 @@ export default function CompanyDashboard() {
 
         {/* Shortlisted Students */}
         <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <span className="text-muted small fw-semibold d-block mb-1">Shortlisted Students</span>
+          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <div className="min-width-0 flex-grow-1">
+                <span className="text-muted small fw-semibold d-block mb-1 text-truncate">Shortlisted Students</span>
                 <h2 className="fw-bold text-warning mb-0">{shortlistedCount}</h2>
               </div>
               <div
-                className="rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center"
+                className="rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center flex-shrink-0"
                 style={{ width: 52, height: 52 }}
               >
                 <i className="bi bi-star-fill fs-4"></i>
@@ -145,14 +145,14 @@ export default function CompanyDashboard() {
 
         {/* Selected Students */}
         <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <span className="text-muted small fw-semibold d-block mb-1">Selected Students</span>
+          <div className="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <div className="min-width-0 flex-grow-1">
+                <span className="text-muted small fw-semibold d-block mb-1 text-truncate">Selected Students</span>
                 <h2 className="fw-bold text-success mb-0">{selectedCount}</h2>
               </div>
               <div
-                className="rounded-3 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center"
+                className="rounded-3 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center flex-shrink-0"
                 style={{ width: 52, height: 52 }}
               >
                 <i className="bi bi-check-circle-fill fs-4"></i>

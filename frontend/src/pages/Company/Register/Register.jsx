@@ -172,8 +172,11 @@ export default function CompanyRegister() {
 
           <div className="text-center mt-3 pt-3 border-top">
             <p className="small text-muted mb-1">Already registered your company?</p>
-            <Link to="/company/login" className="fw-semibold text-primary text-decoration-none">
+            <Link to="/company/login" className="fw-semibold text-primary text-decoration-none d-block mb-2">
               Login to Recruiter Portal <i className="bi bi-arrow-right ms-1"></i>
+            </Link>
+            <Link to="/" className="text-muted small text-decoration-none">
+              <i className="bi bi-arrow-left me-1"></i>Back to Home
             </Link>
           </div>
         </div>
