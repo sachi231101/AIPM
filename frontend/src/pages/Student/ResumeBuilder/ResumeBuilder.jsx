@@ -28,6 +28,21 @@ import PageHeader from "../../../components/PageHeader/PageHeader";
 import ResumePreview from "../../../components/ResumePreview/ResumePreview";
 import TemplateGalleryModal, { TEMPLATE_DEFINITIONS, RealResumeThumbnail } from "../../../components/TemplateGalleryModal/TemplateGalleryModal";
 
+const PRESET_DEGREES = [
+  "B.Tech / B.E.",
+  "B.C.A.",
+  "B.Sc.",
+  "B.Com.",
+  "B.B.A.",
+  "B.A.",
+  "M.Tech / M.E.",
+  "M.C.A.",
+  "M.Sc.",
+  "M.B.A.",
+  "M.Com.",
+  "Diploma",
+];
+
 const STEP_NAMES = [
   "Personal Information",
   "Professional Summary",
@@ -770,21 +785,36 @@ export default function ResumeBuilder() {
                 <i className="bi bi-fonts text-primary me-1"></i> Typography & Layout
               </label>
               
-              {/* Font Family */}
-              <div className="mb-2">
-                <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Font Family</small>
-                <select
-                  className="form-select form-select-sm"
-                  style={{ fontSize: "0.78rem" }}
-                  value={activeResume.settings?.fontFamily || "Inter"}
-                  onChange={(e) => handleSettingChange("fontFamily", e.target.value)}
-                >
-                  <option value="Inter">Inter (Sans-Serif)</option>
-                  <option value="Roboto">Roboto (Clean)</option>
-                  <option value="Outfit">Outfit (Modern)</option>
-                  <option value="Merriweather">Merriweather (Classic Serif)</option>
-                  <option value="Poppins">Poppins (Geometric)</option>
-                </select>
+              {/* Font Family & Font Style */}
+              <div className="row g-2 mb-2">
+                <div className="col-6">
+                  <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Font Family</small>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ fontSize: "0.78rem" }}
+                    value={activeResume.settings?.fontFamily || "Inter"}
+                    onChange={(e) => handleSettingChange("fontFamily", e.target.value)}
+                  >
+                    <option value="Inter">Inter (Sans-Serif)</option>
+                    <option value="Roboto">Roboto (Clean)</option>
+                    <option value="Outfit">Outfit (Modern)</option>
+                    <option value="Merriweather">Merriweather (Classic Serif)</option>
+                    <option value="Poppins">Poppins (Geometric)</option>
+                  </select>
+                </div>
+                <div className="col-6">
+                  <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Font Style</small>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ fontSize: "0.75rem" }}
+                    value={activeResume.settings?.fontStyle || "normal"}
+                    onChange={(e) => handleSettingChange("fontStyle", e.target.value)}
+                  >
+                    <option value="normal">Normal (Standard)</option>
+                    <option value="italic">Italic (Elegant Slant)</option>
+                    <option value="oblique">Oblique (Modern Slant)</option>
+                  </select>
+                </div>
               </div>
 
               {/* Font Size & Line Spacing */}
@@ -798,21 +828,22 @@ export default function ResumeBuilder() {
                     onChange={(e) => handleSettingChange("fontSize", e.target.value)}
                   >
                     <option value="small">Small (Dense)</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
+                    <option value="medium">Medium (Standard)</option>
+                    <option value="large">Large (Expanded)</option>
+                    <option value="xlarge">Extra Large</option>
                   </select>
                 </div>
                 <div className="col-6">
-                  <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Spacing</small>
+                  <small className="text-muted d-block mb-1" style={{ fontSize: "0.75rem" }}>Line Spacing</small>
                   <select
                     className="form-select form-select-sm"
                     style={{ fontSize: "0.75rem" }}
                     value={activeResume.settings?.lineSpacing || "normal"}
                     onChange={(e) => handleSettingChange("lineSpacing", e.target.value)}
                   >
-                    <option value="compact">Compact</option>
-                    <option value="normal">Normal</option>
-                    <option value="spacious">Spacious</option>
+                    <option value="compact">Compact (1.2)</option>
+                    <option value="normal">Normal (1.5)</option>
+                    <option value="spacious">Spacious (1.8)</option>
                   </select>
                 </div>
               </div>
@@ -1195,8 +1226,52 @@ export default function ResumeBuilder() {
                         </div>
                         <div className="row g-3">
                           <div className="col-md-6">
-                            <label className="form-label small text-muted">Degree</label>
-                            <input type="text" className="form-control form-control-sm" value={edu.degree || ""} onChange={(e) => handleEduChange(edu.id, "degree", e.target.value)} placeholder="e.g. B.Tech / B.E." />
+                            <label className="form-label small text-muted">Degree / Qualification</label>
+                            <select
+                              className="form-select form-select-sm"
+                              value={
+                                PRESET_DEGREES.includes(edu.degree)
+                                  ? edu.degree
+                                  : (edu.degree ? "Other" : "")
+                              }
+                              onChange={(e) => {
+                                const selectedVal = e.target.value;
+                                if (selectedVal === "Other") {
+                                  if (PRESET_DEGREES.includes(edu.degree)) {
+                                    handleEduChange(edu.id, "degree", "");
+                                  }
+                                } else {
+                                  handleEduChange(edu.id, "degree", selectedVal);
+                                }
+                              }}
+                            >
+                              <option value="">-- Select Degree --</option>
+                              <option value="B.Tech / B.E.">B.Tech / B.E. (Bachelor of Tech / Engineering)</option>
+                              <option value="B.C.A.">B.C.A. (Bachelor of Computer Applications)</option>
+                              <option value="B.Sc.">B.Sc. (Bachelor of Science)</option>
+                              <option value="B.Com.">B.Com. (Bachelor of Commerce)</option>
+                              <option value="B.B.A.">B.B.A. (Bachelor of Business Administration)</option>
+                              <option value="B.A.">B.A. (Bachelor of Arts)</option>
+                              <option value="M.Tech / M.E.">M.Tech / M.E. (Master of Tech / Engineering)</option>
+                              <option value="M.C.A.">M.C.A. (Master of Computer Applications)</option>
+                              <option value="M.Sc.">M.Sc. (Master of Science)</option>
+                              <option value="M.B.A.">M.B.A. (Master of Business Administration)</option>
+                              <option value="M.Com.">M.Com. (Master of Commerce)</option>
+                              <option value="Diploma">Diploma (Polytechnic / Technical)</option>
+                              <option value="Class XII (HSC)">Class XII (Higher Secondary)</option>
+                              <option value="Class X (SSLC)">Class X (Secondary School)</option>
+                              <option value="Ph.D. / Doctorate">Ph.D. / Doctorate</option>
+                              <option value="Other">Other (Specify Custom Degree...)</option>
+                            </select>
+                            {(!PRESET_DEGREES.includes(edu.degree) || edu.degree === "Other") && (
+                              <input
+                                type="text"
+                                className="form-control form-control-sm mt-1.5"
+                                value={edu.degree || ""}
+                                onChange={(e) => handleEduChange(edu.id, "degree", e.target.value)}
+                                placeholder="Type custom degree (e.g. B.Des, B.Pharm)..."
+                              />
+                            )}
                           </div>
                           <div className="col-md-6">
                             <label className="form-label small text-muted">Specialization / Branch</label>

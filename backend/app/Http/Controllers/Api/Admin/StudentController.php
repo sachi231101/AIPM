@@ -102,4 +102,26 @@ class StudentController extends Controller
             'student' => $student,
         ]);
     }
+
+    public function bulkAction(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'action' => 'required|in:approve,hold,reject',
+        ]);
+
+        $status = match ($request->action) {
+            'approve' => 'approved',
+            'hold'    => 'hold',
+            'reject'  => 'rejected',
+        };
+
+        Student::whereIn('user_id', $request->ids)
+            ->orWhereIn('id', $request->ids)
+            ->update(['approval_status' => $status]);
+
+        return response()->json([
+            'message' => "Bulk action '{$request->action}' applied successfully for " . count($request->ids) . " students.",
+        ]);
+    }
 }

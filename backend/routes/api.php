@@ -126,6 +126,7 @@ Route::middleware(['auth:sanctum', 'role:admin,subadmin'])->prefix('admin')->gro
     // Student Management (Students Permission)
     Route::middleware('permission:students')->group(function () {
         Route::get('/students', [\App\Http\Controllers\Api\Admin\StudentController::class, 'index']);
+        Route::post('/students/bulk-action', [\App\Http\Controllers\Api\Admin\StudentController::class, 'bulkAction']);
         Route::put('/students/{id}/approve', [\App\Http\Controllers\Api\Admin\StudentController::class, 'approve']);
         Route::put('/students/{id}/hold', [\App\Http\Controllers\Api\Admin\StudentController::class, 'hold']);
         Route::put('/students/{id}/reject', [\App\Http\Controllers\Api\Admin\StudentController::class, 'reject']);

@@ -4,6 +4,12 @@ export default function ModernTemplate({ resume }) {
   if (!resume) return null;
   const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
   const accent = settings?.accentColor || "#0F4C81";
+  const fontFamily = settings?.fontFamily || "Inter";
+  const fontStyle = settings?.fontStyle || "normal";
+  const fontSizeMap = { small: "0.82rem", medium: "0.92rem", large: "1.05rem", xlarge: "1.18rem" };
+  const lineSpacingMap = { compact: "1.2", normal: "1.5", spacious: "1.8" };
+  const fontSize = fontSizeMap[settings?.fontSize] || "0.92rem";
+  const lineHeight = lineSpacingMap[settings?.lineSpacing] || "1.5";
 
   const allSkillItems = Object.entries(skills || {}).map(([cat, list]) => ({
     category: cat.replace(/([A-Z])/g, " $1").trim(),
@@ -11,7 +17,7 @@ export default function ModernTemplate({ resume }) {
   })).filter((s) => s.items.length > 0);
 
   return (
-    <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-sans" style={{ fontSize: "0.9rem", lineHeight: "1.5" }}>
+    <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3" style={{ fontFamily, fontStyle, fontSize, lineHeight }}>
       {/* Header */}
       <div className="d-flex align-items-center justify-content-between border-bottom pb-4 mb-4" style={{ borderColor: accent }}>
         <div className="d-flex align-items-center gap-3">
@@ -19,7 +25,7 @@ export default function ModernTemplate({ resume }) {
             <img src={normalizePhotoUrl(personal.photo)} alt={personal.fullName} className="rounded-circle object-fit-cover shadow-sm" style={{ width: 72, height: 72, border: `2px solid ${accent}` }} />
           )}
           <div>
-            <h2 className="fw-bold mb-1 text-uppercase tracking-wide" style={{ color: accent, fontSize: "1.75rem" }}>
+            <h2 className="fw-bold mb-1 text-uppercase tracking-wide" style={{ color: accent, fontSize: "1.8em" }}>
               {personal?.fullName || "Full Name"}
             </h2>
             <p className="fw-semibold text-secondary mb-1 fs-6">{personal?.professionalTitle}</p>

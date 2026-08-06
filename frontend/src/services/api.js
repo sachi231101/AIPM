@@ -65,6 +65,7 @@ export const jobService = {
 // ─── STUDENTS ────────────────────────────────────────────────────────────────
 export const studentService = {
   getAll: (params) => api.get("/admin/students", { params }),
+  bulkAction: (data) => api.post("/admin/students/bulk-action", data),
   approve: (id) => api.put(`/admin/students/${id}/approve`),
   hold: (id) => api.put(`/admin/students/${id}/hold`),
   reject: (id) => api.put(`/admin/students/${id}/reject`),

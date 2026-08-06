@@ -4,15 +4,21 @@ export default function MinimalTemplate({ resume }) {
   if (!resume) return null;
   const { personal, summary, education, experience, projects, skills, certifications, achievements, languages, settings } = resume;
   const accent = settings?.accentColor || "#1e293b";
+  const fontFamily = settings?.fontFamily || "Inter";
+  const fontStyle = settings?.fontStyle || "normal";
+  const fontSizeMap = { small: "0.82rem", medium: "0.92rem", large: "1.05rem", xlarge: "1.18rem" };
+  const lineSpacingMap = { compact: "1.2", normal: "1.5", spacious: "1.8" };
+  const fontSize = fontSizeMap[settings?.fontSize] || "0.92rem";
+  const lineHeight = lineSpacingMap[settings?.lineSpacing] || "1.5";
 
   const allSkillsList = Object.values(skills || {}).flat();
 
   return (
-    <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3 font-sans" style={{ fontSize: "0.875rem", lineHeight: "1.6" }}>
+    <div className="resume-document p-4 p-md-5 bg-white text-dark shadow-sm rounded-3" style={{ fontFamily, fontStyle, fontSize, lineHeight }}>
       {/* Name and Header */}
       <div className="d-flex align-items-center justify-content-between mb-4">
         <div>
-          <h1 className="fw-bold tracking-tight mb-0" style={{ color: accent, fontSize: "2.25rem" }}>
+          <h1 className="fw-bold tracking-tight mb-0" style={{ color: accent, fontSize: "2.25em" }}>
             {personal?.fullName}
           </h1>
           <p className="fs-6 text-muted mb-2">{personal?.professionalTitle}</p>

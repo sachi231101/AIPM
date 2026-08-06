@@ -176,7 +176,8 @@ export function createDefaultResume(profileData = {}) {
       length: "one_page", // one_page, two_pages
       paperSize: "a4", // a4, letter
       fontFamily: "Inter", // Inter, Roboto, Outfit, Merriweather, Poppins
-      fontSize: "medium", // small, medium, large
+      fontStyle: "normal", // normal, italic, oblique
+      fontSize: "medium", // small, medium, large, xlarge
       lineSpacing: "normal", // compact, normal, spacious
     },
   };
@@ -249,6 +250,7 @@ export function mergeProfileIntoResume(resumeObj, profileData = {}) {
     length: "one_page",
     paperSize: "a4",
     fontFamily: "Inter",
+    fontStyle: "normal",
     fontSize: "medium",
     lineSpacing: "normal",
     ...(resumeObj.settings || {}),

@@ -11,6 +11,10 @@ export default function Students() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
+  // Multi-selection states
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const { data: rawStudentsResponse, loading, refresh: refetch, setData } = useCachedData(
     "admin_students",
     studentService.getAll
@@ -20,9 +24,10 @@ export default function Students() {
 
   const updateStudentStatusLocally = (id, newStatus) => {
     if (rawStudentsResponse?.data) {
-      const updatedList = rawStudentsResponse.data.map((s) =>
-        s.id === id ? { ...s, approval_status: newStatus, approvalStatus: newStatus } : s
-      );
+      const updatedList = rawStudentsResponse.data.map((s) => {
+        const sId = s.id || s.student_id;
+        return sId === id ? { ...s, approval_status: newStatus, approvalStatus: newStatus } : s;
+      });
       setData({ ...rawStudentsResponse, data: updatedList });
     }
   };
@@ -75,7 +80,6 @@ export default function Students() {
     }
   };
 
-
   const filtered = listToDisplay.filter((s) => {
     const sName = s.name || "";
     const sEmail = s.email || "";
@@ -90,6 +94,117 @@ export default function Students() {
 
     return matchSearch && matchStatus;
   });
+
+  // Multi-selection calculations
+  const filteredIds = filtered.map((s) => s.id || s.student_id);
+  const isAllSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedStudentIds.includes(id));
+  const isSomeSelected = filteredIds.some((id) => selectedStudentIds.includes(id)) && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedStudentIds(selectedStudentIds.filter((id) => !filteredIds.includes(id)));
+    } else {
+      setSelectedStudentIds(Array.from(new Set([...selectedStudentIds, ...filteredIds])));
+    }
+  };
+
+  const handleToggleSelectStudent = (id) => {
+    if (selectedStudentIds.includes(id)) {
+      setSelectedStudentIds(selectedStudentIds.filter((i) => i !== id));
+    } else {
+      setSelectedStudentIds([...selectedStudentIds, id]);
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedStudentIds([]);
+  };
+
+  // Bulk action handler
+  const handleBulkAction = async (action) => {
+    if (selectedStudentIds.length === 0) return;
+    const actionName = action === "approve" ? "approve" : action === "hold" ? "put on hold" : "reject";
+    if (!window.confirm(`Are you sure you want to ${actionName} ${selectedStudentIds.length} selected student(s)?`)) {
+      return;
+    }
+
+    setBulkLoading(true);
+    const newStatus = action === "approve" ? "approved" : action === "hold" ? "hold" : "rejected";
+
+    // Update local state instantly
+    if (rawStudentsResponse?.data) {
+      const updatedList = rawStudentsResponse.data.map((s) => {
+        const sId = s.id || s.student_id;
+        return selectedStudentIds.includes(sId) ? { ...s, approval_status: newStatus, approvalStatus: newStatus } : s;
+      });
+      setData({ ...rawStudentsResponse, data: updatedList });
+    }
+
+    try {
+      if (studentService.bulkAction) {
+        await studentService.bulkAction({ ids: selectedStudentIds, action });
+      } else {
+        await Promise.all(
+          selectedStudentIds.map((id) => {
+            if (action === "approve") return studentService.approve(id);
+            if (action === "hold") return studentService.hold(id);
+            return studentService.reject(id);
+          })
+        );
+      }
+
+      const successMsg = action === "approve"
+        ? `Successfully approved ${selectedStudentIds.length} student(s)! 🎉`
+        : action === "hold"
+        ? `Successfully placed ${selectedStudentIds.length} student(s) on hold.`
+        : `Successfully set ${selectedStudentIds.length} student(s) status to rejected.`;
+
+      toast.success(successMsg);
+      setSelectedStudentIds([]);
+      refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || `Failed to perform bulk ${action}.`);
+      refetch();
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // Bulk CSV Export of Selected Students
+  const handleExportSelectedCSV = () => {
+    const selectedStudents = listToDisplay.filter((s) => selectedStudentIds.includes(s.id || s.student_id));
+    if (selectedStudents.length === 0) return;
+
+    const headers = ["Name", "Email", "Mobile", "Course", "Branch", "Batch", "CGPA", "Profile Completion", "Approval Status"];
+    const csvRows = [headers.join(",")];
+
+    selectedStudents.forEach((s) => {
+      const row = [
+        `"${(s.name || '').replace(/"/g, '""')}"`,
+        `"${(s.email || '').replace(/"/g, '""')}"`,
+        `"${(s.mobile || s.phone || '').replace(/"/g, '""')}"`,
+        `"${(s.course || '').replace(/"/g, '""')}"`,
+        `"${(s.branch || '').replace(/"/g, '""')}"`,
+        `"${(s.batch || s.passing_year || '').replace(/"/g, '""')}"`,
+        `"${(s.cgpa || '').replace(/"/g, '""')}"`,
+        `"${s.profileCompletion || s.profile_completion || 0}%"`,
+        `"${s.approval_status || s.approvalStatus || 'approved'}"`
+      ];
+      csvRows.push(row.join(","));
+    });
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `selected_students_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.info(`Exported ${selectedStudents.length} student records to CSV.`);
+  };
 
   const counts = {
     all: listToDisplay.length,
@@ -111,7 +226,7 @@ export default function Students() {
     <div>
       <PageHeader
         title="Student Management"
-        subtitle="Manage student access and hold statuses"
+        subtitle="Manage student access, batch permissions, and hold statuses"
         breadcrumbs={[{ label: "Dashboard", to: "/admin/dashboard" }, { label: "Students" }]}
       />
 
@@ -158,13 +273,84 @@ export default function Students() {
         </div>
       </div>
 
+      {/* Floating Multi-Select Bulk Actions Banner */}
+      {selectedStudentIds.length > 0 && (
+        <div className="bg-primary bg-gradient text-white p-3 rounded-3 shadow-md mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div className="d-flex align-items-center gap-2">
+            <span className="badge bg-white text-primary px-3 py-2 fs-6 rounded-pill fw-bold shadow-sm">
+              <i className="bi bi-check2-square me-1.5"></i>
+              {selectedStudentIds.length} Student{selectedStudentIds.length > 1 ? "s" : ""} Selected
+            </span>
+            <small className="text-white-75 d-none d-md-inline ms-1">
+              Select bulk actions below to execute across checked accounts.
+            </small>
+          </div>
+
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <button
+              className="btn btn-light text-success fw-bold btn-sm px-3 shadow-sm"
+              onClick={() => handleBulkAction("approve")}
+              disabled={bulkLoading}
+            >
+              {bulkLoading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-check-circle-fill me-1"></i>}
+              Approve Selected ({selectedStudentIds.length})
+            </button>
+
+            <button
+              className="btn btn-warning text-dark fw-bold btn-sm px-3 shadow-sm"
+              onClick={() => handleBulkAction("hold")}
+              disabled={bulkLoading}
+            >
+              {bulkLoading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-pause-circle-fill me-1"></i>}
+              Put On Hold ({selectedStudentIds.length})
+            </button>
+
+            <button
+              className="btn btn-danger fw-bold btn-sm px-3 shadow-sm"
+              onClick={() => handleBulkAction("reject")}
+              disabled={bulkLoading}
+            >
+              {bulkLoading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-x-circle-fill me-1"></i>}
+              Reject Selected ({selectedStudentIds.length})
+            </button>
+
+            <button
+              className="btn btn-outline-light btn-sm px-3 fw-medium"
+              onClick={handleExportSelectedCSV}
+              title="Export selected students data to CSV"
+            >
+              <i className="bi bi-download me-1"></i> Export CSV
+            </button>
+
+            <button
+              className="btn btn-link btn-sm text-white opacity-75 text-decoration-none ms-1"
+              onClick={handleClearSelection}
+            >
+              <i className="bi bi-x-lg me-1"></i> Deselect All
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div className="card-body p-0">
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th className="px-4 py-3">#</th>
+                  <th className="px-3 py-3 text-center" style={{ width: "42px" }}>
+                    <input
+                      type="checkbox"
+                      className="form-check-input cursor-pointer"
+                      checked={isAllSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isSomeSelected;
+                      }}
+                      onChange={handleToggleSelectAll}
+                      title="Select All Filtered Students"
+                    />
+                  </th>
+                  <th className="px-2 py-3">#</th>
                   <th className="py-3">Name</th>
                   <th className="py-3">Mobile Number</th>
                   <th className="py-3">Email</th>
@@ -178,13 +364,23 @@ export default function Students() {
               <tbody>
                 {filtered.length > 0 ? (
                   filtered.map((student, i) => {
+                    const studentId = student.id || student.student_id;
+                    const isSelected = selectedStudentIds.includes(studentId);
                     const status = student.approval_status || student.approvalStatus || "approved";
                     const hasResume = student.hasCreated || student.hasUploaded || (student.resumeUrl && student.resumeUrl !== "#");
                     const completionScore = student.profileCompletion || student.profile_completion || getOverallProfileScore(student);
 
                     return (
-                      <tr key={student.id || i}>
-                        <td className="px-4 text-muted">{i + 1}</td>
+                      <tr key={studentId || i} className={isSelected ? "table-primary bg-opacity-10" : ""}>
+                        <td className="px-3 text-center">
+                          <input
+                            type="checkbox"
+                            className="form-check-input cursor-pointer"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectStudent(studentId)}
+                          />
+                        </td>
+                        <td className="px-2 text-muted">{i + 1}</td>
                         <td>
                           <div className="d-flex align-items-center gap-3">
                             <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 36, height: 36, fontSize: 14 }}>
@@ -241,8 +437,8 @@ export default function Students() {
                               <button
                                 className="btn btn-sm btn-success px-2.5 py-1"
                                 title="Approve Student"
-                                onClick={() => handleApprove(student.id || student.student_id)}
-                                disabled={actionLoadingId === (student.id || student.student_id)}
+                                onClick={() => handleApprove(studentId)}
+                                disabled={actionLoadingId === studentId}
                               >
                                 <i className="bi bi-check-lg me-1"></i>Approve
                               </button>
@@ -251,8 +447,8 @@ export default function Students() {
                               <button
                                 className="btn btn-sm btn-warning text-dark px-2.5 py-1"
                                 title="Put Student On Hold"
-                                onClick={() => handleHold(student.id || student.student_id)}
-                                disabled={actionLoadingId === (student.id || student.student_id)}
+                                onClick={() => handleHold(studentId)}
+                                disabled={actionLoadingId === studentId}
                               >
                                 <i className="bi bi-pause-fill me-1"></i>Put On Hold
                               </button>
@@ -261,8 +457,8 @@ export default function Students() {
                               <button
                                 className="btn btn-sm btn-outline-danger px-2.5 py-1"
                                 title="Reject Student"
-                                onClick={() => handleReject(student.id || student.student_id)}
-                                disabled={actionLoadingId === (student.id || student.student_id)}
+                                onClick={() => handleReject(studentId)}
+                                disabled={actionLoadingId === studentId}
                               >
                                 <i className="bi bi-x-lg me-1"></i>Reject
                               </button>
@@ -281,7 +477,7 @@ export default function Students() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={9} className="text-center py-5 text-muted">
+                    <td colSpan={10} className="text-center py-5 text-muted">
                       <i className="bi bi-people fs-2 d-block mb-2 text-muted opacity-50"></i>
                       No students found matching your criteria.
                     </td>

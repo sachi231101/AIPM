@@ -218,7 +218,8 @@ export default function ResumePreview({ resume, onClose }) {
       {(() => {
         const settings = resume.settings || {};
         const fontFamily = settings.fontFamily || "Inter";
-        const fontSizeMap = { small: "0.85rem", medium: "0.95rem", large: "1.05rem" };
+        const fontStyle = settings.fontStyle || "normal";
+        const fontSizeMap = { small: "0.82rem", medium: "0.92rem", large: "1.05rem", xlarge: "1.18rem" };
         const lineSpacingMap = { compact: "1.2", normal: "1.5", spacious: "1.8" };
         const effectiveScale = autoScale * (zoom / 100);
         const baseW = 800;
@@ -244,7 +245,8 @@ export default function ResumePreview({ resume, onClose }) {
                   transform: `scale(${effectiveScale})`,
                   transformOrigin: "top left",
                   fontFamily: fontFamily,
-                  fontSize: fontSizeMap[settings.fontSize] || "0.95rem",
+                  fontStyle: fontStyle,
+                  fontSize: fontSizeMap[settings.fontSize] || "0.92rem",
                   lineHeight: lineSpacingMap[settings.lineSpacing] || "1.5",
                 }}
                 ref={previewRef}
