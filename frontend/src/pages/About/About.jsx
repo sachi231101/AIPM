@@ -9,17 +9,17 @@ export default function About() {
   return (
     <>
       {/* Page Header */}
-      <section className="inner-page-hero text-white text-center py-5">
-        <div className="container py-3">
+      <section className="inner-page-hero text-white text-center py-3 py-md-5">
+        <div className="container py-2 py-md-3">
           <h1 className="display-5 fw-bold">About Aadya Institute</h1>
           <p className="lead text-white-75">Learn with Passion to Live with Purpose.</p>
         </div>
       </section>
 
       {/* About Institute */}
-      <section className="py-5">
+      <section className="py-3 py-md-5">
         <div className="container">
-          <div className="row align-items-center g-5">
+          <div className="row align-items-center g-4 g-lg-5">
             <div className="col-lg-6">
               <span className="badge bg-primary bg-opacity-10 text-primary mb-3">Our Profile</span>
               <h2 className="fw-bold mb-3">Transforming Lives Through Professional Training</h2>
@@ -46,11 +46,15 @@ export default function About() {
               </div>
             </div>
             <div className="col-lg-6">
-              <div className="about-img-block rounded-4 overflow-hidden shadow-lg" style={{ background: "linear-gradient(135deg, #0F4C81 0%, #1E88E5 100%)", padding: "3rem", minHeight: 320, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className="about-img-block rounded-4 overflow-hidden shadow-lg p-4 p-md-5" style={{ background: "linear-gradient(135deg, #0F4C81 0%, #1E88E5 100%)", minHeight: 320, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <div className="text-center text-white">
-                  <i className="bi bi-mortarboard-fill fs-1 mb-3 d-block"></i>
-                  <h4 className="fw-bold">Aadya Institution</h4>
-                  <p className="text-white-75">Bangalore, Karnataka</p>
+                  <div className="d-inline-flex align-items-center gap-3 bg-white p-2 px-3 rounded-4 shadow-sm mb-3">
+                    <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
+                    <span className="text-muted opacity-50 fs-4">|</span>
+                    <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
+                  </div>
+                  <h4 className="fw-bold text-white mb-1">Aadya & Edify Institutions</h4>
+                  <p className="text-white-75 mb-1">Bangalore, Karnataka</p>
                   <p className="text-white-50 small mb-3">Estd. 2016</p>
                   <div className="d-flex flex-wrap justify-content-center gap-2">
                     <span className="badge bg-white text-primary">Practical Learning</span>

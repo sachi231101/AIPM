@@ -41,14 +41,15 @@ export default function CompanyLogin() {
       <div className="card border-0 shadow-lg rounded-4 overflow-hidden" style={{ maxWidth: 460, width: "100%" }}>
         <div className="card-body p-4 p-sm-5">
           <div className="text-center mb-4">
-            <div
-              className="rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex align-items-center justify-content-center mb-3"
-              style={{ width: 64, height: 64 }}
-            >
-              <i className="bi bi-buildings-fill fs-2"></i>
-            </div>
-            <h4 className="fw-bold text-dark mb-1">Company Recruiter Login</h4>
-            <p className="text-muted small">Aadya Institution Placement Portal</p>
+            <Link to="/" className="text-decoration-none">
+              <div className="d-inline-flex align-items-center gap-3 mb-3">
+                <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "44px", objectFit: "contain" }} />
+                <span className="text-muted opacity-50 fs-4">|</span>
+                <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "44px", objectFit: "contain" }} />
+              </div>
+              <h4 className="fw-bold text-dark mb-1">Company Recruiter Login</h4>
+              <p className="text-muted small mb-0">Aadya & Edify Institution Placement Portal</p>
+            </Link>
           </div>
 
           <form onSubmit={handleSubmit}>
@@ -107,8 +108,11 @@ export default function CompanyLogin() {
 
           <div className="text-center mt-3 pt-3 border-top">
             <p className="small text-muted mb-1">New company looking to hire students?</p>
-            <Link to="/company/register" className="fw-semibold text-primary text-decoration-none">
+            <Link to="/company/register" className="fw-semibold text-primary text-decoration-none d-block mb-2">
               Register Company Account <i className="bi bi-arrow-right ms-1"></i>
+            </Link>
+            <Link to="/" className="text-muted small text-decoration-none">
+              <i className="bi bi-arrow-left me-1"></i>Back to Home
             </Link>
           </div>
         </div>

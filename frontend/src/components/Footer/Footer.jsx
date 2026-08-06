@@ -8,19 +8,28 @@ export default function Footer() {
       <div className="container py-5">
         <div className="row g-4">
           <div className="col-lg-4">
-            <div className="d-flex align-items-center gap-2 mb-3">
+            <div className="d-flex align-items-center gap-3 mb-3 flex-wrap">
               <img
-                src="/footer-logo.png"
-                alt="Aadya Institution Logo"
+                src="/aadya-logo.png"
+                alt="Aadya Institute Logo"
                 style={{
-                  height: "45px",
+                  height: "40px",
                   objectFit: "contain",
                 }}
               />
-              <h5 className="mb-0 fw-bold ms-1">Aadya Institution Placement Cell</h5>
+              <span className="text-white-50 fs-5 fw-light">|</span>
+              <img
+                src="/edify-logo.png"
+                alt="Edify Institute Logo"
+                style={{
+                  height: "40px",
+                  objectFit: "contain",
+                }}
+              />
             </div>
+            <h5 className="mb-2 fw-bold text-white">Aadya & Edify Institution Placement Cell</h5>
             <p className="text-white-50 small">
-              Aadya Institution — Transforming lives through professional training and skill development since 2016.
+              Aadya & Edify Institutions — Transforming lives through professional training and skill development since 2016.
             </p>
             <div className="d-flex gap-3 mt-3">
               <a href="https://www.instagram.com/aadya_institution/" target="_blank" rel="noreferrer" className="text-white-50 hover-white fs-5" title="Instagram"><i className="bi bi-instagram"></i></a>
@@ -72,7 +81,7 @@ export default function Footer() {
               <li className="mb-2"><i className="bi bi-geo-alt-fill me-2 text-warning"></i><strong>Branch 2 – Malleshwaram:</strong> 235, Sampige Rd, Malleshwaram 15 & 16th cross, Bengaluru - 560003</li>
               <li className="mb-2"><i className="bi bi-telephone-fill me-2 text-warning"></i>+91 99641 94324</li>
               <li className="mb-2"><i className="bi bi-envelope-fill me-2 text-warning"></i>rakshith@edifyinstitution.com</li>
-              <li className="mb-2"><i className="bi bi-clock-fill me-2 text-warning"></i>Mon–Sat: 8:00 AM – 9:00 PM <br/><span className="ms-4">Sun: 10:00 AM – 2:00 PM</span></li>
+              <li className="mb-2"><i className="bi bi-clock-fill me-2 text-warning"></i>Mon–Sat: 8:00 AM – 9:00 PM <br /><span className="ms-4">Sun: 10:00 AM – 2:00 PM</span></li>
             </ul>
           </div>
         </div>

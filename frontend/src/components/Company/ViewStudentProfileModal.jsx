@@ -200,7 +200,7 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
                     <div className="card border-0 shadow-sm rounded-3 mb-3">
                       <div className="card-body p-3.5">
                         <h6 className="fw-bold text-primary mb-2"><i className="bi bi-tools me-2"></i>Skills & Competencies</h6>
-                        <div className="d-flex flex-wrap gap-1.5">
+                        <div className="d-flex flex-wrap gap-2">
                           {Object.entries(resume.skills).map(([cat, items]) =>
                             Array.isArray(items) && items.length > 0 ? (
                               items.map((sk, idx) => (

@@ -4,8 +4,8 @@ export default function ForCompanies() {
   return (
     <div className="for-companies-landing">
       {/* ─── HERO SECTION ───────────────────────────────────────────────────── */}
-      <section className="bg-dark text-white py-5 position-relative overflow-hidden style-hero-gradient">
-        <div className="container py-4 py-md-5">
+      <section className="bg-dark text-white py-3 py-md-5 position-relative overflow-hidden style-hero-gradient">
+        <div className="container py-2 py-md-5">
           <div className="row align-items-center g-5">
             <div className="col-lg-7">
               <span className="badge bg-warning text-dark fw-bold px-3 py-1.5 rounded-pill text-uppercase mb-3 tracking-wider">

@@ -258,10 +258,10 @@ export default function SubmitJob() {
                       </small>
                     </div>
                     <div className="d-flex gap-3 flex-wrap">
-                      <button type="submit" className="btn btn-primary btn-lg px-5 fw-semibold" disabled={isSubmitting}>
+                      <button type="submit" className="btn btn-primary btn-lg px-5 fw-semibold w-100 w-sm-auto" disabled={isSubmitting}>
                         {isSubmitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</> : <><i className="bi bi-send-fill me-2"></i>Submit Job Drive</>}
                       </button>
-                      <button type="reset" className="btn btn-outline-secondary btn-lg" onClick={() => { reset(); handleRemoveLogo(); }}>
+                      <button type="reset" className="btn btn-outline-secondary btn-lg w-100 w-sm-auto" onClick={() => { reset(); handleRemoveLogo(); }}>
                         <i className="bi bi-arrow-counterclockwise me-2"></i>Reset Form
                       </button>
                     </div>

@@ -20,14 +20,14 @@ export default function Contact() {
   return (
     <>
       {/* Hero */}
-      <section className="inner-page-hero text-white text-center py-5">
-        <div className="container py-3">
+      <section className="inner-page-hero text-white text-center py-3 py-md-5">
+        <div className="container py-2 py-md-3">
           <h1 className="display-5 fw-bold">Contact Us</h1>
           <p className="lead text-white-75">We'd love to hear from you</p>
         </div>
       </section>
 
-      <section className="py-5">
+      <section className="py-3 py-md-5">
         <div className="container">
           <div className="row g-5">
             {/* Contact Info */}

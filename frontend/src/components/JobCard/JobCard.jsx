@@ -29,10 +29,10 @@ export default function JobCard({ job, showApply = false, onApply, applyDisabled
           />
           <div className="flex-grow-1 min-width-0">
             <h6 className="fw-bold mb-1 text-truncate">{job.title}</h6>
-            <div className="d-flex align-items-center gap-1.5 flex-wrap">
-              <span className="text-muted small">{job.company}</span>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="text-muted small me-1">{job.company}</span>
               {job.employmentType && (
-                <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style={{ fontSize: "0.68rem" }}>
+                <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 ms-1" style={{ fontSize: "0.68rem" }}>
                   {job.employmentType}
                 </span>
               )}

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { convertImageToBase64 } from "../../utils/resumeStorage";
 import ModernTemplate from "../ResumeTemplates/ModernTemplate";
 import ProfessionalTemplate from "../ResumeTemplates/ProfessionalTemplate";
@@ -9,7 +9,32 @@ import StudentTemplate from "../ResumeTemplates/StudentTemplate";
 export default function ResumePreview({ resume, onClose }) {
   const [zoom, setZoom] = useState(100);
   const [deviceMode, setDeviceMode] = useState("desktop"); // desktop, mobile
+  const [autoScale, setAutoScale] = useState(1);
+  const containerRef = useRef(null);
   const previewRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateScale = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.clientWidth;
+        if (w > 0) {
+          const baseW = 800;
+          const availableW = w - 16;
+          if (availableW < baseW) {
+            setAutoScale(Math.max(0.32, availableW / baseW));
+          } else {
+            setAutoScale(1);
+          }
+        }
+      }
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   if (!resume) return null;
   const templateKey = resume.settings?.template || "modern";
@@ -153,12 +178,12 @@ export default function ResumePreview({ resume, onClose }) {
   };
 
   return (
-    <div className="resume-preview-container d-flex flex-column h-100 bg-dark bg-opacity-10 p-3 rounded-3 border">
+    <div className="resume-preview-container d-flex flex-column h-100 bg-dark bg-opacity-10 p-2 p-md-3 rounded-3 border overflow-hidden">
       {/* Controls Bar */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 bg-white rounded-3 shadow-sm mb-3">
         <div className="d-flex align-items-center gap-2">
           <span className="badge bg-primary text-uppercase px-2 py-1">{templateKey} Template</span>
-          <span className="small text-muted fw-semibold">Real-Time Live Preview</span>
+          <span className="small text-muted fw-semibold d-none d-sm-inline">Real-Time Live Preview</span>
         </div>
 
         <div className="d-flex align-items-center gap-2">
@@ -176,7 +201,7 @@ export default function ResumePreview({ resume, onClose }) {
           {/* Download PDF Button */}
           <button className="btn btn-success btn-sm d-flex align-items-center gap-1" onClick={handleDownloadPDF} disabled={isDownloading}>
             {isDownloading ? (
-              <><span className="spinner-border spinner-border-sm me-1"></span> Generating PDF...</>
+              <><span className="spinner-border spinner-border-sm me-1"></span> Generating...</>
             ) : (
               <><i className="bi bi-file-earmark-pdf"></i> Download PDF</>
             )}
@@ -195,22 +220,37 @@ export default function ResumePreview({ resume, onClose }) {
         const fontFamily = settings.fontFamily || "Inter";
         const fontSizeMap = { small: "0.85rem", medium: "0.95rem", large: "1.05rem" };
         const lineSpacingMap = { compact: "1.2", normal: "1.5", spacious: "1.8" };
+        const effectiveScale = autoScale * (zoom / 100);
+        const baseW = 800;
+
         return (
-          <div className="flex-grow-1 overflow-auto d-flex justify-content-center p-2">
+          <div
+            ref={containerRef}
+            className="flex-grow-1 overflow-auto d-flex justify-content-center align-items-start p-1 p-md-3"
+            style={{ width: "100%", height: "100%", position: "relative" }}
+          >
             <div
-              className={`preview-wrapper transition-all ${deviceMode === "mobile" ? "mobile-viewport" : ""}`}
+              className="preview-scale-wrapper position-relative"
               style={{
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: "top center",
-                width: deviceMode === "mobile" ? "380px" : "100%",
-                maxWidth: deviceMode === "mobile" ? "380px" : "850px",
-                fontFamily: fontFamily,
-                fontSize: fontSizeMap[settings.fontSize] || "0.95rem",
-                lineHeight: lineSpacingMap[settings.lineSpacing] || "1.5",
+                width: `${baseW * effectiveScale}px`,
+                transition: "width 0.15s ease",
               }}
-              ref={previewRef}
             >
-              {renderTemplate()}
+              <div
+                className="preview-wrapper shadow-sm rounded-3 bg-white"
+                style={{
+                  width: `${baseW}px`,
+                  minWidth: `${baseW}px`,
+                  transform: `scale(${effectiveScale})`,
+                  transformOrigin: "top left",
+                  fontFamily: fontFamily,
+                  fontSize: fontSizeMap[settings.fontSize] || "0.95rem",
+                  lineHeight: lineSpacingMap[settings.lineSpacing] || "1.5",
+                }}
+                ref={previewRef}
+              >
+                {renderTemplate()}
+              </div>
             </div>
           </div>
         );
