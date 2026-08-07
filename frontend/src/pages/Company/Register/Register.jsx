@@ -17,6 +17,7 @@ export default function CompanyRegister() {
     password: "",
   });
   const [otp, setOtp] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
@@ -230,14 +231,23 @@ export default function CompanyRegister() {
 
                 <div className="col-12">
                   <label className="form-label small fw-semibold text-muted">Password <span className="text-danger">*</span></label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    placeholder="Create a strong password"
-                    value={formData.password}
-                    onChange={(e) => handleChange("password", e.target.value)}
-                    required
-                  />
+                  <div className="input-group">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="form-control"
+                      placeholder="Create a strong password"
+                      value={formData.password}
+                      onChange={(e) => handleChange("password", e.target.value)}
+                      required
+                    />
+                    <button
+                      className="btn btn-outline-secondary"
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      <i className={`bi ${showPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                    </button>
+                  </div>
                 </div>
               </div>
 

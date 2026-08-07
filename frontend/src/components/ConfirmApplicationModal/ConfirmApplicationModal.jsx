@@ -366,7 +366,7 @@ export default function ConfirmApplicationModal({
 
                     <div className="mt-3">
                       <Link
-                        to="/student/resume-builder"
+                        to="/student/resume-builder?step=skills"
                         className="btn btn-danger text-white fw-bold px-3 py-2 shadow-sm d-inline-flex align-items-center gap-2 text-wrap text-start mw-100"
                         onClick={onClose}
                       >
@@ -400,7 +400,7 @@ export default function ConfirmApplicationModal({
                           ))}
                         </div>
                         <Link
-                          to="/student/resume-builder"
+                          to="/student/resume-builder?step=skills"
                           className="btn btn-warning btn-sm text-dark fw-bold mt-1 text-wrap d-inline-flex align-items-center gap-1.5"
                           onClick={onClose}
                         >
@@ -499,29 +499,57 @@ export default function ConfirmApplicationModal({
             <Link to="/student/profile" className="btn btn-outline-primary btn-sm px-3" onClick={onClose}>
               <i className="bi bi-pencil me-1"></i>Edit Profile
             </Link>
-            {!isProfileIncomplete ? (
-              <button
-                type="button"
-                className="btn btn-success btn-sm fw-bold px-3 px-sm-4 text-nowrap"
-                onClick={handleConfirm}
-                disabled={submitting || loadingProfiles || loadingSelectedProfile}
-              >
-                {submitting ? (
-                  <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</>
-                ) : (
-                  <><i className="bi bi-send-fill me-1"></i>Confirm & Submit Application</>
-                )}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm fw-bold px-3 px-sm-4 cursor-not-allowed text-nowrap"
-                disabled
-                title="Application Disabled: Minimum 60% skill match required"
-              >
-                <i className="bi bi-lock-fill me-1"></i>Confirm & Submit Application (Locked)
-              </button>
-            )}
+            {(() => {
+              const rawDate = job?.lastDate || job?.last_date || job?.deadline;
+              const isDeadlinePassed = (() => {
+                if (!rawDate || rawDate === "N/A") return false;
+                const deadlineDate = new Date(rawDate);
+                if (isNaN(deadlineDate.getTime())) return false;
+                deadlineDate.setHours(23, 59, 59, 999);
+                return new Date() > deadlineDate;
+              })();
+
+              if (isDeadlinePassed) {
+                return (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm fw-bold px-3 px-sm-4 cursor-not-allowed text-nowrap"
+                    disabled
+                    title="Application Disabled: Application deadline has passed"
+                  >
+                    <i className="bi bi-clock-history me-1"></i>Application Deadline Passed (Locked)
+                  </button>
+                );
+              }
+
+              if (!isProfileIncomplete) {
+                return (
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm fw-bold px-3 px-sm-4 text-nowrap"
+                    onClick={handleConfirm}
+                    disabled={submitting || loadingProfiles || loadingSelectedProfile}
+                  >
+                    {submitting ? (
+                      <><span className="spinner-border spinner-border-sm me-2"></span>Submitting...</>
+                    ) : (
+                      <><i className="bi bi-send-fill me-1"></i>Confirm & Submit Application</>
+                    )}
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm fw-bold px-3 px-sm-4 cursor-not-allowed text-nowrap"
+                  disabled
+                  title="Application Disabled: Minimum 60% skill match required"
+                >
+                  <i className="bi bi-lock-fill me-1"></i>Confirm & Submit Application (Locked)
+                </button>
+              );
+            })()}
           </div>
 
         </div>

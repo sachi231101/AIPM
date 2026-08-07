@@ -73,15 +73,6 @@ export default function CompanyLayout() {
                   <div className="text-muted d-none d-sm-block" style={{ fontSize: "0.7rem" }}>HR Portal</div>
                 </div>
               </div>
-
-              {/* Quick Logout button */}
-              <button
-                className="btn btn-outline-danger btn-sm rounded-pill px-2.5 px-sm-3"
-                onClick={handleLogout}
-                title="Logout"
-              >
-                <i className="bi bi-box-arrow-right me-1"></i> <span className="d-none d-sm-inline">Logout</span>
-              </button>
             </div>
           </header>
 

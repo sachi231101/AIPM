@@ -10,6 +10,9 @@ export default function CompanySettings() {
   const navigate = useNavigate();
 
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -107,38 +110,65 @@ export default function CompanySettings() {
                     Forgot current password?
                   </button>
                 </div>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  placeholder="••••••••"
-                  required
-                />
+                <div className="input-group">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    className="form-control"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    className="btn btn-outline-secondary"
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    <i className={`bi ${showCurrentPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                  </button>
+                </div>
               </div>
 
               <div className="col-md-4">
                 <label className="form-label small fw-semibold text-muted">New Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  placeholder="••••••••"
-                  required
-                />
+                <div className="input-group">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    className="form-control"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    className="btn btn-outline-secondary"
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    <i className={`bi ${showNewPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                  </button>
+                </div>
               </div>
 
               <div className="col-md-4">
                 <label className="form-label small fw-semibold text-muted">Confirm New Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  placeholder="••••••••"
-                  required
-                />
+                <div className="input-group">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    className="form-control"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    className="btn btn-outline-secondary"
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <i className={`bi ${showConfirmPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -436,6 +436,8 @@ class CompanyController extends Controller
             ? (is_array($eligibilityInput) ? implode(', ', array_filter(array_map('trim', $eligibilityInput))) : trim($eligibilityInput))
             : 'B.Tech, BCA, MCA';
 
+        $jobStatus = $validated['status'] ?? $request->input('status') ?? 'pending';
+
         $job = PlacementJob::create([
             'company_id'       => $companyId,
             'title'            => $validated['title'],
@@ -449,20 +451,22 @@ class CompanyController extends Controller
             'employment_type'  => $validated['employmentType'] ?? $validated['employment_type'] ?? 'Full Time',
             'openings'         => $validated['vacancies'] ?? 1,
             'last_date'        => $validated['last_date'] ?? now()->addDays(30),
-            'status'           => 'pending', // Pending Admin Approval
+            'status'           => $jobStatus,
         ]);
 
-        // Create Admin Notification
-        Notification::create([
-            'type' => 'new_job',
-            'title' => 'New Job Posted for Approval',
-            'message' => ($company?->name ?? 'Company') . ' posted a job: "' . $job->title . '". Approval required.',
-            'link' => '/admin/jobs',
-        ]);
+        if ($jobStatus !== 'draft') {
+            // Create Admin Notification
+            Notification::create([
+                'type' => 'new_job',
+                'title' => 'New Job Posted for Approval',
+                'message' => ($company?->name ?? 'Company') . ' posted a job: "' . $job->title . '". Approval required.',
+                'link' => '/admin/jobs',
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Job posted successfully! Submitted to Admin for approval.',
+            'message' => $jobStatus === 'draft' ? 'Job saved as draft successfully!' : 'Job posted successfully! Submitted to Admin for approval.',
             'data' => $job,
         ], 201);
     }

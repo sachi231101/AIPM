@@ -20,10 +20,28 @@ class SettingsController extends Controller
                 'phone' => $settings->get('contact_phone', '+91 99641 94324'),
                 'address' => $settings->get('address', '183, 2nd Floor, 1st Main Road, Ramamurthy Nagar, Bengaluru – 560016'),
                 'website' => $settings->get('website', 'https://aadyainstitute.com'),
+                'whatsappLink' => $settings->get('whatsapp_link', 'https://chat.whatsapp.com/BE0NobILNOh6Km9PLIEYuQ'),
                 'maxResumeSize' => $settings->get('max_resume_size', '5'),
                 'applicationDeadlineBuffer' => $settings->get('application_deadline_buffer', '2'),
                 'emailNotifications' => filter_var($settings->get('email_notifications', '1'), FILTER_VALIDATE_BOOLEAN),
                 'autoApproveCompanies' => filter_var($settings->get('auto_approve_companies', '0'), FILTER_VALIDATE_BOOLEAN),
+                'instituteLogo' => $settings->get('institute_logo') ? \Illuminate\Support\Facades\Storage::url($settings->get('institute_logo')) : '/logo.png',
+            ]
+        ]);
+    }
+
+    public function publicSettings(): JsonResponse
+    {
+        $settings = DB::table('settings')->get()->pluck('value', 'key');
+
+        return response()->json([
+            'data' => [
+                'instituteName' => $settings->get('institute_name', 'Aadya Institute'),
+                'email' => $settings->get('contact_email', 'rakshith@edifyinstitution.com'),
+                'phone' => $settings->get('contact_phone', '+91 99641 94324'),
+                'address' => $settings->get('address', '183, 2nd Floor, 1st Main Road, Ramamurthy Nagar, Bengaluru – 560016'),
+                'website' => $settings->get('website', 'https://aadyainstitute.com'),
+                'whatsappLink' => $settings->get('whatsapp_link', 'https://chat.whatsapp.com/BE0NobILNOh6Km9PLIEYuQ'),
                 'instituteLogo' => $settings->get('institute_logo') ? \Illuminate\Support\Facades\Storage::url($settings->get('institute_logo')) : '/logo.png',
             ]
         ]);
@@ -37,6 +55,7 @@ class SettingsController extends Controller
             'contact_phone' => $request->phone,
             'address' => $request->address,
             'website' => $request->website,
+            'whatsapp_link' => $request->whatsappLink ?? $request->whatsapp_link,
             'max_resume_size' => $request->maxResumeSize,
             'application_deadline_buffer' => $request->applicationDeadlineBuffer,
             'email_notifications' => $request->emailNotifications ? '1' : '0',

@@ -64,6 +64,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // Public Institute Listing (for registration dropdown)
 Route::get('/institutes', [InstituteController::class, 'index']);
 
+// Public Settings (WhatsApp Group link, Institute info)
+Route::get('/settings/public', [\App\Http\Controllers\Api\Admin\SettingsController::class, 'publicSettings']);
+
 // Public Contact Form Submission
 Route::post('/contact', [ContactMessageController::class, 'store']);
 

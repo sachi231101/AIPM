@@ -331,10 +331,15 @@ export default function StudentLogin() {
                 )}
 
                 <hr className="my-4" />
-                <p className="text-center text-muted small mb-0">
-                  Don't have an account?{" "}
-                  <Link to="/student/register" className="text-primary fw-semibold text-decoration-none">Register here</Link>
-                </p>
+                <div className="text-center">
+                  <p className="text-muted small mb-2">
+                    Don't have an account?{" "}
+                    <Link to="/student/register" className="text-primary fw-semibold text-decoration-none">Register here</Link>
+                  </p>
+                  <Link to="/" className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1.5 fw-semibold text-decoration-none mt-2">
+                    <i className="bi bi-arrow-left me-1"></i>Back to Home
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

@@ -50,10 +50,10 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
       <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content shadow-lg border-0 rounded-4" style={{ maxHeight: "92vh" }}>
           {/* Header */}
-          <div className="modal-header bg-primary text-white py-3 px-4">
+          <div className="modal-header bg-primary text-white py-3 px-4 d-flex align-items-center justify-content-between">
             <div className="d-flex align-items-center gap-3">
               <div
-                className="rounded-circle bg-white text-primary fw-bold d-flex align-items-center justify-content-center overflow-hidden border border-2 border-white"
+                className="rounded-circle bg-white text-primary fw-bold d-flex align-items-center justify-content-center overflow-hidden border border-2 border-white flex-shrink-0"
                 style={{ width: 44, height: 44, fontSize: "1.1rem" }}
               >
                 {personal.photo ? (
@@ -68,9 +68,9 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
               </div>
             </div>
 
-            <div className="d-flex align-items-center gap-2">
+            <div className="ms-auto d-flex align-items-center gap-3">
               {/* Tab Switcher */}
-              <div className="d-flex align-items-center bg-black bg-opacity-25 p-1 rounded-pill me-3 border border-white border-opacity-25">
+              <div className="d-flex align-items-center bg-black bg-opacity-25 p-1 rounded-pill border border-white border-opacity-25">
                 <button
                   type="button"
                   className={`btn btn-sm rounded-pill px-3 py-1.5 fw-bold border-0 ${
@@ -81,7 +81,7 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
                   style={{ color: activeTab === "profile" ? "#0d6efd" : "#ffffff" }}
                   onClick={() => setActiveTab("profile")}
                 >
-                  <i className="bi bi-person-badge me-1"></i> Career Profile
+                  <i className="bi bi-person-badge me-1"></i> Profile
                 </button>
                 <button
                   type="button"
@@ -93,11 +93,11 @@ export default function ViewStudentProfileModal({ application, onClose, onStatus
                   style={{ color: activeTab === "resume" ? "#0d6efd" : "#ffffff" }}
                   onClick={() => setActiveTab("resume")}
                 >
-                  <i className="bi bi-file-earmark-pdf me-1"></i> Live Resume
+                  <i className="bi bi-file-earmark-pdf me-1"></i> Resume
                 </button>
               </div>
 
-              <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+              <button type="button" className="btn-close btn-close-white" onClick={onClose} aria-label="Close"></button>
             </div>
           </div>
 

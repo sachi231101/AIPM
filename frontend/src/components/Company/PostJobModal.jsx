@@ -292,7 +292,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                 onClick={() => handleSave("draft")}
                 disabled={loading}
               >
-                <i className="bi bi-bookmark me-1"></i> Save Draft
+                <i className="bi bi-bookmark me-1"></i>Draft
               </button>
               <button
                 type="button"
@@ -305,7 +305,7 @@ export default function PostJobModal({ initialData, onClose, onSave }) {
                 ) : initialData ? (
                   <><i className="bi bi-check-circle-fill me-1"></i> Save Changes</>
                 ) : (
-                  <><i className="bi bi-shield-check me-1"></i> Save & Submit for Approval</>
+                  <><i className="bi bi-shield-check me-1"></i>Submit</>
                 )}
               </button>
             </div>

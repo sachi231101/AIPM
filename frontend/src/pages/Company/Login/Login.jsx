@@ -9,6 +9,7 @@ export default function CompanyLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   const { login } = useAuth();
@@ -84,13 +85,20 @@ export default function CompanyLogin() {
               <div className="input-group">
                 <span className="input-group-text bg-light"><i className="bi bi-lock text-muted"></i></span>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   className="form-control"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  className="btn btn-outline-secondary border-start-0"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  <i className={`bi ${showPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                </button>
               </div>
             </div>
 

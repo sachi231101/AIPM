@@ -299,9 +299,14 @@ export default function Register() {
                 )}
 
                 <hr className="my-4" />
-                <p className="text-center text-muted small mb-0">
-                  Already registered? <Link to="/student/login" className="text-primary fw-semibold text-decoration-none">Sign In</Link>
-                </p>
+                <div className="text-center">
+                  <p className="text-muted small mb-2">
+                    Already registered? <Link to="/student/login" className="text-primary fw-semibold text-decoration-none">Sign In</Link>
+                  </p>
+                  <Link to="/" className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1.5 fw-semibold text-decoration-none mt-2">
+                    <i className="bi bi-arrow-left me-1"></i>Back to Home
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

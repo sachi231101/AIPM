@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/useAuth";
 import { useProfile } from "../../../context/ProfileContext";
@@ -83,19 +83,7 @@ const SKILL_CATEGORIES = [
   { key: "otherSkills", label: "Other / Custom Skills" },
 ];
 
-const POPULAR_SKILLS_SUGGESTIONS = [
-  { name: "JavaScript", category: "programmingLanguages" },
-  { name: "React", category: "frontend" },
-  { name: "Node.js", category: "backend" },
-  { name: "Python", category: "programmingLanguages" },
-  { name: "HTML5 & CSS3", category: "frontend" },
-  { name: "Git & GitHub", category: "tools" },
-  { name: "Java", category: "programmingLanguages" },
-  { name: "SQL", category: "backend" },
-  { name: "React.js", category: "frontend" },
-  { name: "Digital Marketing", category: "businessManagement" },
-  { name: "Graphic Design (Canva)", category: "designCreative" },
-];
+
 
 const getStepIndexFromCategory = (key) => {
   if (!key) return 0;
@@ -142,8 +130,11 @@ const getStepStatus = (idx, activeResume, atsMetrics) => {
       isFilled = Array.isArray(activeResume.projects) && activeResume.projects.length > 0;
       break;
     case 5: // Skills
-      pts = breakdown.skills ?? (Array.isArray(activeResume.skills) && activeResume.skills.length > 0 ? 15 : 0);
-      isFilled = Array.isArray(activeResume.skills) && activeResume.skills.length > 0;
+      const totalSkillCount = Array.isArray(activeResume.skills)
+        ? activeResume.skills.length
+        : Object.values(activeResume.skills || {}).flat().filter(Boolean).length;
+      pts = breakdown.skills ?? (totalSkillCount >= 8 ? 15 : (totalSkillCount > 0 ? 8 : 0));
+      isFilled = totalSkillCount > 0;
       break;
     case 6: // Certifications
       isFilled = Array.isArray(activeResume.certifications) && activeResume.certifications.length > 0;
@@ -179,10 +170,27 @@ const getStepStatus = (idx, activeResume, atsMetrics) => {
 
 export default function ResumeBuilder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { activeProfile } = useProfile();
   const [activeResume, setActiveResume] = useState(null);
   const [currentStep, setCurrentStep] = useState(0); // 0 to 10
+
+  // Handle direct navigation to specific step via URL query param (e.g. ?step=skills or ?step=5)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const stepParam = searchParams.get("step") || location.state?.step;
+    if (stepParam !== null && stepParam !== undefined) {
+      if (stepParam === "skills" || stepParam === "5") {
+        setCurrentStep(5);
+      } else {
+        const parsed = parseInt(stepParam, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 9) {
+          setCurrentStep(parsed);
+        }
+      }
+    }
+  }, [location.search, location.state]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
@@ -235,6 +243,15 @@ export default function ResumeBuilder() {
     }
     setCurrentStep(targetStep);
   };
+
+  // Scroll to top of resume builder content whenever active step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const contentArea = document.getElementById("builder-content-area");
+    if (contentArea) {
+      contentArea.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [currentStep]);
 
   // Fetch student profile & pre-fill Master Resume for activeProfile
   useEffect(() => {
@@ -471,15 +488,76 @@ export default function ResumeBuilder() {
     handleUpdateResume({ ...activeResume, projects: list });
   };
 
+  // Helper to extract all created skills with category labels
+  const getCreatedSkillsList = () => {
+    const skillsObj = activeResume?.skills || {};
+    const list = [];
+
+    if (Array.isArray(skillsObj)) {
+      skillsObj.forEach((s) => {
+        const name = typeof s === "string" ? s : s?.name;
+        if (name && name.trim()) {
+          list.push({ name: name.trim(), categoryKey: "technical", categoryLabel: "Technical & IT Skills" });
+        }
+      });
+      return list;
+    }
+
+    SKILL_CATEGORIES.forEach((cat) => {
+      const catSkills = skillsObj[cat.key];
+      if (Array.isArray(catSkills)) {
+        catSkills.forEach((s) => {
+          if (s && typeof s === "string" && s.trim()) {
+            list.push({
+              name: s.trim(),
+              categoryKey: cat.key,
+              categoryLabel: cat.label,
+            });
+          }
+        });
+      }
+    });
+
+    Object.keys(skillsObj).forEach((key) => {
+      const isKnown = SKILL_CATEGORIES.some((c) => c.key === key);
+      if (!isKnown && Array.isArray(skillsObj[key])) {
+        skillsObj[key].forEach((s) => {
+          if (s && typeof s === "string" && s.trim()) {
+            list.push({
+              name: s.trim(),
+              categoryKey: key,
+              categoryLabel: "Custom Category",
+            });
+          }
+        });
+      }
+    });
+
+    return list;
+  };
+
   // Skills handlers
   const handleAddSkill = (categoryKey, skillText = null) => {
     const text = (skillText || newSkillInput[categoryKey] || "").trim();
     if (!text) return;
-    const currentList = activeResume.skills?.[categoryKey] || [];
-    if (!currentList.includes(text)) {
+
+    // Support comma-separated skills entry
+    const newItems = text
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (newItems.length === 0) return;
+
+    const currentList = Array.isArray(activeResume.skills?.[categoryKey])
+      ? activeResume.skills[categoryKey]
+      : [];
+
+    const uniqueNew = newItems.filter((item) => !currentList.includes(item));
+    if (uniqueNew.length > 0) {
       const updatedSkills = {
-        ...activeResume.skills,
-        [categoryKey]: [...currentList, text],
+        ...(activeResume.skills || {}),
+        [categoryKey]: [...currentList, ...uniqueNew],
       };
       handleUpdateResume({ ...activeResume, skills: updatedSkills });
     }
@@ -487,12 +565,51 @@ export default function ResumeBuilder() {
   };
 
   const handleRemoveSkill = (categoryKey, skillName) => {
-    const currentList = activeResume.skills?.[categoryKey] || [];
+    const currentList = Array.isArray(activeResume.skills?.[categoryKey])
+      ? activeResume.skills[categoryKey]
+      : [];
     const updatedSkills = {
-      ...activeResume.skills,
+      ...(activeResume.skills || {}),
       [categoryKey]: currentList.filter((s) => s !== skillName),
     };
     handleUpdateResume({ ...activeResume, skills: updatedSkills });
+  };
+
+  const handleClearAllSkills = () => {
+    handleUpdateResume({ ...activeResume, skills: {} });
+    toast.info("All skills cleared.");
+  };
+
+  const handleImportProfileSkills = () => {
+    const profSkills = Array.isArray(activeProfile?.skills)
+      ? activeProfile.skills
+      : (typeof activeProfile?.skills === "string" ? activeProfile.skills.split(",") : []);
+    const profSoft = Array.isArray(activeProfile?.soft_skills)
+      ? activeProfile.soft_skills
+      : (typeof activeProfile?.soft_skills === "string" ? activeProfile.soft_skills.split(",") : []);
+
+    const techList = profSkills.map((s) => s.trim()).filter(Boolean);
+    const softList = profSoft.map((s) => s.trim()).filter(Boolean);
+
+    if (techList.length === 0 && softList.length === 0) {
+      toast.info("No skills found in your student profile.");
+      return;
+    }
+
+    const currentTech = Array.isArray(activeResume.skills?.technical) ? activeResume.skills.technical : [];
+    const currentSoft = Array.isArray(activeResume.skills?.softSkills) ? activeResume.skills.softSkills : [];
+
+    const mergedTech = Array.from(new Set([...currentTech, ...techList]));
+    const mergedSoft = Array.from(new Set([...currentSoft, ...softList]));
+
+    const updatedSkills = {
+      ...(activeResume.skills || {}),
+      technical: mergedTech,
+      softSkills: mergedSoft,
+    };
+
+    handleUpdateResume({ ...activeResume, skills: updatedSkills });
+    toast.success("Profile skills imported successfully!");
   };
 
   // Certifications handlers
@@ -894,7 +1011,7 @@ export default function ResumeBuilder() {
         </div>
 
         {/* ─── RIGHT CONTENT (75%) ─────────────────────────────────────────── */}
-        <div className="col-lg-9">
+        <div className="col-lg-9" id="builder-content-area">
           {/* Horizontal Stepper */}
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-body p-3 overflow-auto">
@@ -1415,49 +1532,95 @@ export default function ResumeBuilder() {
                     <small className="text-muted">Supports Accounting, Office, Technical & Soft Skills</small>
                   </div>
 
-                  {/* Popular Quick Add Chips */}
-                  <div className="card bg-light border-0 p-3 mb-4 rounded-3">
-                    <label className="form-label small fw-bold text-dark mb-2">
-                      <i className="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Add Popular Skills:
-                    </label>
-                    <div className="d-flex flex-wrap gap-2">
-                      {POPULAR_SKILLS_SUGGESTIONS.map((ps, idx) => {
-                        const existingCategorySkills = activeResume.skills?.[ps.category] || [];
-                        const isAdded = existingCategorySkills.includes(ps.name);
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            className={`btn btn-sm ${isAdded ? "btn-success" : "btn-outline-primary"} rounded-pill py-1 px-3 fs-7`}
-                            onClick={() => !isAdded && handleAddSkill(ps.category, ps.name)}
-                            disabled={isAdded}
-                          >
-                            {isAdded ? <i className="bi bi-check-lg me-1"></i> : <i className="bi bi-plus-lg me-1"></i>}
-                            {ps.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {/* Created Skills Section */}
+                  {(() => {
+                    const createdSkills = getCreatedSkillsList();
+                    const hasProfileSkills = (activeProfile?.skills?.length > 0) || (activeProfile?.soft_skills?.length > 0);
+                    return (
+                      <div className="card bg-light border-0 p-3 mb-4 rounded-3 shadow-sm">
+                        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                          <div className="d-flex align-items-center gap-2">
+                            <i className="bi bi-check-circle-fill text-success fs-5"></i>
+                            <span className="fw-bold text-dark fs-6 mb-0">
+                              Created Skills ({createdSkills.length})
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-center gap-2">
+                            {hasProfileSkills && (
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary btn-xs rounded-pill px-3"
+                                onClick={handleImportProfileSkills}
+                                title="Import technical & soft skills from student profile"
+                              >
+                                <i className="bi bi-download me-1"></i> Import Profile Skills
+                              </button>
+                            )}
+                            {createdSkills.length > 0 && (
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger btn-xs rounded-pill px-3"
+                                onClick={handleClearAllSkills}
+                                title="Remove all created skills"
+                              >
+                                <i className="bi bi-trash me-1"></i> Clear All
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {createdSkills.length > 0 ? (
+                          <div className="d-flex flex-wrap gap-2 mt-2">
+                            {createdSkills.map((sk, idx) => (
+                              <span
+                                key={`${sk.categoryKey}-${sk.name}-${idx}`}
+                                className="badge bg-white text-dark border shadow-sm px-3 py-2 d-inline-flex align-items-center gap-2 rounded-pill fs-7"
+                              >
+                                <span className="fw-semibold text-dark">{sk.name}</span>
+                                <i
+                                  className="bi bi-x-lg text-danger cursor-pointer ms-1"
+                                  style={{ fontSize: "0.75rem", cursor: "pointer" }}
+                                  title={`Remove ${sk.name}`}
+                                  onClick={() => handleRemoveSkill(sk.categoryKey, sk.name)}
+                                ></i>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-muted small fst-italic py-2 d-flex align-items-center gap-2">
+                            <i className="bi bi-info-circle text-primary"></i>
+                            <span>No skills created yet. Enter skills in any category below to build your skills section.</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="row g-4">
                     {SKILL_CATEGORIES.map((cat) => {
-                      const currentSkills = activeResume.skills?.[cat.key] || [];
+                      const currentSkills = Array.isArray(activeResume.skills?.[cat.key]) ? activeResume.skills[cat.key] : [];
                       return (
                         <div key={cat.key} className="col-md-6">
                           <div className="card border h-100 shadow-sm">
                             <div className="card-body p-3">
-                              <label className="form-label fw-bold text-dark mb-2">{cat.label}</label>
+                              <div className="d-flex justify-content-between align-items-center mb-2">
+                                <label className="form-label fw-bold text-dark mb-0">{cat.label}</label>
+                                {currentSkills.length > 0 && (
+                                  <span className="badge bg-secondary bg-opacity-10 text-secondary border-0 fs-8">
+                                    {currentSkills.length} {currentSkills.length === 1 ? "skill" : "skills"}
+                                  </span>
+                                )}
+                              </div>
 
                               {/* Skill Chips */}
-                              <div className="d-flex flex-wrap gap-1 mb-3">
+                              <div className="d-flex flex-wrap gap-1 mb-3" style={{ minHeight: "32px" }}>
                                 {currentSkills.map((s, i) => (
                                   <span key={i} className="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2 py-1 d-inline-flex align-items-center gap-1">
                                     {s}
                                     <i className="bi bi-x cursor-pointer ms-1 fs-6" onClick={() => handleRemoveSkill(cat.key, s)}></i>
                                   </span>
                                 ))}
-                                {currentSkills.length === 0 && <span className="small text-muted fst-italic">No skills added yet</span>}
+                                {currentSkills.length === 0 && <span className="small text-muted fst-italic align-self-center">No skills added yet</span>}
                               </div>
 
                               {/* Input + Add */}
@@ -1468,9 +1631,9 @@ export default function ResumeBuilder() {
                                   placeholder={`Add any ${cat.label.toLowerCase()}...`}
                                   value={newSkillInput[cat.key] || ""}
                                   onChange={(e) => setNewSkillInput({ ...newSkillInput, [cat.key]: e.target.value })}
-                                  onKeyDown={(e) => e.key === "Enter" && handleAddSkill(cat.key)}
+                                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddSkill(cat.key))}
                                 />
-                                <button className="btn btn-outline-primary" onClick={() => handleAddSkill(cat.key)}>Add</button>
+                                <button className="btn btn-outline-primary" type="button" onClick={() => handleAddSkill(cat.key)}>Add</button>
                               </div>
                             </div>
                           </div>
