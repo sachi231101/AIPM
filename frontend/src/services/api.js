@@ -138,6 +138,7 @@ export const emailService = {
 
 export const settingsService = {
   get: () => api.get("/admin/settings"),
+  getPublic: () => api.get("/settings/public"),
   update: (data) => api.put("/admin/settings", data),
   uploadLogo: (formData) => api.post("/admin/settings/logo", formData, {
     headers: { "Content-Type": "multipart/form-data" }

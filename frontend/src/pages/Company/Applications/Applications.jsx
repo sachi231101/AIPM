@@ -65,7 +65,7 @@ export default function CompanyApplications() {
 
         {/* Filter Pills */}
         <div className="d-flex gap-2 bg-white p-1.5 rounded-pill shadow-sm border overflow-x-auto">
-          {["all", "pending", "shortlisted", "hired", "rejected"].map((st) => (
+          {["all", "pending", "shortlisted", "rejected"].map((st) => (
             <button
               key={st}
               type="button"

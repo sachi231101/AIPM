@@ -159,7 +159,7 @@ export default function Jobs() {
       <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div className="card-header bg-white border-0 pt-4 pb-0 px-4">
           <div className="row g-3 align-items-center">
-            <div className="col-md-5">
+            <div className="col-12 col-md-5">
               <div className="input-group">
                 <span className="input-group-text bg-white"><i className="bi bi-search text-muted"></i></span>
                 <input
@@ -170,8 +170,8 @@ export default function Jobs() {
                 />
               </div>
             </div>
-            <div className="col-md-4">
-              <select className="form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <div className="col-12 col-md-4">
+              <select className="form-select w-100" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="">All Statuses</option>
                 <option>Published</option>
                 <option>Pending</option>
@@ -180,7 +180,7 @@ export default function Jobs() {
                 <option>Closed</option>
               </select>
             </div>
-            <div className="col-md-3 text-end">
+            <div className="col-12 col-md-3 text-start text-md-end">
               <span className="badge bg-primary px-3 py-2">{filtered.length} Drives</span>
             </div>
           </div>

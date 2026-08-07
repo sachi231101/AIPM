@@ -6,6 +6,8 @@ export default function CompanyForgotPasswordModal({ initialEmail = "", onClose,
   const [email, setEmail] = useState(initialEmail);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -83,13 +85,20 @@ export default function CompanyForgotPasswordModal({ initialEmail = "", onClose,
                 <div className="input-group">
                   <span className="input-group-text bg-white"><i className="bi bi-lock text-muted"></i></span>
                   <input
-                    type="password"
+                    type={showNewPassword ? "text" : "password"}
                     className="form-control"
                     placeholder="Minimum 6 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                   />
+                  <button
+                    className="btn btn-outline-secondary border-start-0 bg-white"
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    <i className={`bi ${showNewPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                  </button>
                 </div>
               </div>
 
@@ -98,13 +107,20 @@ export default function CompanyForgotPasswordModal({ initialEmail = "", onClose,
                 <div className="input-group">
                   <span className="input-group-text bg-white"><i className="bi bi-shield-lock text-muted"></i></span>
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     className="form-control"
                     placeholder="Re-enter new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
+                  <button
+                    className="btn btn-outline-secondary border-start-0 bg-white"
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <i className={`bi ${showConfirmPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                  </button>
                 </div>
               </div>
             </div>

@@ -96,6 +96,18 @@ export default function AvailableJobs() {
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const handleOpenConfirm = (job) => {
+    const rawDate = job.lastDate || job.last_date || job.deadline;
+    if (rawDate && rawDate !== "N/A") {
+      const deadlineDate = new Date(rawDate);
+      if (!isNaN(deadlineDate.getTime())) {
+        deadlineDate.setHours(23, 59, 59, 999);
+        if (new Date() > deadlineDate) {
+          toast.error("The application deadline for this job opportunity has passed.");
+          return;
+        }
+      }
+    }
+
     if (approvalStatus !== "approved") {
       if (approvalStatus === "rejected") {
         toast.error("Your account status is rejected. You cannot apply for placement drives.");

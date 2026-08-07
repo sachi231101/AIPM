@@ -17,13 +17,13 @@ class ApplicationController extends Controller
     public function apply(Request $request): JsonResponse
     {
         $request->validate([
-            'job_id'             => 'required|exists:placement_jobs,id',
+            'job_id' => 'required|exists:placement_jobs,id',
             'student_profile_id' => 'nullable|exists:student_profiles,id',
-            'resume_type'        => 'nullable|string|in:uploaded,builder',
-            'resume_key'         => 'nullable|string',
+            'resume_type' => 'nullable|string|in:uploaded,builder',
+            'resume_key' => 'nullable|string',
         ]);
 
-        $user    = Auth::user();
+        $user = Auth::user();
         $student = $user->student;
 
         if (!$student) {
@@ -37,11 +37,16 @@ class ApplicationController extends Controller
             return response()->json(['message' => 'This placement drive is not open for applications.'], 422);
         }
 
-        // Check last date
-        if ($job->last_date) {
-            $lastDate = \Carbon\Carbon::parse($job->last_date)->endOfDay();
-            if (now()->gt($lastDate)) {
-                return response()->json(['message' => 'The application deadline for this placement drive has passed.'], 422);
+        // Check last date / deadline
+        $rawDeadline = $job->last_date ?? $job->deadline;
+        if ($rawDeadline) {
+            try {
+                $lastDate = \Carbon\Carbon::parse($rawDeadline)->endOfDay();
+                if (now()->gt($lastDate)) {
+                    return response()->json(['message' => 'The application deadline for this placement drive has passed.'], 422);
+                }
+            } catch (\Exception $e) {
+                // Ignore invalid date strings
             }
         }
 
@@ -69,12 +74,12 @@ class ApplicationController extends Controller
 
         // Check profile-level resume
         $hasUploadedResume = filled($profile->resume_path);
-        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
+        $hasCreatedResume = \App\Models\StudentResume::where('student_id', $student->id)->where('student_profile_id', $profile->id)->exists();
 
         // Check profile completion for this specific profile
         $course = $profile->course ?? $student->course;
         $branch = $profile->branch ?? $student->branch;
-        $batch  = $profile->batch ?? $student->batch;
+        $batch = $profile->batch ?? $student->batch;
         // Resolve student's Resume Builder data dynamically (if available)
         $resume = \App\Models\StudentResume::where('student_id', $student->id)
             ->where(function ($q) use ($profile, $request) {
@@ -93,37 +98,39 @@ class ApplicationController extends Controller
 
         $resumeContent = $resume?->content ?? [];
         $educationList = is_array($resumeContent['education'] ?? null) ? $resumeContent['education'] : [];
-        $firstEdu      = count($educationList) > 0 ? $educationList[0] : null;
+        $firstEdu = count($educationList) > 0 ? $educationList[0] : null;
 
         $builderCourse = $firstEdu['degree'] ?? ($firstEdu['course'] ?? null);
         $builderBranch = $firstEdu['field'] ?? ($firstEdu['branch'] ?? ($firstEdu['specialization'] ?? null));
-        $builderBatch  = $firstEdu['year'] ?? ($firstEdu['batch'] ?? ($firstEdu['passingYear'] ?? null));
-        $builderCgpa   = $firstEdu['gpa'] ?? ($firstEdu['cgpa'] ?? ($firstEdu['percentage'] ?? null));
+        $builderBatch = $firstEdu['year'] ?? ($firstEdu['batch'] ?? ($firstEdu['passingYear'] ?? null));
+        $builderCgpa = $firstEdu['gpa'] ?? ($firstEdu['cgpa'] ?? ($firstEdu['percentage'] ?? null));
 
         $course = $profile->course ?: ($student->course ?: $builderCourse);
         $branch = $profile->branch ?: ($student->branch ?: $builderBranch);
-        $batch  = $profile->batch ?: ($student->batch ?: $builderBatch);
-        $cgpa   = $profile->cgpa ?: ($student->cgpa ?: $builderCgpa);
+        $batch = $profile->batch ?: ($student->batch ?: $builderBatch);
+        $cgpa = $profile->cgpa ?: ($student->cgpa ?: $builderCgpa);
 
-        if ($course || $branch || $batch || $cgpa) {
-            $profile->update(array_filter([
-                'course' => $course,
-                'branch' => $branch,
-                'batch'  => $batch,
-                'cgpa'   => $cgpa,
-            ]));
+        try {
+            if ($course || $branch || $batch || $cgpa) {
+                $updateFields = array_filter([
+                    'course' => $course ? substr((string)$course, 0, 255) : null,
+                    'branch' => $branch ? substr((string)$branch, 0, 255) : null,
+                    'batch'  => $batch  ? substr((string)$batch,  0, 255) : null,
+                    'cgpa'   => $cgpa,
+                ], fn($v) => !is_null($v));
 
-            $student->update(array_filter([
-                'course' => $course,
-                'branch' => $branch,
-                'batch'  => $batch,
-                'cgpa'   => $cgpa,
-            ]));
+                if (!empty($updateFields)) {
+                    $profile->update($updateFields);
+                    $student->update($updateFields);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Profile auto-sync warning on job apply: " . $e->getMessage());
         }
 
         // Check profile-level or student-level resume
         $hasUploadedResume = filled($profile->resume_path) || filled($student->resume_path);
-        $hasCreatedResume  = \App\Models\StudentResume::where('student_id', $student->id)->exists();
+        $hasCreatedResume = \App\Models\StudentResume::where('student_id', $student->id)->exists();
 
         if (!$hasUploadedResume && !$hasCreatedResume) {
             return response()->json([
@@ -141,7 +148,7 @@ class ApplicationController extends Controller
         }
 
         $resumeType = $request->resume_type ?? ($hasCreatedResume ? 'builder' : 'uploaded');
-        $resumeKey  = $request->resume_key;
+        $resumeKey = $request->resume_key;
 
         if ($resumeType === 'builder' && !$resumeKey) {
             $defaultResume = \App\Models\StudentResume::where('student_id', $student->id)
@@ -152,26 +159,26 @@ class ApplicationController extends Controller
         }
 
         $application = Application::create([
-            'student_id'         => $student->id,
+            'student_id' => $student->id,
             'student_profile_id' => $profile->id,
-            'job_id'             => $job->id,
-            'resume_path'        => $profile->resume_path ?? $student->resume_path,
-            'resume_type'        => $resumeType,
-            'resume_key'         => $resumeKey,
-            'applied_at'         => now(),
+            'job_id' => $job->id,
+            'resume_path' => $profile->resume_path ?? $student->resume_path,
+            'resume_type' => $resumeType,
+            'resume_key' => $resumeKey,
+            'applied_at' => now(),
         ]);
 
         // Create notification for admin
         Notification::create([
-            'type'    => 'new_application',
-            'title'   => 'New Job Application',
+            'type' => 'new_application',
+            'title' => 'New Job Application',
             'message' => $user->name . ' applied for ' . $job->title . ' (' . $profile->profile_name . ')',
-            'link'    => '/admin/applications',
+            'link' => '/admin/applications',
         ]);
 
         return response()->json([
             'message' => 'Application submitted successfully! 🎉',
-            'data'    => $application,
+            'data' => $application,
         ], 201);
     }
 
@@ -179,7 +186,7 @@ class ApplicationController extends Controller
 
     public function myApplications(): JsonResponse
     {
-        $user    = Auth::user();
+        $user = Auth::user();
         $student = $user->student;
 
         if (!$student) {

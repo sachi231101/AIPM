@@ -40,6 +40,17 @@ class StudentProfile extends Model
         'cgpa'        => 'float',
     ];
 
+    public function setCgpaAttribute($value)
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['cgpa'] = null;
+        } else {
+            $clean = preg_replace('/[^0-9.]/', '', (string)$value);
+            $val = is_numeric($clean) ? floatval($clean) : null;
+            $this->attributes['cgpa'] = $val !== null ? min(max(0, $val), 99.99) : null;
+        }
+    }
+
     // ---------- Relationships ----------
 
     public function student(): \Illuminate\Database\Eloquent\Relations\BelongsTo

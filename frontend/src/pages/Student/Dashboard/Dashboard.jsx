@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import StatCard from "../../../components/StatCard/StatCard";
 import JobCard from "../../../components/JobCard/JobCard";
 import PageHeader from "../../../components/PageHeader/PageHeader";
-import { studentService, jobService, applicationService } from "../../../services/api";
+import { studentService, jobService, applicationService, settingsService } from "../../../services/api";
 import { getCompanyLogo } from "../../../utils/logoHelper";
 
 import { normalizePhotoUrl, getOverallProfileScore } from "../../../utils/resumeStorage";
@@ -19,8 +19,10 @@ export default function Dashboard() {
   const { data: profileRes, loading: loadingProfile } = useCachedData("student_profile", studentService.getProfile);
   const { data: jobsRes, loading: loadingJobs } = useCachedData("public_jobs", jobService.getAll);
   const { data: appsRes, loading: loadingApps } = useCachedData("student_applications", applicationService.getMyApplications);
+  const { data: publicSettingsRes } = useCachedData("public_settings", settingsService.getPublic);
 
   const student = profileRes?.data || null;
+  const whatsappLink = publicSettingsRes?.data?.whatsappLink || "https://chat.whatsapp.com/BE0NobILNOh6Km9PLIEYuQ";
 
   useEffect(() => {
     setImgError(false);
@@ -215,7 +217,7 @@ export default function Dashboard() {
               </p>
               <div className="d-flex flex-wrap align-items-center">
                 <a
-                  href="https://chat.whatsapp.com/JzQLdJvoZjz243LaztjHwS"
+                  href={whatsappLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-light text-success fw-bold btn-lg shadow-sm px-4 py-2-5 rounded-3 d-inline-flex align-items-center gap-2"
@@ -225,12 +227,16 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="col-md-4 text-center">
-              <div className="bg-white p-1  d-inline-block border border-2 border-white">
+              <div className="bg-white p-2 d-inline-block border border-2 border-white rounded-3 shadow-sm">
                 <img
-                  src="/whatsapp-qr.jpg"
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(whatsappLink)}`}
                   alt="WhatsApp Group QR Code"
                   className="img-fluid rounded-2"
                   style={{ width: 140, height: 140, objectFit: "contain" }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/whatsapp-qr.jpg";
+                  }}
                 />
                 <div className="mt-2 text-dark fw-semibold small d-flex align-items-center justify-content-center gap-1">
                   <i className="bi bi-qr-code-scan text-success fs-6"></i> Scan QR code to join

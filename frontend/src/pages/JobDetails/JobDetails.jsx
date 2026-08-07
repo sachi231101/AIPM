@@ -134,6 +134,118 @@ export default function JobDetails() {
     }
   };
 
+  const renderApplySection = () => {
+    if (!user) {
+      return (
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div>
+            <h6 className="fw-bold mb-1">Interested in this role?</h6>
+            <p className="text-muted small mb-0">Login with your mobile number to apply.</p>
+          </div>
+          <Link to="/student/login" className="btn btn-primary w-100 w-sm-auto">
+            <i className="bi bi-box-arrow-in-right me-2"></i>Login to Apply
+          </Link>
+        </div>
+      );
+    }
+
+    if (role !== "student") return null;
+
+    if (isAlreadyApplied) {
+      return (
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div>
+            <h6 className="fw-bold text-success mb-1">
+              <i className="bi bi-check-circle-fill me-2"></i>You have applied for this drive!
+            </h6>
+            <p className="text-muted small mb-0">Your application and resume have been submitted.</p>
+          </div>
+          <button className="btn btn-success btn-lg fw-semibold w-100 w-sm-auto" disabled>
+            <i className="bi bi-check-circle-fill me-2"></i>Applied
+          </button>
+        </div>
+      );
+    }
+
+    const rawDate = job.lastDate || job.last_date || job.deadline;
+    const isDeadlinePassed = (() => {
+      if (!rawDate || rawDate === "N/A") return false;
+      const deadlineDate = new Date(rawDate);
+      if (isNaN(deadlineDate.getTime())) return false;
+      deadlineDate.setHours(23, 59, 59, 999);
+      return new Date() > deadlineDate;
+    })();
+
+    if (isDeadlinePassed) {
+      return (
+        <div>
+          <div className="alert alert-secondary border-0 bg-danger bg-opacity-10 text-danger d-flex align-items-center gap-3 mb-3">
+            <i className="bi bi-clock-history fs-4 text-danger flex-shrink-0"></i>
+            <div>
+              <strong className="fw-bold">Application Deadline Passed</strong>
+              <div className="small text-dark opacity-75">The application deadline ({rawDate ? new Date(rawDate).toLocaleDateString("en-IN") : "past date"}) for this placement drive has expired. You can view job details, but new applications are closed.</div>
+            </div>
+          </div>
+          <button className="btn btn-secondary btn-lg px-4 w-100" disabled>
+            <i className="bi bi-calendar-x me-2"></i>Deadline Passed (Applications Closed)
+          </button>
+        </div>
+      );
+    }
+
+    if (approvalStatus === "approved") {
+      return (
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div>
+            <h6 className="fw-bold text-success mb-1">
+              <i className="bi bi-check-circle-fill me-2"></i>You are eligible to apply
+            </h6>
+            <p className="text-muted small mb-0">Review your profile details and submit your application.</p>
+          </div>
+          <button className="btn btn-success btn-lg px-4 w-100 w-sm-auto" onClick={handleOpenConfirmModal} disabled={applying}>
+            {applying ? (
+              <><span className="spinner-border spinner-border-sm me-2"></span>Applying...</>
+            ) : (
+              <><i className="bi bi-send me-2"></i>Apply Now</>
+            )}
+          </button>
+        </div>
+      );
+    }
+
+    if (approvalStatus === "hold" || approvalStatus === "pending") {
+      return (
+        <div>
+          <div className="alert alert-warning d-flex align-items-center gap-3 mb-3">
+            <i className="bi bi-pause-circle-fill fs-4"></i>
+            <div>
+              <strong>Account On Hold</strong>
+              <div className="small">Your account is currently placed on hold. You can apply for jobs once the Placement Team releases the hold on your account.</div>
+            </div>
+          </div>
+          <button className="btn btn-warning text-dark btn-lg px-4 w-100" disabled onClick={handleOpenConfirmModal}>
+            <i className="bi bi-pause-fill me-2"></i>Account On Hold
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className="alert alert-danger d-flex align-items-center gap-3 mb-3">
+          <i className="bi bi-x-circle-fill fs-4"></i>
+          <div>
+            <strong>Account Status Rejected</strong>
+            <div className="small">Your account status is rejected. You cannot apply for placement drives.</div>
+          </div>
+        </div>
+        <button className="btn btn-danger btn-lg px-4 w-100" disabled onClick={handleOpenConfirmModal}>
+          <i className="bi bi-slash-circle me-2"></i>Application Disabled
+        </button>
+      </div>
+    );
+  };
+
   const statusColors = { Published: "success", Approved: "primary", Pending: "warning", Rejected: "danger" };
 
   return (
@@ -148,9 +260,9 @@ export default function JobDetails() {
           </ol>
         </nav>
 
-        <div className="row g-4">
+        <div className="row g-4 d-flex flex-column flex-lg-row">
           {/* Main Content */}
-          <div className="col-lg-8">
+          <div className="col-lg-8 order-1">
             {/* Header Card */}
             <div className="card border-0 shadow-sm mb-4">
               <div className="card-body p-4">
@@ -229,82 +341,14 @@ export default function JobDetails() {
               </div>
             </div>
 
-            {/* Apply / Status Banner */}
-            <div className="card border-0 shadow-sm p-4">
-              {!user ? (
-                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                  <div>
-                    <h6 className="fw-bold mb-1">Interested in this role?</h6>
-                    <p className="text-muted small mb-0">Login with your mobile number to apply.</p>
-                  </div>
-                  <Link to="/student/login" className="btn btn-primary">
-                    <i className="bi bi-box-arrow-in-right me-2"></i>Login to Apply
-                  </Link>
-                </div>
-              ) : role === "student" ? (
-                <div>
-                  {isAlreadyApplied ? (
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                      <div>
-                        <h6 className="fw-bold text-success mb-1">
-                          <i className="bi bi-check-circle-fill me-2"></i>You have applied for this drive!
-                        </h6>
-                        <p className="text-muted small mb-0">Your application and resume have been submitted.</p>
-                      </div>
-                      <button className="btn btn-success btn-lg fw-semibold" disabled>
-                        <i className="bi bi-check-circle-fill me-2"></i>Applied
-                      </button>
-                    </div>
-                  ) : approvalStatus === "approved" ? (
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                      <div>
-                        <h6 className="fw-bold text-success mb-1">
-                          <i className="bi bi-check-circle-fill me-2"></i>You are eligible to apply
-                        </h6>
-                        <p className="text-muted small mb-0">Review your profile details and submit your application.</p>
-                      </div>
-                      <button className="btn btn-success btn-lg px-4" onClick={handleOpenConfirmModal} disabled={applying}>
-                        {applying ? (
-                          <><span className="spinner-border spinner-border-sm me-2"></span>Applying...</>
-                        ) : (
-                          <><i className="bi bi-send me-2"></i>Apply Now</>
-                        )}
-                      </button>
-                    </div>
-                  ) : (approvalStatus === "hold" || approvalStatus === "pending") ? (
-                    <div>
-                      <div className="alert alert-warning d-flex align-items-center gap-3 mb-3">
-                        <i className="bi bi-pause-circle-fill fs-4"></i>
-                        <div>
-                          <strong>Account On Hold</strong>
-                          <div className="small">Your account is currently placed on hold. You can apply for jobs once the Placement Team releases the hold on your account.</div>
-                        </div>
-                      </div>
-                      <button className="btn btn-warning text-dark btn-lg px-4" disabled onClick={handleOpenConfirmModal}>
-                        <i className="bi bi-pause-fill me-2"></i>Account On Hold
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="alert alert-danger d-flex align-items-center gap-3 mb-3">
-                        <i className="bi bi-x-circle-fill fs-4"></i>
-                        <div>
-                          <strong>Account Status Rejected</strong>
-                          <div className="small">Your account status is rejected. You cannot apply for placement drives.</div>
-                        </div>
-                      </div>
-                      <button className="btn btn-danger btn-lg px-4" disabled onClick={handleOpenConfirmModal}>
-                        <i className="bi bi-slash-circle me-2"></i>Application Disabled
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : null}
+            {/* Apply / Status Banner (Desktop only) */}
+            <div className="card border-0 shadow-sm p-4 d-none d-lg-block">
+              {renderApplySection()}
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="col-lg-4">
+          {/* Sidebar Overview & Company (Order 2 on Mobile) */}
+          <div className="col-lg-4 order-2">
             <div className="card border-0 shadow-sm sticky-top" style={{ top: "80px" }}>
               <div className="card-body p-4">
                 <h6 className="fw-bold mb-3 text-muted text-uppercase" style={{ fontSize: "0.75rem", letterSpacing: "0.1em" }}>Job Overview</h6>
@@ -328,6 +372,13 @@ export default function JobDetails() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Apply / Status Banner (Mobile only: Order 3 at the very end of the page) */}
+          <div className="col-12 order-3 d-block d-lg-none mt-2">
+            <div className="card border-0 shadow-lg p-4 border-top border-4 border-primary">
+              {renderApplySection()}
             </div>
           </div>
         </div>

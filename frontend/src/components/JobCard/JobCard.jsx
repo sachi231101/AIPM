@@ -13,6 +13,15 @@ export default function JobCard({ job, showApply = false, onApply, applyDisabled
   const isApplied = job.isApplied || job.applied;
   const badge = statusColors[job.status] || "secondary";
 
+  const rawDate = job.lastDate || job.last_date || job.deadline;
+  const isDeadlinePassed = (() => {
+    if (!rawDate || rawDate === "N/A") return false;
+    const deadlineDate = new Date(rawDate);
+    if (isNaN(deadlineDate.getTime())) return false;
+    deadlineDate.setHours(23, 59, 59, 999);
+    return new Date() > deadlineDate;
+  })();
+
   return (
     <div className={`card job-card h-100 shadow-sm border-0 ${isApplied ? "border-start border-4 border-success" : ""}`}>
       <div className="card-body d-flex flex-column gap-3 p-4">
@@ -42,6 +51,10 @@ export default function JobCard({ job, showApply = false, onApply, applyDisabled
             <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 small fw-semibold">
               <i className="bi bi-check-circle-fill me-1"></i>Applied
             </span>
+          ) : isDeadlinePassed ? (
+            <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 small fw-semibold">
+              <i className="bi bi-clock-history me-1"></i>Expired
+            </span>
           ) : (
             <span className={`badge bg-${badge} bg-opacity-10 text-${badge} border border-${badge} border-opacity-25 small`}>
               {job.status}
@@ -68,9 +81,9 @@ export default function JobCard({ job, showApply = false, onApply, applyDisabled
 
         {/* Footer */}
         <div className="d-flex align-items-center justify-content-between mt-auto pt-2 border-top">
-          <small className="text-danger">
-            <i className="bi bi-calendar-x me-1"></i>
-            Last date: {job.lastDate ? new Date(job.lastDate).toLocaleDateString("en-IN") : "N/A"}
+          <small className={isDeadlinePassed ? "text-danger fw-semibold" : "text-muted"}>
+            <i className={`bi ${isDeadlinePassed ? "bi-clock-history text-danger" : "bi-calendar-x"} me-1`}></i>
+            {isDeadlinePassed ? "Deadline Passed" : `Last date: ${rawDate ? new Date(rawDate).toLocaleDateString("en-IN") : "N/A"}`}
           </small>
           <div className="d-flex gap-2">
             <Link to={`/job/${job.id}`} className="btn btn-sm btn-outline-primary">
@@ -80,6 +93,10 @@ export default function JobCard({ job, showApply = false, onApply, applyDisabled
               isApplied ? (
                 <button className="btn btn-sm btn-success fw-semibold" disabled>
                   <i className="bi bi-check-lg me-1"></i>Applied
+                </button>
+              ) : isDeadlinePassed ? (
+                <button className="btn btn-sm btn-secondary opacity-75 fw-semibold" disabled title="Application deadline has passed">
+                  <i className="bi bi-calendar-x me-1"></i>Expired
                 </button>
               ) : (
                 <button

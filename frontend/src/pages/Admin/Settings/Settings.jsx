@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import PageHeader from "../../../components/PageHeader/PageHeader";
 import { settingsService, subadminService } from "../../../services/api";
 import { useAuth } from "../../../hooks/useAuth";
-import { useCachedData } from "../../../hooks/useCachedData";
+import { useCachedData, clearCache } from "../../../hooks/useCachedData";
 
 export default function Settings() {
   const { role } = useAuth();
@@ -25,6 +25,8 @@ export default function Settings() {
       settings: false,
     }
   });
+
+  const [showSubadminPassword, setShowSubadminPassword] = useState(false);
 
   // Use caching hook for settings
   const { data: rawSettingsResponse, loading, refresh: refreshSettings } = useCachedData(
@@ -86,6 +88,8 @@ export default function Settings() {
   const onSubmit = async (data) => {
     try {
       await settingsService.update(data);
+      clearCache("public_settings");
+      clearCache("admin_settings");
       toast.success("Settings saved successfully!");
       refreshSettings();
     } catch (err) {
@@ -254,46 +258,26 @@ export default function Settings() {
                       <label className="form-label small fw-medium">Address</label>
                       <textarea {...register("address")} className="form-control" rows={2} />
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label small fw-medium">Website</label>
-                      <input {...register("website")} className="form-control" />
+                    
+                    <div className="col-12">
+                      <label className="form-label small fw-semibold text-dark d-flex align-items-center gap-1">
+                        <i className="bi bi-whatsapp text-success fs-6"></i> Student WhatsApp Group Join Link
+                      </label>
+                      <input
+                        type="url"
+                        {...register("whatsappLink")}
+                        className="form-control border-success border-opacity-50"
+                        placeholder="https://chat.whatsapp.com/..."
+                      />
+                      <small className="text-muted d-block mt-1">
+                        Students can click this link directly from their dashboard and menu to join the placement updates WhatsApp group.
+                      </small>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Logo Upload */}
-              <div className="card border-0 shadow-sm mb-4">
-                <div className="card-header bg-white border-0 pt-4 pb-0 px-4">
-                  <div className="d-flex align-items-center gap-2">
-                    <i className="bi bi-image text-primary fs-5"></i>
-                    <h6 className="fw-bold mb-0">Institute Logo</h6>
-                  </div>
-                </div>
-                <div className="card-body p-4">
-                  <div className="d-flex align-items-center gap-4 flex-wrap">
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="text-center">
-                        <small className="d-block text-muted fw-semibold mb-1">1st Logo (Aadya)</small>
-                        <img src="/aadya-logo.png" alt="Aadya Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
-                      </div>
-                      <div className="vr align-self-stretch my-1"></div>
-                      <div className="text-center">
-                        <small className="d-block text-muted fw-semibold mb-1">2nd Logo (Edify)</small>
-                        <img src="/edify-logo.png" alt="Edify Institute Logo" style={{ height: "40px", objectFit: "contain" }} />
-                      </div>
-                    </div>
-                    <div>
-                      <input type="file" className="form-control" accept="image/*" onChange={handleLogoChange} disabled={uploadingLogo} />
-                      {uploadingLogo ? (
-                        <small className="text-primary fw-medium"><span className="spinner-border spinner-border-sm me-1" style={{ width: "12px", height: "12px" }}></span>Uploading logo...</small>
-                      ) : (
-                        <small className="text-muted">PNG, JPG or SVG. Max 2MB. Updated logos are active across system.</small>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+             
 
               {/* System Settings */}
               <div className="card border-0 shadow-sm mb-4">
@@ -454,7 +438,24 @@ export default function Settings() {
                       </div>
                       <div className="mb-3">
                         <label className="form-label small fw-medium">Password</label>
-                        <input type="password" required={!editingSubadmin} className="form-control" minLength={6} placeholder={editingSubadmin ? "Leave blank to keep current" : ""} value={subadminForm.password} onChange={(e) => setSubadminForm({ ...subadminForm, password: e.target.value })} />
+                        <div className="input-group">
+                          <input
+                            type={showSubadminPassword ? "text" : "password"}
+                            required={!editingSubadmin}
+                            className="form-control"
+                            minLength={6}
+                            placeholder={editingSubadmin ? "Leave blank to keep current" : ""}
+                            value={subadminForm.password}
+                            onChange={(e) => setSubadminForm({ ...subadminForm, password: e.target.value })}
+                          />
+                          <button
+                            className="btn btn-outline-secondary"
+                            type="button"
+                            onClick={() => setShowSubadminPassword(!showSubadminPassword)}
+                          >
+                            <i className={`bi ${showSubadminPassword ? "bi-eye-slash text-muted" : "bi-eye text-muted"}`}></i>
+                          </button>
+                        </div>
                       </div>
 
                       <div className="mb-2 small fw-bold text-secondary">Initial Permission Levels</div>

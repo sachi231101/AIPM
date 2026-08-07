@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import { companyService } from "../../../services/api";
 
 export default function CompanyProfile() {
   const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
 
   const [profile, setProfile] = useState(() => {
     const saved = localStorage.getItem("apms_company_profile");
@@ -122,6 +124,7 @@ export default function CompanyProfile() {
         updateUser({ ...user, company_name: profile.companyName, name: profile.companyName });
       }
       toast.success("Company profile saved successfully! 🏢");
+      navigate("/company/jobs", { state: { openPostModal: true } });
     } catch (err) {
       console.error(err);
       localStorage.setItem("apms_company_profile", JSON.stringify(profile));
@@ -129,6 +132,7 @@ export default function CompanyProfile() {
         updateUser({ ...user, company_name: profile.companyName, name: profile.companyName });
       }
       toast.success("Company profile saved successfully! 🏢");
+      navigate("/company/jobs", { state: { openPostModal: true } });
     } finally {
       setSaving(false);
     }

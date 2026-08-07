@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import PostJobModal from "../../../components/Company/PostJobModal";
 import { companyService } from "../../../services/api";
 import { clearCache } from "../../../hooks/useCachedData";
 import { toast } from "react-toastify";
 
 export default function CompanyJobs() {
-  const [showModal, setShowModal] = useState(false);
+  const location = useLocation();
+  const [showModal, setShowModal] = useState(() => Boolean(location.state?.openPostModal));
   const [editingJob, setEditingJob] = useState(null);
   const [viewingJob, setViewingJob] = useState(null);
 
@@ -119,12 +121,16 @@ export default function CompanyJobs() {
                 <th>Applications</th>
                 <th>Status</th>
                 <th>Posted Date</th>
+                <th>Ending Date</th>
                 <th className="pe-4 text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
               {jobs.map((job) => {
                 const logoSrc = job.company_logo || job.company?.logo_path || profileLogo;
+                const empType = job.employmentType || job.employment_type || job.job_type || "Full Time";
+                const formattedPostedDate = job.postedDate || (job.created_at ? job.created_at.split("T")[0] : null) || job.posted_date || "N/A";
+                const formattedEndingDate = job.deadline ? job.deadline.split("T")[0] : (job.last_date ? job.last_date.split("T")[0] : (job.lastDate || "N/A"));
 
                 return (
                   <tr key={job.id}>
@@ -159,13 +165,13 @@ export default function CompanyJobs() {
                   <td className="small text-secondary fw-medium">{job.location}</td>
                   <td>
                     <span className="badge bg-primary bg-opacity-10 text-primary fw-semibold px-2.5 py-1">
-                      {job.employmentType}
+                      {empType}
                     </span>
                   </td>
                   <td>
                     <span className="badge bg-light text-dark border font-monospace px-2.5 py-1">
                       <i className="bi bi-people-fill text-primary me-1"></i>
-                      {job.applicationsCount} Applications
+                      {job.applicationsCount ?? (job.applications ? job.applications.length : 0)} Applications
                     </span>
                   </td>
                   <td>
@@ -185,7 +191,8 @@ export default function CompanyJobs() {
                         : (job.status ? job.status.toUpperCase() : "PENDING")}
                     </span>
                   </td>
-                  <td className="small text-muted">{job.postedDate}</td>
+                  <td className="small text-muted">{formattedPostedDate}</td>
+                  <td className="small text-muted fw-medium text-danger">{formattedEndingDate}</td>
                   <td className="pe-4 text-end">
                     <div className="d-flex justify-content-end gap-1">
                       {/* View */}
@@ -221,17 +228,7 @@ export default function CompanyJobs() {
                         >
                           <i className="bi bi-x-circle"></i>
                         </button>
-                      )}
-
-                      {/* Delete */}
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger"
-                        title="Delete Job"
-                        onClick={() => handleDeleteJob(job.id)}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      )}              
                     </div>
                   </td>
                 </tr>
@@ -240,7 +237,7 @@ export default function CompanyJobs() {
 
               {jobs.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="text-center py-5 text-muted">
+                  <td colSpan="8" className="text-center py-5 text-muted">
                     No jobs posted yet. Click <strong>+ Post New Job</strong> to create your first posting.
                   </td>
                 </tr>
@@ -276,15 +273,19 @@ export default function CompanyJobs() {
                   </div>
                   <div className="col-md-6">
                     <span className="text-muted small d-block">Employment Type</span>
-                    <strong className="text-dark">{viewingJob.employmentType}</strong>
+                    <strong className="text-dark">{viewingJob.employmentType || viewingJob.employment_type || viewingJob.job_type || "Full Time"}</strong>
                   </div>
-                  <div className="col-md-6">
+                  <div className="col-md-4">
                     <span className="text-muted small d-block">Salary Package</span>
                     <strong className="text-dark">{viewingJob.salary || "Not Disclosed"}</strong>
                   </div>
-                  <div className="col-md-6">
+                  <div className="col-md-4">
                     <span className="text-muted small d-block">Vacancies</span>
-                    <strong className="text-dark">{viewingJob.vacancies} Positions</strong>
+                    <strong className="text-dark">{viewingJob.vacancies || viewingJob.openings || 1} Positions</strong>
+                  </div>
+                  <div className="col-md-4">
+                    <span className="text-muted small d-block">Ending Date</span>
+                    <strong className="text-danger">{viewingJob.deadline ? viewingJob.deadline.split("T")[0] : (viewingJob.last_date ? viewingJob.last_date.split("T")[0] : (viewingJob.lastDate || "N/A"))}</strong>
                   </div>
                 </div>
 

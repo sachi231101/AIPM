@@ -1,9 +1,14 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { settingsService } from "../../services/api";
+import { useCachedData } from "../../hooks/useCachedData";
 
 export default function Navbar() {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
+
+  const { data: publicSettingsRes } = useCachedData("public_settings", settingsService.getPublic);
+  const whatsappLink = publicSettingsRes?.data?.whatsappLink || "https://chat.whatsapp.com/BE0NobILNOh6Km9PLIEYuQ";
 
   const handleLogout = (e) => {
     closeNavbar(e);
@@ -84,7 +89,7 @@ export default function Navbar() {
                   <li><Link className="dropdown-item" to="/student/resume-builder"><i className="bi bi-file-earmark-person me-2 text-primary"></i>Resume Builder</Link></li>
                   <li><Link className="dropdown-item" to="/placement-drives"><i className="bi bi-briefcase me-2"></i>Jobs</Link></li>
                   <li><Link className="dropdown-item" to="/student/applied"><i className="bi bi-check2-circle me-2"></i>Applied Jobs</Link></li>
-                  <li><a className="dropdown-item text-success fw-medium" href="https://chat.whatsapp.com/JzQLdJvoZjz243LaztjHwS" target="_blank" rel="noopener noreferrer"><i className="bi bi-whatsapp me-2"></i>Join WhatsApp Group</a></li>
+                  <li><a className="dropdown-item text-success fw-medium" href={whatsappLink} target="_blank" rel="noopener noreferrer"><i className="bi bi-whatsapp me-2"></i>Join WhatsApp Group</a></li>
                   <li><hr className="dropdown-divider" /></li>
                   <li><button className="dropdown-item text-danger" onClick={handleLogout}><i className="bi bi-box-arrow-right me-2"></i>Logout</button></li>
                 </ul>
